@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendar</title>
+    <link rel="stylesheet" href="/style.css">
+    <script src="/htmx.js"></script>
+  </head>
+  <body>
+    <div class="header-container">
+      <div class="button-container">
+        <button hx-get="/view/day" hx-target="#view-content" hx-swap="innerHTML">Jour</button>
+        <button hx-get="/view/week" hx-target="#view-content" hx-swap="innerHTML">Semaine</button>
+        <button hx-get="/view/month" hx-target="#view-content" hx-swap="innerHTML">Mois</button>
+        <button hx-get="/view/year" hx-target="#view-content" hx-swap="innerHTML">Année</button>
+      </div>
+    </div>
+
+    <div id="view-content">
+      <p>Select a view above</p>
+    </div>
+  </body>
+</html>
