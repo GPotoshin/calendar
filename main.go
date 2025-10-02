@@ -5,9 +5,11 @@ import (
 	"log"
 	"net/http"
 	"time"
+	"html/template"
 )
 
-func main() {
+func main() {	
+	
 	http.HandleFunc("/regular.ttf", serveRegular)
 	http.HandleFunc("/htmx.js", serveHtmx)
 	http.HandleFunc("/style.css", serveCss)
@@ -31,7 +33,7 @@ func logRequest(handler http.Handler) http.Handler {
 func serveRegular(w http.ResponseWriter, r *http.Request) {
 	log.Print("serveRegular")
 	w.Header().Set("Content-Type", "font/ttf")
-	http.ServeFile(w, r, "source-sans-pro/SourceSansPro-Regular.ttf")
+	http.ServeFile(w, r, "fonts/SourceSansPro-Regular.ttf")
 }
 
 func serveCss(w http.ResponseWriter, r *http.Request) {
@@ -46,7 +48,17 @@ func serveHtmx(w http.ResponseWriter, r *http.Request) {
 }
 
 func serveIndex(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "index.html")
+	t, err := template.ParseFiles("index.html", "month.html")
+
+	if err != nil {
+		http.Error(w, "Error parsing template", http.StatusInternalServerError)
+		return
+	}
+
+	err = t.Execute(w, nil)
+	if err != nil {
+		http.Error(w, "Error executing template", http.StatusInternalServerError)
+	}
 }
 
 func handleDay(w http.ResponseWriter, r *http.Request) {
@@ -69,13 +81,57 @@ func handleWeek(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, response)
 }
 
+func weekdayRecalc(day int) int {
+	return (day+6)%7
+}
+
 func handleMonth(w http.ResponseWriter, r *http.Request) {
 	log.Print("handleMonth")
-	// now := time.Now()
-	// response := fmt.Sprintf("<h2>Month View</h2><p>%s</p>", now.Format("January 2006"))
-	w.Header().Set("Content-Type", "text/html")
-	http.ServeFile(w, r, "month.html")
-	// fmt.Fprint(w, response)
+
+	type DayData struct {
+		DayNumber int
+		IsToday bool
+	}
+
+	type WeekData struct {
+		Days [7]DayData
+	}
+
+	type MonthData struct {
+		MonthName string
+		Weeks []WeekData
+	}
+
+
+	now := time.Now()
+	monday := now.AddDate(0,0,1-int(now.Weekday()));
+
+	data := MonthData{
+		MonthName: now.Month().String(),
+		Weeks: make([]WeekData, 21),
+	}
+
+	t, err := template.ParseFiles("month.html")
+
+	if err != nil {
+		http.Error(w, "Error parsing template", http.StatusInternalServerError)
+		return
+	}
+
+	for i := range data.Weeks {
+			week := &data.Weeks[i]
+			for j := 0; j < 7; j++ {
+				week.Days[j].DayNumber = monday.AddDate(0,0,-7*(10-i)+j).Day()
+				week.Days[j].IsToday = false
+			}
+	}
+
+	data.Weeks[10].Days[weekdayRecalc(int(now.Weekday()))].IsToday = true
+
+	err = t.ExecuteTemplate(w, "month", data)
+	if err != nil {
+		http.Error(w, "Error executing template", http.StatusInternalServerError)
+	}
 }
 
 func handleYear(w http.ResponseWriter, r *http.Request) {

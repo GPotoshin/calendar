@@ -1,5 +1,6 @@
+{{ define "month" }}
 <div id="month-display">
-  <strong>October</strong> 2025
+  <strong>{{ .MonthName }}</strong> 2025
 </div>
 
 <div id="weekdays">
@@ -14,113 +15,17 @@
 
 <div id="calendar-body">
   <div id="calendar-content">
-    <div class="week-row">
-      <div class="day-cell">1</div>
-      <div class="day-cell">2</div>
-      <div class="day-cell">3</div>
-      <div class="day-cell">4</div>
-      <div class="day-cell">5</div>
-      <div class="day-cell">6</div>
-      <div class="day-cell">7</div>
-    </div>
-    <div class="week-row">
-      <div class="day-cell">1</div>
-      <div class="day-cell">2</div>
-      <div class="day-cell">3</div>
-      <div class="day-cell">4</div>
-      <div class="day-cell">5</div>
-      <div class="day-cell">6</div>
-      <div class="day-cell">7</div>
-    </div>
-    <div class="week-row">
-      <div class="day-cell">1</div>
-      <div class="day-cell">2</div>
-      <div class="day-cell">3</div>
-      <div class="day-cell">4</div>
-      <div class="day-cell">5</div>
-      <div class="day-cell">6</div>
-      <div class="day-cell">7</div>
-    </div>
-    <div class="week-row">
-      <div class="day-cell">1</div>
-      <div class="day-cell">2</div>
-      <div class="day-cell">3</div>
-      <div class="day-cell">4</div>
-      <div class="day-cell">5</div>
-      <div class="day-cell">6</div>
-      <div class="day-cell">7</div>
-    </div>
-    <div class="week-row">
-      <div class="day-cell">1</div>
-      <div class="day-cell">2</div>
-      <div class="day-cell">3</div>
-      <div class="day-cell">4</div>
-      <div class="day-cell">5</div>
-      <div class="day-cell">6</div>
-      <div class="day-cell">7</div>
-    </div>
-    <div class="week-row">
-      <div class="day-cell">1</div>
-      <div class="day-cell">2</div>
-      <div class="day-cell">3</div>
-      <div class="day-cell">4</div>
-      <div class="day-cell">5</div>
-      <div class="day-cell">6</div>
-      <div class="day-cell">7</div>
-    </div>
-    <div class="week-row">
-      <div class="day-cell">1</div>
-      <div class="day-cell">2</div>
-      <div class="day-cell">3</div>
-      <div class="day-cell">4</div>
-      <div class="day-cell">5</div>
-      <div class="day-cell">6</div>
-      <div class="day-cell">7</div>
-    </div>
-    <div class="week-row">
-      <div class="day-cell">1</div>
-      <div class="day-cell">2</div>
-      <div class="day-cell">3</div>
-      <div class="day-cell">4</div>
-      <div class="day-cell">5</div>
-      <div class="day-cell">6</div>
-      <div class="day-cell">7</div>
-    </div>
-    <div class="week-row">
-      <div class="day-cell">1</div>
-      <div class="day-cell">2</div>
-      <div class="day-cell">3</div>
-      <div class="day-cell">4</div>
-      <div class="day-cell">5</div>
-      <div class="day-cell">6</div>
-      <div class="day-cell">7</div>
-    </div>
-    <div class="week-row">
-      <div class="day-cell">1</div>
-      <div class="day-cell">2</div>
-      <div class="day-cell">3</div>
-      <div class="day-cell">4</div>
-      <div class="day-cell">5</div>
-      <div class="day-cell">6</div>
-      <div class="day-cell">7</div>
-    </div>
-    <div class="week-row">
-      <div class="day-cell">1</div>
-      <div class="day-cell">2</div>
-      <div class="day-cell">3</div>
-      <div class="day-cell">4</div>
-      <div class="day-cell">5</div>
-      <div class="day-cell">6</div>
-      <div class="day-cell">7</div>
-    </div>
-    <div class="week-row">
-      <div class="day-cell">1</div>
-      <div class="day-cell">2</div>
-      <div class="day-cell">3</div>
-      <div class="day-cell">4</div>
-      <div class="day-cell">5</div>
-      <div class="day-cell">6</div>
-      <div class="day-cell">7</div>
-    </div>
+    {{range .Weeks}}{{template "week" .}}{{end}}
   </div>
 </div>
+{{ end }}
+
+{{ define "week" }}
+<div class="week-row">
+  {{ range .Days }}
+  <div class="day-cell{{if .IsToday}} today{{end}}">
+    <div class = "day-number">{{ .DayNumber }}</div>
+  </div>
+  {{ end }}
+</div>
+{{end}}

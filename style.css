@@ -132,6 +132,7 @@ body {
   display: flex;
   flex-direction: column;
   text-align: right;
+  align-items: flex-end;
   justify-content: flex-start;
   transition: background-color 150ms ease-in-out;
   color: #1f2937; /* default text color */
@@ -139,4 +140,18 @@ body {
 
 .day-cell:not(:last-child) {
   border-right: 0.0625rem solid #ccc;
+}
+
+.day-number {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 9999px; /* Full circle */
+}
+
+.day-cell.today .day-number {
+  background-color: #EB5545;
+  color: white;
 }
