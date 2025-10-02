@@ -8,6 +8,7 @@ import (
 )
 
 func main() {
+	http.HandleFunc("/regular.ttf", serveRegular)
 	http.HandleFunc("/htmx.js", serveHtmx)
 	http.HandleFunc("/style.css", serveCss)
 	http.HandleFunc("/", serveIndex)
@@ -17,7 +18,20 @@ func main() {
 	http.HandleFunc("/view/year", handleYear)
 
 	fmt.Println("Server starting on :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(":8080", logRequest(http.DefaultServeMux)))
+}
+
+func logRequest(handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("%s %s %s\n", r.RemoteAddr, r.Method, r.URL)
+		handler.ServeHTTP(w, r)
+	})
+}
+
+func serveRegular(w http.ResponseWriter, r *http.Request) {
+	log.Print("serveRegular")
+	w.Header().Set("Content-Type", "font/ttf")
+	http.ServeFile(w, r, "source-sans-pro/SourceSansPro-Regular.ttf")
 }
 
 func serveCss(w http.ResponseWriter, r *http.Request) {
