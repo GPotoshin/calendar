@@ -130,7 +130,7 @@ body {
   border-top: 0.0625rem solid #ccc;
 }
 
-.block-marker-top {
+.block-marker {
   position: relative;
 	width: 100%;
 	height: 0px;
@@ -164,4 +164,4 @@ body {
 .day-cell.today .day-number {
   background-color: #EB5545;
   color: white;
-}
+}

@@ -15,20 +15,31 @@
 
 <div id="calendar-body">
   <div id="calendar-content">
-    {{range .Blocks}}{{template "weeksblock" .}}{{end}}
+    {{template "weeksblock" (index .Blocks 0)}}
+    <div class="block-marker"
+      hx-get="/api/scrolling-up"
+      hx-trigger="intersect root:calendar-body once"
+      hx-target="#view-content"
+      hx-swap="innerHTML"
+      ></div>
+    {{template "weeksblock" (index .Blocks 1)}}
+    <div class="block-marker"
+      hx-get="/api/scrolling-down"
+      hx-trigger="intersect root:calendar-body once"
+      hx-target="#view-content"
+      hx-swap="innerHTML"
+      ></div>
+    {{template "weeksblock" (index .Blocks 2)}}
   </div>
 </div>
 {{ end }}
 
 {{ define "weeksblock" }}
-<div class="weeks-block">
-  <div class="block-marker-top" data-block-offset="{{ .BlockOffset }}"></div>
-  {{range $idx, $week := .Weeks}}
-  <div class="week-row">
-    {{template "weekrow" $week}}
-  </div>
-  {{end}}
+{{range $idx, $week := .Weeks}}
+<div class="week-row">
+  {{template "weekrow" $week}}
 </div>
+{{end}}
 {{end}}
 
 {{ define "weekrow" }}

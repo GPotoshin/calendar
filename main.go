@@ -75,14 +75,12 @@ type WeekData struct {
 }
 
 type BlockData struct {
-	BlockOffset int
 	Weeks [12]WeekData
 }
 
 
 func generateWeeksBlock(offsetWeeks int, now time.Time) BlockData {
 	block := BlockData{}
-	block.BlockOffset = offsetWeeks
 	monday := now.AddDate(0,0,1-int(now.Weekday())-7*3);
 	for subweek_num := range block.Weeks {
 		week := &block.Weeks[subweek_num]
