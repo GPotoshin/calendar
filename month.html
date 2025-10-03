@@ -15,17 +15,26 @@
 
 <div id="calendar-body">
   <div id="calendar-content">
-    {{range .Weeks}}{{template "week" .}}{{end}}
+    {{range .Blocks}}{{template "weeksblock" .}}{{end}}
   </div>
 </div>
 {{ end }}
 
-{{ define "week" }}
-<div class="week-row">
-  {{ range .Days }}
-  <div class="day-cell{{if .IsToday}} today{{end}}">
-    <div class = "day-number">{{ .DayNumber }}</div>
+{{ define "weeksblock" }}
+<div class="weeks-block">
+  <div class="block-marker-top" data-block-offset="{{ .BlockOffset }}"></div>
+  {{range $idx, $week := .Weeks}}
+  <div class="week-row">
+    {{template "weekrow" $week}}
   </div>
-  {{ end }}
+  {{end}}
 </div>
+{{end}}
+
+{{ define "weekrow" }}
+{{ range .Days }}
+<div class="day-cell{{if .IsToday}} today{{end}}">
+  <div class = "day-number">{{ .DayNumber }}</div>
+</div>
+{{end}}
 {{end}}
