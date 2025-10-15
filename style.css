@@ -5,17 +5,11 @@
   font-style: normal;
 }
 
-html {
-  font-size: 16px;
-}
-
 html, body {
   height: 100%;
   margin: 0;
   padding: 0;
-}
-
-body {
+  font-size: 16px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -24,6 +18,7 @@ body {
 }
 
 .button-container {
+    flex: none;
     display: inline-flex;
     border: 1px solid #ccc;
     border-radius: 5px;
@@ -37,7 +32,6 @@ body {
     background-color: white;
     cursor: pointer;
     position: relative;
-    transition: background-color 0.2s;
     font-family: 'my-ssp'; 
 }
 
@@ -67,7 +61,6 @@ body {
   display: flex;
   flex-direction: column;
 }
-
 
 #month-display {
   font-size: 32px;
@@ -114,10 +107,6 @@ body {
   flex-direction: column;
 }
 
-.weeks-block {
-  display: contents;
-}
-
 .week-row {
   height: calc(100% / 6);
   min-height: calc(100% / 6);
@@ -137,15 +126,14 @@ body {
 }
 
 .day-cell {
-  padding: 0.25rem;
   height: 100%;
   display: flex;
   flex-direction: column;
   text-align: right;
   align-items: flex-end;
   justify-content: flex-start;
-  transition: background-color 150ms ease-in-out;
   color: #1f2937;
+  position: relative;
 }
 
 .day-cell:not(:last-child) {
@@ -164,4 +152,40 @@ body {
 .day-cell.today .day-number {
   background-color: #EB5545;
   color: white;
-}
+}
+
+.event-bar {
+  height: calc(100% / 10);
+  width: 100%;
+  min-height: 20px;
+  max-height: 30px;
+  text-align: center;
+  position: absolute;
+  background-color: #F7CEDD;
+  color: #772338;
+  z-index: 10;
+}
+
+.event-bar.event-single {
+  border-radius: 9999px;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.no-select {
+    user-select: none;
+    
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+
+    cursor: default;
+}
+
+.bar-holder {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: left;
+  justify-content: flex-start;
+}

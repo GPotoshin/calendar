@@ -6,8 +6,23 @@ import (
 	"net/http"
 	"time"
 	"html/template"
-	"strconv"
 )
+
+var months = []string {
+	"Janvier",
+	"Février",
+	"Mars",
+	"Avril",
+	"Mai",
+	"Juin",
+	"Juillet",
+	"Août",
+	"Septembre",
+	"Octobre",
+	"Novembre",
+	"Décembre",
+}
+
 func add(a, b int) int {
 	return a + b
 }
@@ -59,13 +74,15 @@ func main() {
 	http.HandleFunc("/view/week", handleWeek)
 	http.HandleFunc("/view/month", handleMonth)
 	http.HandleFunc("/view/year", handleYear)
-	http.HandleFunc("/api/weeks", handleWeeksBlock)
+	http.HandleFunc("/api/scrolling-up", handleScrollingUp)
+	http.HandleFunc("/api/scrolling-down", handleScrollingDown)
 
 	fmt.Println("Server starting on :8080")
 	log.Fatal(http.ListenAndServe(":8080", logRequest(http.DefaultServeMux)))
 }
 
 type DayData struct {
+	Id int64
 	DayNumber int
 	IsToday bool
 }
@@ -75,19 +92,21 @@ type WeekData struct {
 }
 
 type BlockData struct {
-	Weeks [12]WeekData
+	Weeks []WeekData
 }
 
 
-func generateWeeksBlock(offsetWeeks int, now time.Time) BlockData {
-	block := BlockData{}
+func generateWeeksBlock(size int, offsetWeeks int, now time.Time) BlockData {
+	block := BlockData{Weeks: make([]WeekData, size)}
 	monday := now.AddDate(0,0,1-int(now.Weekday())-7*3);
 	for subweek_num := range block.Weeks {
 		week := &block.Weeks[subweek_num]
 		for subday_num := range week.Days {
 			day := &week.Days[subday_num]
-			day.DayNumber = monday.AddDate(0,0,
-			(offsetWeeks*12+subweek_num)*7+subday_num).Day()
+			date := monday.AddDate(0,0,
+			(offsetWeeks*6+subweek_num)*7+subday_num)
+			day.DayNumber = date.Day()
+			day.Id = date.Unix() / (24*60*60)
 			day.IsToday = false
 		}
 	}
@@ -100,44 +119,22 @@ var funcMap = template.FuncMap{
 	"subtract": substract,
 }
 
-func handleWeeksBlock(w http.ResponseWriter, r *http.Request) {
-	offsetStr := r.URL.Query().Get("offset")
-	offset, err := strconv.Atoi(offsetStr)
-	if err != nil {
-		offset = 0
-	}
-
-	now := time.Now()
-	block := generateWeeksBlock(offset, now)
-	
-	t, err := template.New("month.html").Funcs(funcMap).ParseFiles("month.html")
-	if err != nil {
-		http.Error(w, "Error parsing template", http.StatusInternalServerError)
-		return
-	}
-	
-	w.Header().Set("Content-Type", "text/html")
-	err = t.ExecuteTemplate(w, "weeksblock", block)
-	if err != nil {
-		log.Printf("Error executing template: %v", err)
-		http.Error(w, "Error executing template", http.StatusInternalServerError)
-	}
-}
-
 type MonthData struct {
 	MonthName string
 	Blocks [3]BlockData
 }
 
+var scrollingPosition = 0
+
+var block_sizes = []int{2, 16, 2}
+
 func generateMonthData() MonthData {
 	now := time.Now()
 
-	data := MonthData { MonthName: now.Month().String() }
-	for block_num := range data.Blocks {
-		data.Blocks[block_num] = generateWeeksBlock(block_num-1,now)
-	}
-
-	data.Blocks[1].Weeks[3].Days[weekdayRecalc(int(now.Weekday()))].IsToday = true
+	data := MonthData {MonthName: months[now.Month()-1] }
+	data.Blocks[0] = generateWeeksBlock(block_sizes[0], -1+scrollingPosition, now)
+	data.Blocks[1] = generateWeeksBlock(block_sizes[1], scrollingPosition, now)
+	data.Blocks[2] = generateWeeksBlock(block_sizes[2], 1+scrollingPosition, now)
 
 	return data
 }
@@ -160,6 +157,47 @@ func serveIndex(w http.ResponseWriter, r *http.Request) {
 
 func handleMonth(w http.ResponseWriter, r *http.Request) {
 	log.Print("handleMonth")
+	now := time.Now()
+	scrollingPosition = 0
+
+	t := template.New("month.html").Funcs(funcMap)
+	t, err := t.ParseFiles("month.html")
+
+	if err != nil {
+		http.Error(w, "Error parsing template", http.StatusInternalServerError)
+		return
+	}
+
+	data := generateMonthData()
+	data.Blocks[1].Weeks[5].Days[weekdayRecalc(int(now.Weekday()))].IsToday = true
+	err = t.ExecuteTemplate(w, "month", data)
+	if err != nil {
+		http.Error(w, "Error executing template", http.StatusInternalServerError)
+	}
+}
+
+func handleScrollingUp(w http.ResponseWriter, r *http.Request) {
+	log.Print("handleMonth")
+	scrollingPosition -= 1
+
+	t := template.New("month.html").Funcs(funcMap)
+	t, err := t.ParseFiles("month.html")
+
+	if err != nil {
+		http.Error(w, "Error parsing template", http.StatusInternalServerError)
+		return
+	}
+
+	data := generateMonthData()
+	err = t.ExecuteTemplate(w, "month", data)
+	if err != nil {
+		http.Error(w, "Error executing template", http.StatusInternalServerError)
+	}
+}
+
+func handleScrollingDown(w http.ResponseWriter, r *http.Request) {
+	log.Print("handleMonth")
+	scrollingPosition += 1
 
 	t := template.New("month.html").Funcs(funcMap)
 	t, err := t.ParseFiles("month.html")

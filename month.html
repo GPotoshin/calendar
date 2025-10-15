@@ -44,8 +44,9 @@
 
 {{ define "weekrow" }}
 {{ range .Days }}
-<div class="day-cell{{if .IsToday}} today{{end}}">
-  <div class = "day-number">{{ .DayNumber }}</div>
+<div class="day-cell{{if .IsToday}} today{{end}} no-select"
+  data-id={{ .Id }}>
+  <div class = "day-number no-select">{{ .DayNumber }}</div>
 </div>
 {{end}}
 {{end}}
