@@ -14,3 +14,7 @@ for some reason
 
 Constrain solution:
 + location \w personal
+
+Suggestions:
++ move htmx to deps
++ stop depending on htmx?

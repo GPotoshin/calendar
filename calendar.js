@@ -12,6 +12,21 @@ function getPath(u) {
   }
 }
 
+let sideMenuIsOpen = false;
+function handleClickOnSideMenuButton(button) {
+  if (sideMenuIsOpen) {
+    button.setAttribute('hx-target', '#side-menu');
+    button.removeAttribute('hx-get');
+    button.setAttribute('hx-swap', 'delete');
+  } else {
+    button.setAttribute('hx-get', '/api/side-menu');
+    button.setAttribute('hx-target', '#side-menu-container');
+    button.setAttribute('hx-swap', 'innerHTML');
+  }
+
+  sideMenuIsOpen ^= true;
+}
+
 function setMonthScrollPosition() {
   const calendarBody = document.getElementById('calendar-body');
   const calendarContent = document.getElementById('calendar-content');

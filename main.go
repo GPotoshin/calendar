@@ -1,11 +1,14 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"time"
-	"html/template"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 var months = []string {
@@ -64,7 +67,30 @@ func serveCalendarJs(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "calendar.js")
 }
 
-func main() {	
+var db *sql.DB
+
+func main() {
+	var err error
+	db, err = sql.Open("sqlite3", "./calendar.db")
+	if err != nil {
+		fmt.Printf("error opening database: %e", err)
+		return
+	}
+
+	createTableSQL := `
+	CREATE TABLE IF NOT EXISTS events (
+		"id" INTEGER PRIMARY KEY AUTOINCREMENT,
+		"title" TEXT NOT NULL,
+		"date" TEXT NOT NULL, -- Storing date as an ISO 8601 string (YYYY-MM-DD)
+		"description" TEXT
+	);`
+
+	_, err = db.Exec(createTableSQL)
+	if err != nil {
+		fmt.Printf("error creating table: %e", err)
+		return
+	}
+
 	http.HandleFunc("/regular.ttf", serveRegular)
 	http.HandleFunc("/htmx.js", serveHtmx)
 	http.HandleFunc("/calendar.js", serveCalendarJs)
@@ -76,6 +102,7 @@ func main() {
 	http.HandleFunc("/view/year", handleYear)
 	http.HandleFunc("/api/scrolling-up", handleScrollingUp)
 	http.HandleFunc("/api/scrolling-down", handleScrollingDown)
+	http.HandleFunc("/api/side-menu", handleSideMenu)
 
 	fmt.Println("Server starting on :8080")
 	log.Fatal(http.ListenAndServe(":8080", logRequest(http.DefaultServeMux)))
@@ -209,6 +236,23 @@ func handleScrollingDown(w http.ResponseWriter, r *http.Request) {
 
 	data := generateMonthData()
 	err = t.ExecuteTemplate(w, "month", data)
+	if err != nil {
+		http.Error(w, "Error executing template", http.StatusInternalServerError)
+	}
+}
+
+func handleSideMenu(w http.ResponseWriter, r *http.Request) {
+	log.Print("handleSideMenu")
+	
+	t := template.New("side-menu.html")
+	t, err := t.ParseFiles("side-menu.html")
+
+	if err != nil {
+		http.Error(w, "Error parsing template", http.StatusInternalServerError)
+		return
+	}
+
+	err = t.ExecuteTemplate(w, "side-menu", nil)
 	if err != nil {
 		http.Error(w, "Error executing template", http.StatusInternalServerError)
 	}
