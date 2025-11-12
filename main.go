@@ -45,26 +45,18 @@ func logRequest(handler http.Handler) http.Handler {
 	})
 }
 
-func serveRegular(w http.ResponseWriter, r *http.Request) {
-	log.Print("serveRegular")
-	w.Header().Set("Content-Type", "font/ttf")
-	http.ServeFile(w, r, "fonts/SourceSansPro-Regular.ttf")
+type HeaderPair struct {
+	Key string
+	Value string
 }
 
-func serveCss(w http.ResponseWriter, r *http.Request) {
-	log.Print("serveCss")
-	w.Header().Set("Content-Type", "text/css")
-	http.ServeFile(w, r, "style.css")
-}
-
-func serveHtmx(w http.ResponseWriter, r *http.Request) {
-	log.Print("serveHtmx")
-	http.ServeFile(w, r, "htmx.js")
-}
-
-func serveCalendarJs(w http.ResponseWriter, r *http.Request) {
-	log.Print("serveCalendarJs")
-	http.ServeFile(w, r, "calendar.js")
+func serveFile(fileName string, headers []HeaderPair) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		for _, pair := range headers {
+			w.Header().Set(pair.Key, pair.Value);
+		}
+		http.ServeFile(w, r, fileName);
+	}
 }
 
 var db *sql.DB
@@ -91,10 +83,11 @@ func main() {
 		return
 	}
 
-	http.HandleFunc("/regular.ttf", serveRegular)
-	http.HandleFunc("/htmx.js", serveHtmx)
-	http.HandleFunc("/calendar.js", serveCalendarJs)
-	http.HandleFunc("/style.css", serveCss)
+	http.HandleFunc("/regular.ttf", serveFile("fonts/SourceSansPro-Regular.ttf", []HeaderPair{{Key: "Content-Type", Value: "font/ttf"}}))
+	http.HandleFunc("/htmx.js", serveFile("deps/htmx.js", nil))
+	http.HandleFunc("/main.js", serveFile("script/main.js", nil))
+	http.HandleFunc("/scrollable_calendar.js", serveFile("script/scrollable_calendar.js", nil))
+	http.HandleFunc("/style.css", serveFile("style.css", []HeaderPair{{Key: "Content-Type", Value: "text/css"}}))
 	http.HandleFunc("/", serveIndex)
 	http.HandleFunc("/view/day", handleDay)
 	http.HandleFunc("/view/week", handleWeek)
@@ -285,4 +278,3 @@ func handleWeek(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	fmt.Fprint(w, response)
 }
-

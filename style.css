@@ -7,102 +7,119 @@
 
 html, body {
   height: 100%;
+  width: 100%;
   margin: 0;
   padding: 0;
   font-size: 16px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   overflow: hidden;
   overscroll-behavior-y: none;
   font-family: 'my-ssp'; 
 }
 
+input, button, textarea, select {
+  font-family: inherit;
+}
+
+input {
+  border: none;
+}
+
+input[type="text"]:focus {
+  outline: none;
+}
+
+button {
+  border: none;
+  cursor: pointer;
+  background-color: transparent;
+  border-radius: 5px;
+  text-align: left;
+  font-size: 12px;
+}
+
 .header-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    text-align: center;
-    padding: 10px;
-    flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: center;
+  padding: 10px;
+  flex-shrink: 0;
 }
 
 .button-container {
-    flex: none;
-    display: inline-flex;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    overflow: hidden;
-    flex-shrink: 0;
-    margin: 0 auto;
+  flex: none;
+  display: inline-flex;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  overflow: hidden;
+  flex-shrink: 0;
+  margin: 0 auto;
 }
 
 .button-container button {
-    padding: 5px 18px;
-    border: none;
-    background-color: white;
-    cursor: pointer;
-    position: relative;
-    font-family: 'my-ssp'; 
+  padding: 5px 18px;
+  position: relative;
 }
 
 .button-container button:hover {
-    background-color: #f0f0f0;
+  background-color: #f0f0f0;
 }
 
 .button-container button:not(:last-child)::after {
-    content: '';
-    position: absolute;
-    right: 0;
-    top: 20%;
-    height: 60%;
-    width: 1px;
-    background-color: #ccc;
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 20%;
+  height: 60%;
+  width: 1px;
+  background-color: #ccc;
 }
 
 #side-menu-button {
-  background-color: transparent;
-  border: none;
-  border-radius: 5px;
-  padding: 5px;
-  cursor: pointer;
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  padding: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 #side-menu-button:hover {
-    background-color: #f0f0f0;
+  background-color: #f0f0f0;
 }
 
 #side-menu-button svg {
   display: block;
-  width: 20px;
-  height: auto;
+  width: auto;
+  height: 14px;
 }
 
 #side-menu-container {
 }
 
-
 .side-menu {
+  padding: 46px 10px 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.event-button {
+  width: 100%;
+  padding: 4px 12px;
 }
 
 .event-item:hover {
   background-color: #e9ecef;
 }
 
-.event-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
 #body-container {
   flex-grow: 1;
   height: 100%;
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
 }
 
 #side-menu {
@@ -115,6 +132,7 @@ html, body {
 #view-content {
   flex-grow: 1;
   height: 100%;
+  width: 100%;
   display: flex;
   flex-direction: column;
 }
@@ -155,7 +173,7 @@ html, body {
 
 /* for webkit browsers (chrome, safari) */
 #calendar-body::-webkit-scrollbar {
-    display: none;
+  display: none;
 }
 
 #calendar-content {
@@ -178,8 +196,8 @@ html, body {
 
 .block-marker {
   position: relative;
-	width: 100%;
-	height: 0px;
+  width: 100%;
+  height: 0px;
 }
 
 .day-cell {
@@ -198,11 +216,12 @@ html, body {
 }
 
 .day-number {
-  width: 2rem;
-  height: 2rem;
+  width: 32px;
+  height: 32px;
   display: flex;
   justify-content: center;
   align-items: center;
+  flex-shrink: 0;
   border-radius: 9999px; /* Full circle */
 }
 
@@ -211,8 +230,8 @@ html, body {
   color: white;
 }
 
-.event-bar {
-  height: calc(100% / 10);
+.event-occurence {
+  height: 19%;
   width: 100%;
   min-height: 20px;
   max-height: 30px;
@@ -223,27 +242,66 @@ html, body {
   z-index: 10;
 }
 
-.event-bar.event-single {
+.event-occurence.event-single {
   border-radius: 9999px;
   margin-left: 0;
   margin-right: 0;
 }
 
 .no-select {
-    user-select: none;
-    
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
+  user-select: none;
 
-    cursor: default;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+
+  cursor: default;
 }
 
 .bar-holder {
   width: 100%;
+  height: 100%;
+  flex: 1;
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: left;
   justify-content: flex-start;
 }
 
+#right-click-menu {
+  display: none;
+  position: absolute;
+  background-color: #f9f9f9;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 2px;
+  flex-direction: column;
+  z-index: 1000;
+  justify-content: flex-start;
+  width: fit-content;
+}
+
+#right-click-menu button {
+  border-radius: 4px;
+  padding: 4px 8px;
+  width: 100%;
+  white-space: nowrap
+}
+
+#right-click-menu button:hover {
+  background-color: #BF616A;
+}
+
+#create-option-menu {
+  display: none;
+  position: absolute;
+  background-color: #f9f9f9;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 2px;
+  flex-direction: column;
+  z-index: 1000;
+  justify-content: flex-start;
+  width: fit-content;
+}

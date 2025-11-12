@@ -6,38 +6,48 @@
     <title>Calendar</title>
     <link rel="stylesheet" href="/style.css">
     <script src="/htmx.js"></script>
-    <script src="/calendar.js"></script>
+    <script src="/main.js"></script>
   </head>
   <body>
-    <div class="header-container">
-      <button id="side-menu-button"
-        hx-get="/api/side-menu"
-        hx-target="#side-menu-container"
-        hx-swap="innerHTML"
-        hx-on:click="handleClickOnSideMenuButton(this)"
-        >
-        <svg viewBox="0 0 34 26">
-          <rect x="2" y="2" width="30" height="22" rx="2" ry="2" fill="none" stroke="#737373" stroke-width="2"/>
-          <line x1="14" y1="2" x2="14" y2="24" stroke="#737373" stroke-width="2"/>
-          <circle cx="8" cy="7" r="2" fill="#737373"/>
-          <circle cx="8" cy="13" r="2" fill="#737373"/>
-          <circle cx="8" cy="19" r="2" fill="#737373"/>
-        </svg>
-      </button>
-
-      <div class="button-container">
-        <button hx-get="/view/day" hx-target="#view-content" hx-swap="innerHTML">Jour</button>
-        <button hx-get="/view/week" hx-target="#view-content" hx-swap="innerHTML">Semaine</button>
-        <button hx-get="/view/month" hx-target="#view-content" hx-swap="innerHTML">Mois</button>
-        <button hx-get="/view/year" hx-target="#view-content" hx-swap="innerHTML">Année</button>
-      </div>
+    <button id="side-menu-button"
+      hx-get="/api/side-menu"
+      hx-target="#side-menu-container"
+      hx-swap="innerHTML"
+      hx-on:click="handleClickOnSideMenuButton(this)"
+      >
+      <svg viewBox="0 0 34 26">
+        <rect x="2" y="2" width="30" height="22" rx="2" ry="2" fill="none" stroke="#737373" stroke-width="2"/>
+        <line x1="14" y1="2" x2="14" y2="24" stroke="#737373" stroke-width="2"/>
+        <circle cx="8" cy="7" r="2" fill="#737373"/>
+        <circle cx="8" cy="13" r="2" fill="#737373"/>
+        <circle cx="8" cy="19" r="2" fill="#737373"/>
+      </svg>
+    </button>
+    <div id="side-menu-container">
     </div>
 
     <div id="body-container">
-      <div id="side-menu-container"></div>
+      <div class="header-container">
+        <div class="button-container">
+          <button hx-get="/view/day" hx-target="#view-content" hx-swap="innerHTML">Jour</button>
+          <button hx-get="/view/week" hx-target="#view-content" hx-swap="innerHTML">Semaine</button>
+          <button hx-get="/view/month" hx-target="#view-content" hx-swap="innerHTML">Mois</button>
+          <button hx-get="/view/year" hx-target="#view-content" hx-swap="innerHTML">Année</button>
+        </div>
+      </div>
+
       <div id="view-content">
         {{ template "month" . }}
       </div>
+    </div>
+
+    <div id="right-click-menu">
+      <button id="new-event-button" hx-on:click="handleCreateNewEvent()">Nouvel Événement</button>
+      <button>Another Action</button>
+    </div>
+
+    <div id="create-option-menu">
+      <input type="text" id="eventname" name="eventname" placeholder="Nouvel Événement">
     </div>
   </body>
 </html>
