@@ -6,14 +6,14 @@
     <title>Calendar</title>
     <link rel="stylesheet" href="/style.css">
     <script src="/htmx.js"></script>
-    <script src="/main.js"></script>
+    <script type="module" src="/main.js"></script>
   </head>
   <body>
     <button id="side-menu-button"
       hx-get="/api/side-menu"
       hx-target="#side-menu-container"
       hx-swap="innerHTML"
-      hx-on:click="handleClickOnSideMenuButton(this)"
+      onclick="handleClickOnSideMenuButton(this)"
       >
       <svg viewBox="0 0 34 26">
         <rect x="2" y="2" width="30" height="22" rx="2" ry="2" fill="none" stroke="#737373" stroke-width="2"/>
