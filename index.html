@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calendar</title>
-    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/custom_style.css">
+    <link rel="stylesheet" href="/general_style.css">
     <script src="/htmx.js"></script>
     <script type="module" src="/main.js"></script>
   </head>
@@ -26,17 +27,17 @@
     <div id="side-menu-container">
     </div>
 
-    <div id="body-container">
+    <div id="body-container" class="v-container">
       <div class="header-container">
         <div class="button-container">
-          <button hx-get="/view/day" hx-target="#view-content" hx-swap="innerHTML">Jour</button>
-          <button hx-get="/view/week" hx-target="#view-content" hx-swap="innerHTML">Semaine</button>
-          <button hx-get="/view/month" hx-target="#view-content" hx-swap="innerHTML">Mois</button>
-          <button hx-get="/view/year" hx-target="#view-content" hx-swap="innerHTML">Année</button>
+          <button hx-get="/view/calendar" hx-target="#view-content" hx-swap="innerHTML">Calendrier</button>
+          <button hx-get="/view/events" hx-target="#view-content" hx-swap="innerHTML">Événements</button>
+          <button hx-get="/view/staff" hx-target="#view-content" hx-swap="innerHTML">Personnel</button>
+          <button hx-get="/view/venues" hx-target="#view-content" hx-swap="innerHTML">Lieux</button>
         </div>
       </div>
 
-      <div id="view-content">
+      <div id="view-content" class="v-container">
         {{ template "month" . }}
       </div>
     </div>
@@ -47,7 +48,40 @@
     </div>
 
     <div id="create-option-menu">
-      <input type="text" id="eventname" name="eventname" placeholder="Nouvel Événement">
+      <input class="l-input" type="text" id="eventname" name="eventname" placeholder="Nouvel Événement">
+      <hr>
+      <div class="h-container">
+        <div class="v-container">
+          <h3 style="padding: 0px 4px 0px 4px">Personnel</h3>
+          <div id="name-list" class="v-container scrollable-box s-box">
+            <button class="hover" onclick="handle2StateButtonClick(this)">Pierre</button>
+            <button class="hover" onclick="handle2StateButtonClick(this)">Mattieu</button>
+            <button class="hover" onclick="handle2StateButtonClick(this)">Georges</button>
+            <button class="hover" onclick="handle2StateButtonClick(this)">Luis</button>
+            <button class="hover" onclick="handle2StateButtonClick(this)">Pierre</button>
+            <button class="hover" onclick="handle2StateButtonClick(this)">Mattieu</button>
+            <button class="hover" onclick="handle2StateButtonClick(this)">Georges</button>
+            <button class="hover" onclick="handle2StateButtonClick(this)">Luis</button>
+            <button class="hover" onclick="handle2StateButtonClick(this)">Pierre</button>
+            <button class="hover" onclick="handle2StateButtonClick(this)">Mattieu</button>
+            <button class="hover" onclick="handle2StateButtonClick(this)">Georges</button>
+            <button class="hover" onclick="handle2StateButtonClick(this)">Luis</button>
+            <button class="hover" onclick="handle2StateButtonClick(this)">Pierre</button>
+            <button class="hover" onclick="handle2StateButtonClick(this)">Mattieu</button>
+            <button class="hover" onclick="handle2StateButtonClick(this)">Georges</button>
+            <button class="hover" onclick="handle2StateButtonClick(this)">Luis</button>
+          </div>
+        </div>
+        <div class="v-container">
+          <h3>Lieux</h3>
+          <div id="venue-list" class="v-container scrollable-box s-box">
+            <button class="hover" onclick="handle2StateButtonClick(this)">Moulins</button>
+            <button class="hover" onclick="handle2StateButtonClick(this)">Vichy</button>
+            <button class="hover" onclick="handle2StateButtonClick(this)">Montluçon</button>
+            <button class="hover" onclick="handle2StateButtonClick(this)">Saint-Pourçain</button>
+          </div>
+        </div>
+      </div>
     </div>
   </body>
 </html>

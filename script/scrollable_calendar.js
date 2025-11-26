@@ -25,9 +25,9 @@ export function setMonthScrollPosition() {
 }
 
 function getCellNum(pos_x) {
-  week_rect = state.week.getBoundingClientRect(); 
+  const week_rect = state.week.getBoundingClientRect(); 
 
-  rel_pos_x = pos_x-week_rect.left;
+  const rel_pos_x = pos_x-week_rect.left;
   return Math.floor(rel_pos_x/(week_rect.width/7.0));
 }
 
@@ -42,7 +42,7 @@ export function handleMouseDown(e) {
   state.week = cell.closest(".week-row");
   state.backed_week = state.week.cloneNode(true);
   state.cells = state.week.getElementsByClassName('day-cell');
-  state.start_cell_num = getCellNum(state, e.clientX);
+  state.start_cell_num = getCellNum(e.clientX);
   state.prev_focus_num = state.start_cell_num;
 }
 
@@ -57,7 +57,7 @@ function shiftBarBy(bar, n) {
 }
 
 function getEvents(cell) {
-  list = cell.getElementsByClassName('bar-holder');
+  const list = cell.getElementsByClassName('bar-holder');
   if (list.length == 0) {
     return list;
   }
@@ -75,12 +75,13 @@ function addBarToCell(state) {
     state.bar_holder = list[0];
   }
 
+  let i = 0;
   let rightMax = -1;
   for (i=0; i<state.bar.dataset.leftCellNum; i++) {
     let list = getEvents(state.cells[i]);
     let shifting = false;
     let shiftingFrom = 99;
-    for (bar of list) {
+    for (let bar of list) {
       if (!shifting) {
         if (bar.dataset.rightCellNum >= state.bar.dataset.leftCellNum) {
           shifting = true;
@@ -102,7 +103,7 @@ function addBarToCell(state) {
   rightMax = Math.max(state.bar.dataset.rightCellNum, rightMax);
   for (i=state.bar.dataset.leftCellNum; i<=rightMax;i++) {
     let list = getEvents(state.cells[i]);
-    for (bar of list) {
+    for (let bar of list) {
       rightMax = Math.max(bar.dataset.rightCellNum, rightMax);
       shiftBarBy(bar,1);
     }
@@ -137,7 +138,7 @@ export function handleMouseMove(e) {
     state.isCreated = true;
   } else if (state.isCreated) {
 
-    const num = getCellNum(state, e.clientX);
+    const num = getCellNum(e.clientX);
     if (num != state.prev_focus_num) {
       state.prev_focus_num = num;
       if (num > state.start_cell_num) {

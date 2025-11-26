@@ -1,5 +1,7 @@
 {{ define "side-menu" }}
-<div id="side-menu" class="side-menu">
-  <button class="event-button" hx-on:click="handleClickOnEventButton(this)">SUPP</button>
+<div id="side-menu" class="v-container">
+  {{range .Events}}
+  <button class="event-button" hx-on:click="handleClickOnEventButton(this)">.Name</button>
+  {{end}}
 </div>
 {{ end }}

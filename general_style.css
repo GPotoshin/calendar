@@ -1,0 +1,97 @@
+:root {
+  --base0-color: #fff;
+  --base1-color: #e9e9e9;
+  --base2-color: #f9f9f9;
+
+  --rose-color: #F7CEDD;
+  --bran-red-color: #772338;
+
+  --grey-color: #ccc;
+  --hover-color: #f0f0f0;
+
+  --red-color: #BF616A;
+}
+
+@font-face {
+  font-family: 'my-ssp';
+  src: url('/regular.ttf');
+  font-weight: normal;
+  font-style: normal;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  overscroll-behavior-y: none;
+  font-family: 'my-ssp'; 
+}
+
+hr {
+  border: none;
+  height: 1px;
+  background-color: var(--grey-color);
+  width: 100%;
+}
+
+input, button, textarea, select {
+  font-family: inherit;
+}
+
+input {
+  border: none;
+  background-color: transparent;
+}
+
+.l-input {
+  font-size: 16px;
+}
+
+input[type="text"]:focus {
+  outline: none;
+}
+
+button {
+  border: none;
+  cursor: pointer;
+  background-color: transparent;
+  border-radius: 5px;
+  text-align: left;
+  font-size: 12px;
+}
+
+.v-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.h-container {
+  display: flex;
+  flex-direction: row;
+}
+
+.scrollable-box {
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory; 
+  scroll-behavior: smooth; 
+  -webkit-overflow-scrolling: touch;
+}
+
+.s-box {
+  width: 120px;
+  height: 200px;
+  padding: 4px;
+}
+
+.hover:hover {
+  background-color: #f0f0f0;
+}
+
+.clicked {
+  color: var(--red-color);
+}

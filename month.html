@@ -15,7 +15,7 @@
 </div>
 
 <div id="calendar-body">
-  <div id="calendar-content">
+  <div id="calendar-content" class="v-container">
     {{template "weeksblock" (index .Blocks 0)}}
     <div class="block-marker"
       hx-get="/api/scrolling-up"
