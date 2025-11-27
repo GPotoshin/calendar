@@ -6,6 +6,7 @@ import {
 } from './scrollable_calendar.js';
 
 import { palette } from './color.js';
+import { Reader } from './Reader.js';
 
 let state = {
   sideMenuIsOpen: false,
@@ -15,10 +16,37 @@ let state = {
 };
 
 let data = {
-  events: [],
-  staff: [],
-  venues: [],
+  EventNames: [],
+  EventStaff: [],
+  EventVenues: [],
+  EventFreeList: [],
+
+  StaffNames: [],
+  StaffFreeList: [],
+  
+  VenueNames: [],
+  VenueFreeList: [],
 }
+
+readData(reader) {
+  const data = {};
+
+  data.EventNames = reader.readStringArray();
+  data.EventStaff = reader.readArrayOfInt32Arrays();
+  data.EventVenues = reader.readArrayOfInt32Arrays();
+  data.StaffNames = reader.readStringArray();
+  data.VenueNames = reader.readStringArray();
+
+  return data;
+}
+
+let elements = {
+  side_menu: null,
+}
+
+elements.side_menu = document.createElement('div');
+elements.side_menu.classList.add("v-container");
+elements.side_menu.id = 'side-menu';
 
 function getPath(u) {
   try {
@@ -31,19 +59,13 @@ function getPath(u) {
 }
 window.getPath = getPath;
 
-function requestData() {
-
-}
-
 function handleClickOnSideMenuButton(button) {
+  let side_menu_container = document.getElementById('side-menu-container');
+
   if (state.sideMenuIsOpen) {
-    button.setAttribute('hx-target', '#side-menu');
-    button.removeAttribute('hx-get');
-    button.setAttribute('hx-swap', 'delete');
+    side_menu_container.removeChild(elements.side_menu);
   } else {
-    button.setAttribute('hx-get', '/api/side-menu');
-    button.setAttribute('hx-target', '#side-menu-container');
-    button.setAttribute('hx-swap', 'innerHTML');
+    side_menu_container.addChild(elements.side_menu);
   }
 
   state.sideMenuIsOpen ^= true;
@@ -119,8 +141,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
     }
     const bin = await response.arrayBuffer();
     const view = new DataView(bin);
-
-
 
   } catch (error) {
     console.error('Could not fetch data:', error);
