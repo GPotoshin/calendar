@@ -6,7 +6,7 @@ import {
 } from './scrollable_calendar.js';
 
 import { palette } from './color.js';
-import { Reader } from './Reader.js';
+import { BufferReader, BufferWriter } from './Io.js';
 
 let state = {
   sideMenuIsOpen: false,
@@ -28,7 +28,7 @@ let data = {
   VenueFreeList: [],
 }
 
-readData(reader) {
+function readData(reader) {
   const data = {};
 
   data.EventNames = reader.readStringArray();
@@ -65,7 +65,7 @@ function handleClickOnSideMenuButton(button) {
   if (state.sideMenuIsOpen) {
     side_menu_container.removeChild(elements.side_menu);
   } else {
-    side_menu_container.addChild(elements.side_menu);
+    side_menu_container.appendChild(elements.side_menu);
   }
 
   state.sideMenuIsOpen ^= true;
@@ -80,32 +80,39 @@ async function handleClickForOptionMenu(event) {
     let input = menu.querySelectorAll('input')[0];
     input.removeEventListener('input', state.handleTyping);
 
-    const dataToSend = {
-      name: input.value,
-      staff: [],
-      venues: [],
-    };
-
+    const staffIds = [];
     const nameList = document.getElementById('name-list');
-
     for (const name of nameList.children) {
       if (name.classList.contains('clicked')) {
-        dataToSend.staff.push(name.textContent);
+        staffIds.push(parseInt(name.dataset.idx));
       }
     }
 
+    const enueIds = [];
     const venueList = document.getElementById('venue-list');
     for (const venue of venueList.children) {
       if (venue.classList.contains('clicked')) {
-        dataToSend.venues.push(venue.textContent);
+        venueIds.push(parseInt(venue.dataset.idx));
       }
     }
+
+    const writer = new BufferWriter();
+    writer.writeString(input.value);
+    writer.writeInt32Array(staffIds);
+    writer.writeInt32Array(venueIds);
     
     try {
       const resp = await fetch("store/event", {
         method: 'POST',
-        body: JSON.stringify(dataToSend),
+        headers: {
+          'Content-Type': 'application/octet-stream',
+        },
+        body: writer.getBuffer(),
       });
+
+      if (!resp.ok) {
+        throw new Error(`HTTP error! status: ${resp.status}`);
+      }
     } catch(e) {
       console.error(`Error: ${e}`);
     }
@@ -118,16 +125,19 @@ function handleClickForContextMenu() {
   let menu = document.getElementById('right-click-menu');
   menu.style.display = 'none';
   document.removeEventListener('click', handleClickForContextMenu);
-  if (event.target.id == 'new-event-button') {
-    // we fucking can't do that in click function because after this button
-    // handling function we get immidiately a click event and that is fucking
-    // retarded because this handleClickForOptionMenu function closes the menu
-    // and we don't get the menu
-    document.addEventListener('click', handleClickForOptionMenu);
-  }
 }
 
-document.addEventListener('DOMContentLoaded', (event) => {
+document.addEventListener('click', (event) => {
+  if (event.target.id == 'new-event-button') {
+  // we fucking can't do that in click function because after this button
+  // handling function we get immidiately a click event and that is fucking
+  // retarded because this handleClickForOptionMenu function closes the menu
+  // and we don't get the menu
+    document.addEventListener('click', handleClickForOptionMenu);
+  }
+});
+
+document.addEventListener('DOMContentLoaded', async (event) => {
   setMonthScrollPosition();
   const calendarBody = document.getElementById('calendar-body');
   calendarBody.addEventListener('mousedown', handleMouseDown);
@@ -136,12 +146,12 @@ document.addEventListener('DOMContentLoaded', (event) => {
 
   try {
     const response = await fetch("/data");
-    if (!responcse.ok) {
+    if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const bin = await response.arrayBuffer();
-    const view = new DataView(bin);
-
+    const r = new BufferReader(bin);
+    data = readData(r)
   } catch (error) {
     console.error('Could not fetch data:', error);
   }
@@ -155,9 +165,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
     menu.style.top = e.clientY + 'px';
     document.addEventListener('click', handleClickForContextMenu);
   });
-});
-
-document.addEventListener('click', function(event) {
 });
 
 document.addEventListener('htmx:afterSwap', (event) => {
@@ -211,7 +218,6 @@ function handleCreateNewEvent() {
   new_button.textContent = "Nouvel Événement";
   new_button.setAttribute('onclick', 'handleClickOnEventButton(this)');
   menu.appendChild(new_button);
-
   
   const rect = new_button.getBoundingClientRect();
   menu = document.getElementById('create-option-menu');

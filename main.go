@@ -73,18 +73,6 @@ type ApplicationState struct {
   VenueNames []string
 }
 
-readApplicationState(reader) {
-  const state = {};
-
-  state.EventNames = reader.readStringArray();
-  state.EventStaff = reader.readArrayOfInt32Arrays();
-  state.EventVenues = reader.readArrayOfInt32Arrays();
-  state.StaffNames = reader.readStringArray();
-  state.VenueNames = reader.readStringArray();
-
-  return state;
-}
-
 func readApplicationState(r io.Reader) (ApplicationState, error) {
   var state ApplicationState
   var err error
@@ -161,7 +149,7 @@ _error_reading_state:
   http.HandleFunc("/htmx.js", serveFile("deps/htmx.js", nil))
   http.HandleFunc("/main.js", serveFile("script/main.js", nil))
   http.HandleFunc("/color.js", serveFile("script/color.js", nil))
-  http.HandleFunc("/Reader.js", serveFile("script/Reader.js", nil))
+  http.HandleFunc("/Io.js", serveFile("script/Io.js", nil))
   http.HandleFunc("/scrollable_calendar.js", serveFile("script/scrollable_calendar.js", nil))
   http.HandleFunc("/general_style.css", serveFile("general_style.css", []HeaderPair{{Key: "Content-Type", Value: "text/css"}}))
   http.HandleFunc("/custom_style.css", serveFile("custom_style.css", []HeaderPair{{Key: "Content-Type", Value: "text/css"}}))
