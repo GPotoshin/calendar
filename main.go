@@ -70,7 +70,125 @@ type ApplicationState struct {
   EventFreeList []int32
 
   StaffNames []string
+  StaffFreeList []int32
   VenueNames []string
+  VenueFreeList []int32
+}
+
+func storeValue[T any](array *[]T, freeList *[]int32, value T) int32 {
+	if len(*freeList) > 0 {
+		index := (*freeList)[len(*freeList)-1]
+		*freeList = (*freeList)[:len(*freeList)-1]
+		(*array)[index] = value
+		return index
+	} else {
+		*array = append(*array, value)
+		return int32(len(*array) - 1)
+	}
+}
+
+func deleteValue[T comparable](array *[]T, freeList *[]int32, index int32) {
+	idx := int(index)
+	var zero T
+	if (*array)[idx] == zero {
+		return
+	}
+
+	(*array)[idx] = zero
+	*freeList = append(*freeList, index)
+}
+
+func deleteOccurrences(array *[][]int32, value int32) {
+	for i := range *array {
+		temp := (*array)[i][:0]
+		for _, arrayValue := range (*array)[i] {
+			if arrayValue != value {
+				temp = append(temp, arrayValue)
+			}
+		}
+		(*array)[i] = temp
+	}
+}
+
+func getAll[T1 comparable, T2 any](array []T1, composeT func(T1, int)T2) []T2 {
+  var zero T1
+  var retval []T2
+  for i, val := range(array) {
+    if val != zero {
+      retval = append(retval, composeT(val, i))
+    }
+  }
+  return retval
+}
+
+type EventData struct {
+	Idx   int32
+	Name  string
+	Staff []int32
+	Venues []int32
+}
+
+type NamedData struct {
+	Idx  int32
+	Name string
+}
+
+func (state *ApplicationState) storeEvent(name string, staffIndices, venueIndices []int32) int32 {
+	idx := storeValue(&state.EventNames, &state.EventFreeList, name)
+	
+	if int(idx) == len(state.EventStaff) {
+		state.EventStaff = append(state.EventStaff, staffIndices)
+		state.EventVenues = append(state.EventVenues, venueIndices)
+  } else {
+    state.EventStaff[idx] = staffIndices
+    state.EventVenues[idx] = venueIndices
+  }
+	
+	return idx
+}
+
+func (state *ApplicationState) deleteEvent(idx int32) {
+	deleteValue(&state.EventNames, &state.EventFreeList, idx)
+	i := int(idx)
+  state.EventStaff[i] = nil
+  state.EventVenues[i] = nil
+}
+
+func (state *ApplicationState) storeStaff(name string) int32 {
+	return storeValue(&state.StaffNames, &state.StaffFreeList, name)
+}
+
+func (state *ApplicationState) deleteStaff(idx int32) {
+	deleteValue(&state.StaffNames, &state.StaffFreeList, idx)
+	deleteOccurrences(&state.EventStaff, idx)
+}
+
+func (state *ApplicationState) storeVenue(name string) int32 {
+	return storeValue(&state.VenueNames, &state.VenueFreeList, name)
+}
+
+func (state *ApplicationState) deleteVenue(idx int32) {
+	deleteValue(&state.VenueNames, &state.VenueFreeList, idx)
+	deleteOccurrences(&state.EventVenues, idx)
+}
+
+func (state *ApplicationState) getEvent(idx int32) EventData {
+	i := int(idx)
+
+	return EventData{
+		Idx:   idx,
+		Name:  state.EventNames[i],
+		Staff: state.EventStaff[i],
+		Venues: state.EventVenues[i],
+	}
+}
+
+func (state *ApplicationState) getStaffName(idx int32) string {
+	return state.StaffNames[int(idx)]
+}
+
+func (state *ApplicationState) getVenueName(idx int32) string {
+	return state.VenueNames[int(idx)]
 }
 
 func readApplicationState(r io.Reader) (ApplicationState, error) {

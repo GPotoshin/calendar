@@ -27,8 +27,8 @@ function storeValue(array, freeList, value) {
 }
 
 function deleteValue(array, freeList, index) {
-  if (index < 0 || index >= array.length || array[index] === null) {
-    throw new Error(`Invalid index: ${index}`);
+  if (array[index] === null) {
+    return;
   }
   array[index] = null;
   freeList.push(index);
@@ -46,7 +46,7 @@ function getAll(array, composerFn) {
   const retval = [];
   for (let i = 0; i < array.length; i++) {
     if (array[i] !== null) {
-      retval.push({ idx: i, ...composerFn(array, i) });
+      retval.push(composerFn(array[i], i));
     }
   }
   return retval;
@@ -65,15 +65,9 @@ class DataManager {
   }
 
   storeEvent(name, staffIndices = [], venueIndices = []) {
-    const idx = storeValue(
-      this.data.eventNames, 
-      this.data.eventFreeList, 
-      name
-    );
-    
+    const idx = storeValue(this.eventNames, this.eventFreeList, name);
     this.eventStaff[idx] = staffIndices;
     this.eventVenues[idx] = venueIndices;
-    
     return idx;
   }
 
@@ -84,11 +78,7 @@ class DataManager {
   }
 
   storeStaff(name) {
-    return storeValue(
-      this.staffNames, 
-      this.staffFreeList, 
-      name
-    );
+    return storeValue(this.staffNames, this.staffFreeList, name);
   }
 
   deleteStaff(idx) {
@@ -97,11 +87,7 @@ class DataManager {
   }
 
   storeVenue(name) {
-    return storeValue(
-      this.venueNames, 
-      this.venueFreeList, 
-      name
-    );
+    return storeValue(this.venueNames, this.venueFreeList, name);
   }
 
   deleteVenue(idx) {
@@ -110,13 +96,11 @@ class DataManager {
   }
 
   getEvent(idx) {
-    if (thiseventNames[idx] === null) {
-      return null;
-    }
     return {
+      idx: idx,
       name: this.eventNames[idx],
       staff: this.eventStaff[idx] || [],
-      venues: this.eventVenues[idx] || []
+      venues: this.eventVenues[idx] || [],
     };
   }
 
@@ -128,11 +112,11 @@ class DataManager {
     return this.venueNames[idx];
   }
 
-  _composeName(arr, idx) {
-    return { name: arr[idx] };
+  _composeName(val, idx) {
+    return {idx: idx, name: val };
   }
 
-  _composeEvent(arr, idx) {
+  _composeEvent(val, idx) {
     return this.getEvent(idx);
   }
 
