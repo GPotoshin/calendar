@@ -15,30 +15,184 @@ let state = {
   handleTyping: null,
 };
 
-let data = {
-  EventNames: [],
-  EventStaff: [],
-  EventVenues: [],
-  EventFreeList: [],
-
-  StaffNames: [],
-  StaffFreeList: [],
-  
-  VenueNames: [],
-  VenueFreeList: [],
+function storeValue(array, freeList, value) {
+  if (freeList.length > 0) {
+    const index = freeList.pop();
+    array[index] = value;
+    return index;
+  } else {
+    array.push(value);
+    return array.length - 1;
+  }
 }
 
-function readData(reader) {
-  const data = {};
-
-  data.EventNames = reader.readStringArray();
-  data.EventStaff = reader.readArrayOfInt32Arrays();
-  data.EventVenues = reader.readArrayOfInt32Arrays();
-  data.StaffNames = reader.readStringArray();
-  data.VenueNames = reader.readStringArray();
-
-  return data;
+function deleteValue(array, freeList, index) {
+  if (index < 0 || index >= array.length || array[index] === null) {
+    throw new Error(`Invalid index: ${index}`);
+  }
+  array[index] = null;
+  freeList.push(index);
 }
+
+function deleteOccurences(array, value) {
+  for (let i = 0; i < array.length; i++) {
+    array[i] = array[i].filter(
+      arrayValue => arrayValue !== value
+    );
+  }
+}
+
+function getAll(array, composerFn) {
+  const retval = [];
+  for (let i = 0; i < array.length; i++) {
+    if (array[i] !== null) {
+      retval.push({ idx: i, ...composerFn(array, i) });
+    }
+  }
+  return retval;
+}
+
+class DataManager {
+  constructor() {
+      this.eventNames = [];
+      this.eventStaff = [];
+      this.eventVenues = [];
+      this.eventFreeList = [];
+      this.staffNames = [];
+      this.staffFreeList = [];
+      this.venueNames = [];
+      this.venueFreeList = [];
+  }
+
+  storeEvent(name, staffIndices = [], venueIndices = []) {
+    const idx = storeValue(
+      this.data.eventNames, 
+      this.data.eventFreeList, 
+      name
+    );
+    
+    this.eventStaff[idx] = staffIndices;
+    this.eventVenues[idx] = venueIndices;
+    
+    return idx;
+  }
+
+  deleteEvent(idx) {
+    deleteValue(this.eventNames, this.eventFreeList, idx);
+    this.eventStaff[idx] = null;
+    this.eventVenues[idx] = null;
+  }
+
+  storeStaff(name) {
+    return storeValue(
+      this.staffNames, 
+      this.staffFreeList, 
+      name
+    );
+  }
+
+  deleteStaff(idx) {
+    deleteValue(this.staffNames, this.staffFreeList, idx);
+    deleteOccurences(this.eventStaff, idx);
+  }
+
+  storeVenue(name) {
+    return storeValue(
+      this.venueNames, 
+      this.venueFreeList, 
+      name
+    );
+  }
+
+  deleteVenue(idx) {
+    deleteValue(this.venueNames, this.venueFreeList, idx);
+    deleteOccurences(this.eventVenues, idx);
+  }
+
+  getEvent(idx) {
+    if (thiseventNames[idx] === null) {
+      return null;
+    }
+    return {
+      name: this.eventNames[idx],
+      staff: this.eventStaff[idx] || [],
+      venues: this.eventVenues[idx] || []
+    };
+  }
+
+  getStaffName(idx) {
+    return this.staffNames[idx];
+  }
+
+  getVenueName(idx) {
+    return this.venueNames[idx];
+  }
+
+  _composeName(arr, idx) {
+    return { name: arr[idx] };
+  }
+
+  _composeEvent(arr, idx) {
+    return this.getEvent(idx);
+  }
+
+  getAllEvents() {
+    return getAll(this.eventNames, this._composeEvent);
+  }
+
+  getAllStaff() {
+    return getAll(this.staffNames, this._composeName);
+  }
+
+  getAllVenues() {
+    return getAll(this.venueNames, this._composeName);
+  }
+
+  addStaffToEvent(eventIndex, staffIndex) {
+    if (!this.eventStaff[eventIndex].includes(staffIndex)) {
+      this.eventStaff[eventIndex].push(staffIndex);
+    }
+  }
+
+  removeStaffFromEvent(eventIndex, staffIndex) {
+    this.eventStaff[eventIndex] = this.eventStaff[eventIndex].filter(
+      idx => idx !== staffIndex
+    );
+  }
+
+  addVenueToEvent(eventIndex, venueIndex) {
+    if (!this.eventVenues[eventIndex].includes(venueIndex)) {
+      this.eventVenues[eventIndex].push(venueIndex);
+    }
+  }
+
+  removeVenueFromEvent(eventIndex, venueIndex) {
+    this.eventVenues[eventIndex] = this.eventVenues[eventIndex].filter(
+      idx => idx !== venueIndex
+    );
+  }
+
+  print() {
+    console.log('Events:', this.eventNames);
+    console.log('Event Staff:', this.eventStaff);
+    console.log('Event Venues:', this.eventVenues);
+    console.log('Event Free List:', this.eventFreeList);
+    console.log('Staff:', this.staffNames);
+    console.log('Staff Free List:', this.staffFreeList);
+    console.log('Venues:', this.venueNames);
+    console.log('Venue Free List:', this.venueFreeList);
+  }
+
+  read(reader) {
+    this.eventNames = reader.readStringArray();
+    this.eventStaff = reader.readArrayOfInt32Arrays();
+    this.eventVenues = reader.readArrayOfInt32Arrays();
+    this.staffNames = reader.readStringArray();
+    this.venueNames = reader.readStringArray();
+  }
+}
+
+const data = new DataManager();
 
 let elements = {
   sideMenu: null,
@@ -73,7 +227,7 @@ document.addEventListener('DOMContentLoaded', async (event) => {
     }
     const bin = await response.arrayBuffer();
     const r = new BufferReader(bin);
-    data = readData(r)
+    data.read(r)
   } catch (error) {
     console.error('Could not fetch data:', error);
   }
@@ -90,6 +244,7 @@ document.addEventListener('click', (event) => {
   }
 });
 
+// @nocheckin
 document.addEventListener('contextmenu', function(e) {
   const menu = elements.rightClickMenu;
   if (elements.sideMenu.contains(e.target)) {
@@ -97,14 +252,21 @@ document.addEventListener('contextmenu', function(e) {
       menu.style.display = 'flex';
       menu.style.left = e.clientX + 'px';
       menu.style.top = e.clientY + 'px';
-      document.getElementById('new-event-button').style.display = "block";
+      document.getElementById('new-event-button').style.display = 'block';
       document.addEventListener('click', handleClickForContextMenu);
   } else if (elements.nameList.contains(e.target)) {
       e.preventDefault();
       menu.style.display = 'flex';
       menu.style.left = e.clientX + 'px';
       menu.style.top = e.clientY + 'px';
-      document.getElementById('new-member-button').style.display = "block";
+      document.getElementById('new-member-button').style.display = 'block';
+      document.addEventListener('click', handleClickForContextMenu);
+  } else if (elements.venueList.contains(e.target)) {
+      e.preventDefault();
+      menu.style.display = 'flex';
+      menu.style.left = e.clientX + 'px';
+      menu.style.top = e.clientY + 'px';
+      document.getElementById('new-venue-button').style.display = 'block';
       document.addEventListener('click', handleClickForContextMenu);
   } 
 });
@@ -167,6 +329,25 @@ function handleClickOnSideMenuButton(button) {
 }
 window.handleClickOnSideMenuButton = handleClickOnSideMenuButton;
 
+function postString(url, str) {
+  writer = new BufferWriter();
+  writer.writeString(str);
+  fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/octet-stream',
+    },
+    body: writer.getBuffer(),
+  })
+    .then(resp => {
+      if (!resp.ok) {
+        throw new Error(`HTTP error! status: ${resp.status}`);
+      }})
+    .catch(e => {
+      console.error(`Error: ${e}`);
+    });
+}
+
 function handleCreateNewStaffMember() {
   const staffList = elements.nameList;
   const button = document.createElement('button');
@@ -185,10 +366,12 @@ function handleCreateNewStaffMember() {
       const value = input.value;
       input.remove();
       button.textContent = value;
+      data.staffNames.push(value);
       button.onclick = function() {
         handle2StateButtonClick(this);
       };
       button.className = 'hover';
+      postString('/store/agent', value);
     } else if (e.key === 'Escape') {
       input.remove();
     }
@@ -196,9 +379,40 @@ function handleCreateNewStaffMember() {
 }
 window.handleCreateNewStaffMember = handleCreateNewStaffMember;
 
-async function handleClickForOptionMenu(event) {
+function handleCreateNewVenue() {
+  const venueList = elements.venueList;
+  const button = document.createElement('button');
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.id = 'venuename';
+  input.name = 'venuename';
+  input.placeholder = 'Nouveau Lieu';
+  button.appendChild(input);
+  venueList.appendChild(button);
+  input.focus();
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const value = input.value;
+      input.remove();
+      button.textContent = value;
+      data.venueNames.push(value);
+      button.onclick = function() {
+        handle2StateButtonClick(this);
+      };
+      button.className = 'hover';
+      postString('/store/venue', value);
+    } else if (e.key === 'Escape') {
+      input.remove();
+    }
+  });
+}
+window.handleCreateNewVenue = handleCreateNewVenue;
+
+function handleClickForOptionMenu(event) {
   let menu = elements.createOptionMenu;
-  if (!menu.contains(event.target) && !element.rightClickMenu(event.target)) {
+  if (!menu.contains(event.target) && !elements.rightClickMenu.contains(event.target)) {
     menu.style.display = 'none';
     document.removeEventListener('click', handleClickForOptionMenu);
     let input = menu.querySelectorAll('input')[0];
@@ -224,22 +438,21 @@ async function handleClickForOptionMenu(event) {
     writer.writeString(input.value);
     writer.writeInt32Array(staffIds);
     writer.writeInt32Array(venueIds);
-    
-    try {
-      const resp = await fetch("store/event", {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/octet-stream',
-        },
-        body: writer.getBuffer(),
-      });
 
+    fetch("store/event", {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/octet-stream',
+      },
+      body: writer.getBuffer(),
+    })
+    .then(resp => {
       if (!resp.ok) {
         throw new Error(`HTTP error! status: ${resp.status}`);
-      }
-    } catch(e) {
+      }})
+    .catch(e => {
       console.error(`Error: ${e}`);
-    }
+    });
 
     input.value = "";
   }
@@ -262,7 +475,6 @@ function handleClickOnEventButton(e) {
   state.selected_element = e;
 }
 window.handleClickOnEventButton = handleClickOnEventButton;
-
 
 function handleCreateNewEvent() {
   let menu = elements.sideMenu;
