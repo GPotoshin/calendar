@@ -194,7 +194,7 @@
   position: absolute;
   background-color: #F7CEDD;
   color: #772338;
-  z-index: 10;
+  z-index: 1;
 }
 
 .event-occurence.event-single {
@@ -232,7 +232,7 @@
   border-radius: 8px;
   padding: 4px;
   flex-direction: column;
-  z-index: 1000;
+  z-index: 3;
   justify-content: flex-start;
   width: fit-content;
 }
@@ -257,7 +257,7 @@
   border-radius: 6px;
   padding: 6px;
   flex-direction: column;
-  z-index: 1000;
+  z-index: 2;
   justify-content: flex-start;
   width: fit-content;
 }

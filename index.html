@@ -38,8 +38,16 @@
     </div>
 
     <div id="right-click-menu">
-      <button id="new-event-button" hx-on:click="handleCreateNewEvent()">Nouvel Événement</button>
-      <button>Another Action</button>
+      <button id="new-event-button" 
+        onclick="handleCreateNewEvent()"
+        style="display: none;">
+        Nouvel Événement
+      </button>
+      <button id="new-member-button"
+        onclick="handleCreateNewStaffMember()"
+        style="display: none;">
+        Nouvel Agent
+      </button>
     </div>
 
     <div id="create-option-menu">
@@ -50,30 +58,11 @@
           <h3 style="padding: 0px 4px 0px 4px">Personnel</h3>
           <div id="name-list" class="v-container scrollable-box s-box">
             <button class="hover" onclick="handle2StateButtonClick(this)">Pierre</button>
-            <button class="hover" onclick="handle2StateButtonClick(this)">Mattieu</button>
-            <button class="hover" onclick="handle2StateButtonClick(this)">Georges</button>
-            <button class="hover" onclick="handle2StateButtonClick(this)">Luis</button>
-            <button class="hover" onclick="handle2StateButtonClick(this)">Pierre</button>
-            <button class="hover" onclick="handle2StateButtonClick(this)">Mattieu</button>
-            <button class="hover" onclick="handle2StateButtonClick(this)">Georges</button>
-            <button class="hover" onclick="handle2StateButtonClick(this)">Luis</button>
-            <button class="hover" onclick="handle2StateButtonClick(this)">Pierre</button>
-            <button class="hover" onclick="handle2StateButtonClick(this)">Mattieu</button>
-            <button class="hover" onclick="handle2StateButtonClick(this)">Georges</button>
-            <button class="hover" onclick="handle2StateButtonClick(this)">Luis</button>
-            <button class="hover" onclick="handle2StateButtonClick(this)">Pierre</button>
-            <button class="hover" onclick="handle2StateButtonClick(this)">Mattieu</button>
-            <button class="hover" onclick="handle2StateButtonClick(this)">Georges</button>
-            <button class="hover" onclick="handle2StateButtonClick(this)">Luis</button>
           </div>
         </div>
         <div class="v-container">
           <h3>Lieux</h3>
-          <div class="v-container scrollable-box s-box">
-            <button class="hover" onclick="handle2StateButtonClick(this)">Moulins</button>
-            <button class="hover" onclick="handle2StateButtonClick(this)">Vichy</button>
-            <button class="hover" onclick="handle2StateButtonClick(this)">Montluçon</button>
-            <button class="hover" onclick="handle2StateButtonClick(this)">Saint-Pourçain</button>
+          <div id="venue-list" class="v-container scrollable-box s-box">
           </div>
         </div>
       </div>
