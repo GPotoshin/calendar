@@ -42,11 +42,11 @@ function deleteOccurences(array, value) {
   }
 }
 
-function getAll(array, composerFn) {
+function getAll(array) {
   const retval = [];
   for (let i = 0; i < array.length; i++) {
     if (array[i] !== null) {
-      retval.push(composerFn(array[i], i));
+      retval.push({idx: i, val: array[i]});
     }
   }
   return retval;
@@ -104,34 +104,6 @@ class DataManager {
     };
   }
 
-  getStaffName(idx) {
-    return this.staffNames[idx];
-  }
-
-  getVenueName(idx) {
-    return this.venueNames[idx];
-  }
-
-  _composeName(val, idx) {
-    return {idx: idx, name: val };
-  }
-
-  _composeEvent(val, idx) {
-    return this.getEvent(idx);
-  }
-
-  getAllEvents() {
-    return getAll(this.eventNames, this._composeEvent);
-  }
-
-  getAllStaff() {
-    return getAll(this.staffNames, this._composeName);
-  }
-
-  getAllVenues() {
-    return getAll(this.venueNames, this._composeName);
-  }
-
   addStaffToEvent(eventIndex, staffIndex) {
     if (!this.eventStaff[eventIndex].includes(staffIndex)) {
       this.eventStaff[eventIndex].push(staffIndex);
@@ -156,17 +128,6 @@ class DataManager {
     );
   }
 
-  print() {
-    console.log('Events:', this.eventNames);
-    console.log('Event Staff:', this.eventStaff);
-    console.log('Event Venues:', this.eventVenues);
-    console.log('Event Free List:', this.eventFreeList);
-    console.log('Staff:', this.staffNames);
-    console.log('Staff Free List:', this.staffFreeList);
-    console.log('Venues:', this.venueNames);
-    console.log('Venue Free List:', this.venueFreeList);
-  }
-
   read(reader) {
     this.eventNames = reader.readStringArray();
     this.eventStaff = reader.readArrayOfInt32Arrays();
@@ -177,6 +138,7 @@ class DataManager {
 }
 
 const data = new DataManager();
+window.data = data;
 
 let elements = {
   sideMenu: null,
@@ -186,6 +148,7 @@ let elements = {
   venueList: null,
   rightClickMenu: null,
 }
+window.elements = elements;
 
 elements.sideMenu = document.createElement('div');
 elements.sideMenu.classList.add('v-container');
@@ -314,7 +277,7 @@ function handleClickOnSideMenuButton(button) {
 window.handleClickOnSideMenuButton = handleClickOnSideMenuButton;
 
 function postString(url, str) {
-  writer = new BufferWriter();
+  let writer = new BufferWriter();
   writer.writeString(str);
   fetch(url, {
     method: 'POST',
@@ -332,16 +295,13 @@ function postString(url, str) {
     });
 }
 
-function handleCreateNewStaffMember() {
-  const staffList = elements.nameList;
+function handleAddToList(target, placeholder, url, storage) {
   const button = document.createElement('button');
   const input = document.createElement('input');
   input.type = 'text';
-  input.id = 'agentname';
-  input.name = 'eventname';
-  input.placeholder = 'Nouvel Agent';
+  input.placeholder = placeholder;
   button.appendChild(input);
-  staffList.appendChild(button);
+  target.appendChild(button);
   input.focus();
 
   input.addEventListener('keydown', (e) => {
@@ -350,49 +310,18 @@ function handleCreateNewStaffMember() {
       const value = input.value;
       input.remove();
       button.textContent = value;
-      data.staffNames.push(value);
+      storage.push(value);
       button.onclick = function() {
         handle2StateButtonClick(this);
       };
       button.className = 'hover';
-      postString('/store/agent', value);
+      postString(url, value);
     } else if (e.key === 'Escape') {
       input.remove();
     }
   });
 }
-window.handleCreateNewStaffMember = handleCreateNewStaffMember;
-
-function handleCreateNewVenue() {
-  const venueList = elements.venueList;
-  const button = document.createElement('button');
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.id = 'venuename';
-  input.name = 'venuename';
-  input.placeholder = 'Nouveau Lieu';
-  button.appendChild(input);
-  venueList.appendChild(button);
-  input.focus();
-
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const value = input.value;
-      input.remove();
-      button.textContent = value;
-      data.venueNames.push(value);
-      button.onclick = function() {
-        handle2StateButtonClick(this);
-      };
-      button.className = 'hover';
-      postString('/store/venue', value);
-    } else if (e.key === 'Escape') {
-      input.remove();
-    }
-  });
-}
-window.handleCreateNewVenue = handleCreateNewVenue;
+window.handleAddToList = handleAddToList;
 
 function handleClickForOptionMenu(event) {
   let menu = elements.createOptionMenu;
@@ -411,7 +340,7 @@ function handleClickForOptionMenu(event) {
     }
 
     const venueIds = [];
-    const venueList = element.venueList;
+    const venueList = elements.venueList;
     for (const venue of venueList.children) {
       if (venue.classList.contains('clicked')) {
         venueIds.push(parseInt(venue.dataset.idx));

@@ -44,12 +44,14 @@
         Nouvel Événement
       </button>
       <button id="new-member-button"
-        onclick="handleCreateNewStaffMember()"
+        onclick="handleAddToList(elements.nameList, 'Nouveau Agent',
+                                '/store/agent', data.staffNames)"
         style="display: none;">
         Nouvel Agent
       </button>
       <button id="new-venue-button"
-        onclick="handleCreateNewVenue()"
+        onclick="handleAddToList(elements.venueList, 'Nouveau Lieu',
+                                '/store/venue', data.venueNames)"
         style="display: none;">
         Nouvel Lieu
       </button>

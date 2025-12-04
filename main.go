@@ -183,12 +183,48 @@ func (state *ApplicationState) getEvent(idx int32) EventData {
 	}
 }
 
-func (state *ApplicationState) getStaffName(idx int32) string {
-	return state.StaffNames[int(idx)]
+func (state *ApplicationState) addStaffToEvent(eventIndex, staffIndex int32) {
+	i := int(eventIndex)
+  for _, idx := range state.EventStaff[i] {
+    if idx == staffIndex {
+      return
+    }
+  }
+  state.EventStaff[i] = append(state.EventStaff[i], staffIndex)
 }
 
-func (state *ApplicationState) getVenueName(idx int32) string {
-	return state.VenueNames[int(idx)]
+func (state *ApplicationState) removeStaffFromEvent(eventIndex, staffIndex int32) {
+  i := int(eventIndex)
+  arr := state.EventStaff[i]
+  temp := arr[:0]
+  for _, idx := range arr {
+    if idx != staffIndex {
+      temp = append(temp, idx)
+    }
+  }
+  state.EventStaff[i] = temp
+}
+
+func (state *ApplicationState) AddVenueToEvent(eventIndex, venueIndex int32) {
+	i := int(eventIndex)
+  for _, idx := range state.EventVenues[i] {
+    if idx == venueIndex {
+      return
+    }
+  }
+  state.EventVenues[i] = append(state.EventVenues[i], venueIndex)
+}
+
+func (state *ApplicationState) RemoveVenueFromEvent(eventIndex, venueIndex int32) {
+  i := int(eventIndex)
+  arr := state.EventVenues[i]
+  temp := arr[:0]
+  for _, idx := range arr {
+    if idx != venueIndex {
+      temp = append(temp, idx)
+    }
+  }
+  state.EventVenues[i] = temp
 }
 
 func readApplicationState(r io.Reader) (ApplicationState, error) {
