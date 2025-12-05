@@ -15,33 +15,6 @@ import (
   // "encoding/gob"
 )
 
-var months = []string {
-  "Janvier",
-  "Février",
-  "Mars",
-  "Avril",
-  "Mai",
-  "Juin",
-  "Juillet",
-  "Août",
-  "Septembre",
-  "Octobre",
-  "Novembre",
-  "Décembre",
-}
-
-func add(a, b int) int {
-  return a + b
-}
-
-func substract(a, b int) int {
-  return a - b
-}
-
-func weekdayRecalc(day int) int {
-  return (day+6)%7
-}
-
 func logRequest(handler http.Handler) http.Handler {
   return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
     log.Printf("%s %s %s\n", r.RemoteAddr, r.Method, r.URL)
@@ -297,6 +270,32 @@ func main() {
       log.Println("State is partially set because of: ", err)
     }
   }
+
+  defer func() {
+    log.Println("Running cleanup...")
+    if _, err := file.Seek(0, 0); err != nil {
+      log.Printf("Failed to seek to beginning: %v\n", err)
+    }
+    writer := bufio.NewWriter(file)
+    if err = writeString(writer, current_format); err != nil {
+      log.Printf("Failed to store data [file format]: %v\n", err)
+    }
+    if err = writeApplicationState(writer, state); err != nil {
+      log.Printf("Failed to store data [binary]: %v\n", err)
+    }
+    if err = writer.Flush(); err != nil {
+      log.Printf("Failed to flush a buffered writer: %v\n", err)
+    }
+    currentPos, err := file.Seek(0, io.SeekCurrent)
+    if err != nil {
+      log.Printf("Failed to get current position: %v\n", err)
+    }
+    if err = file.Truncate(currentPos); err != nil {
+      log.Printf("Failed to truncate file: %v\n", err)
+    }
+    file.Close()
+    log.Println("Database connection closed.")
+  }()
 _error_reading_state:
 
   http.HandleFunc("/regular.ttf", serveFile("fonts/SourceSansPro-Regular.ttf", []HeaderPair{{Key: "Content-Type", Value: "font/ttf"}}))
@@ -312,10 +311,10 @@ _error_reading_state:
   http.HandleFunc("/view/events", handleEvents)
   http.HandleFunc("/view/staff", handleStaff)
   http.HandleFunc("/view/venues", handleVenues)
-  http.HandleFunc("/api/scrolling-up", handleScrollingUp)
-  http.HandleFunc("/api/scrolling-down", handleScrollingDown)
   http.HandleFunc("/api/side-menu", handleSideMenu)
   http.HandleFunc("/store/event", handleStoreEvent)
+  http.HandleFunc("/store/agent", handleStoreString(&state.StaffNames)) 
+  http.HandleFunc("/store/venue", handleStoreString(&state.VenueNames)) 
   http.HandleFunc("/data", handleData)
 
   srv := &http.Server{
@@ -337,28 +336,10 @@ _error_reading_state:
   if err := srv.Shutdown(ctx); err != nil {
     log.Fatalf("Server forced to shutdown: %v\n", err)
   }
-  writer := bufio.NewWriter(file)
-  if err = writeString(writer, current_format); err != nil {
-    log.Printf("Failed to store data [file format]: %v\n", err)
-  }
-  if err = writeApplicationState(writer, state); err != nil {
-    log.Printf("Failed to store data [binary]: %v\n", err)
-  }
-  if err = writer.Flush(); err != nil {
-    log.Printf("Failed to flush a buffered writer: %v\n", err)
-  }
-
-  file.Close()
-  log.Println("Database connection closed.")
-
   log.Println("Server Exiting")
 }
 
-type DayData struct {
-  Id int64
-  DayNumber int
-  IsToday bool
-}
+type DayData struct {}
 
 type WeekData struct {
   Days [7]DayData
@@ -368,45 +349,21 @@ type BlockData struct {
   Weeks []WeekData
 }
 
-func generateWeeksBlock(size int, offsetWeeks int, now time.Time) BlockData {
-  block := BlockData{Weeks: make([]WeekData, size)}
-  monday := now.AddDate(0,0,1-int(now.Weekday())-7*3);
-  for subweek_num := range block.Weeks {
-    week := &block.Weeks[subweek_num]
-    for subday_num := range week.Days {
-      day := &week.Days[subday_num]
-      date := monday.AddDate(0,0,
-      (offsetWeeks*6+subweek_num)*7+subday_num)
-      day.DayNumber = date.Day()
-      day.Id = date.Unix() / (24*60*60)
-      day.IsToday = false
-    }
-  }
-
-  return block
-}
-
-var funcMap = template.FuncMap{
-  "add":       add,
-  "subtract": substract,
+func generateWeeksBlock(size int) BlockData {
+  return BlockData{Weeks: make([]WeekData, size)}
 }
 
 type MonthData struct {
-  MonthName string
   Blocks [3]BlockData
 }
-
-var scrollingPosition = 0
 
 var block_sizes = []int{2, 16, 2}
 
 func generateMonthData() MonthData {
-  now := time.Now()
-
-  data := MonthData {MonthName: months[now.Month()-1] }
-  data.Blocks[0] = generateWeeksBlock(block_sizes[0], -1+scrollingPosition, now)
-  data.Blocks[1] = generateWeeksBlock(block_sizes[1], scrollingPosition, now)
-  data.Blocks[2] = generateWeeksBlock(block_sizes[2], 1+scrollingPosition, now)
+  var data MonthData
+  data.Blocks[0] = generateWeeksBlock(block_sizes[0])
+  data.Blocks[1] = generateWeeksBlock(block_sizes[1])
+  data.Blocks[2] = generateWeeksBlock(block_sizes[2])
 
   return data
 }
@@ -426,7 +383,7 @@ func handleData(w http.ResponseWriter, r *http.Request) {
 }
 
 func serveIndex(w http.ResponseWriter, r *http.Request) {
-  t := template.New("index.html").Funcs(funcMap)
+  t := template.New("index.html")
   t, err := t.ParseFiles("index.html", "month.html")
 
   if err != nil {
@@ -442,47 +399,7 @@ func serveIndex(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleCalendar(w http.ResponseWriter, r *http.Request) {
-  now := time.Now()
-  scrollingPosition = 0
-
-  t := template.New("month.html").Funcs(funcMap)
-  t, err := t.ParseFiles("month.html")
-
-  if err != nil {
-    http.Error(w, "Error parsing template", http.StatusInternalServerError)
-    return
-  }
-
-  data := generateMonthData()
-  data.Blocks[1].Weeks[5].Days[weekdayRecalc(int(now.Weekday()))].IsToday = true
-  err = t.ExecuteTemplate(w, "month", data)
-  if err != nil {
-    http.Error(w, "Error executing template", http.StatusInternalServerError)
-  }
-}
-
-func handleScrollingUp(w http.ResponseWriter, r *http.Request) {
-  scrollingPosition -= 1
-
-  t := template.New("month.html").Funcs(funcMap)
-  t, err := t.ParseFiles("month.html")
-
-  if err != nil {
-    http.Error(w, "Error parsing template", http.StatusInternalServerError)
-    return
-  }
-
-  data := generateMonthData()
-  err = t.ExecuteTemplate(w, "month", data)
-  if err != nil {
-    http.Error(w, "Error executing template", http.StatusInternalServerError)
-  }
-}
-
-func handleScrollingDown(w http.ResponseWriter, r *http.Request) {
-  scrollingPosition += 1
-
-  t := template.New("month.html").Funcs(funcMap)
+  t := template.New("month.html")
   t, err := t.ParseFiles("month.html")
 
   if err != nil {
@@ -576,4 +493,30 @@ func handleStoreEvent(w http.ResponseWriter, r *http.Request) {
   }
 
   w.WriteHeader(http.StatusOK)
+}
+
+func handleStoreString(dest *[]string) http.HandlerFunc {
+  return func(w http.ResponseWriter, r *http.Request) {
+    if r.Method != http.MethodPost {
+      http.Error(w, "Method not allowed. Only POST is supported.", http.StatusMethodNotAllowed)
+      return
+    }
+
+    str, err := readString(r.Body)
+    if err != nil {
+      log.Print(err)
+      http.Error(w, err.Error(), http.StatusBadRequest)
+      return
+    }
+    log.Println("string: ", str)
+
+    *dest = append(*dest, str)
+    log.Print(state)
+
+    if err != nil {
+      http.Error(w, err.Error(), http.StatusBadRequest)
+      return
+    }
+    w.WriteHeader(http.StatusOK)
+  }
 }

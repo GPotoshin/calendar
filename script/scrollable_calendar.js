@@ -20,7 +20,7 @@ export function setMonthScrollPosition() {
   calendarBody.style.scrollBehavior = 'auto';
 
   const week = calendarContent.querySelectorAll('.week-row')[0];
-  calendarBody.scrollTop = week.offsetHeight*(6+3);
+  calendarBody.scrollTop = week.offsetHeight*7;
   calendarBody.style.scrollBehavior = originalScrollBehavior;
 }
 

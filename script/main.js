@@ -13,6 +13,7 @@ let state = {
   selected_element: null,
   previousScroll: 0,
   handleTyping: null,
+  focusedElement: null,
 };
 
 function storeValue(array, freeList, value) {
@@ -154,6 +155,34 @@ elements.sideMenu = document.createElement('div');
 elements.sideMenu.classList.add('v-container');
 elements.sideMenu.id = 'side-menu';
 
+const months = [
+  'Janvier',
+  'Février',
+  'Mars',
+  'Avril',
+  'Mai',
+  'Juin',
+  'Juillet',
+  'Août',
+  'Septembre',
+  'Octobre',
+  'Novembre',
+  'Décembre',
+];
+
+function setUiList(ui, list) {
+  for (let i = 0; i < list.length; i++) {
+    var button = document.createElement('button');
+    button.onclick = function() {
+      handle2StateButtonClick(this);
+    };
+    button.className = 'hover';
+    button.textContent = list[i];
+    button.dataset.idx = i;
+    ui.appendChild(button);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', async (event) => {
   elements.sideMenuContainer = document.getElementById('side-menu-container');
   elements.nameList = document.getElementById('name-list');
@@ -167,22 +196,66 @@ document.addEventListener('DOMContentLoaded', async (event) => {
   calendarBody.addEventListener('mouseup', handleMouseUp);
   calendarBody.addEventListener('mousemove', handleMouseMove);
 
-  try {
-    const response = await fetch('/data');
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+  fetch('/data')
+  .then(resp => {
+    if (!resp.ok) {
+      throw new Error(`HTTP error! status: ${resp.status}`);
     }
-    const bin = await response.arrayBuffer();
-    const r = new BufferReader(bin);
-    data.read(r)
-  } catch (error) {
-    console.error('Could not fetch data:', error);
-  }
+    resp.arrayBuffer().then(
+      bin => {
+        const r = new BufferReader(bin);
+        data.read(r)
+        setUiList(elements.nameList, data.staffNames);
+        setUiList(elements.venueList, data.venueNames);
+        for (const name of data.eventNames) {
+          let button = document.createElement('button');
+          button.classList.add('event-button');
+          button.setAttribute('onclick', 'handleClickOnEventButton(this)');
+          elements.sideMenu.appendChild(button);
+          button.textContent = name;
+        }
+      });
+  })
+  .catch(e => {
+    console.error('Could not fetch data:', e);
+  });
 
+  const date = new Date();
+  console.log("date: ", date);
+  const month = date.getMonth();
+  const year = date.getFullYear();
+  const today_epoch = Math.floor(date.getTime() / 86400000);
+  const today_weekday = (date.getDay()+6)%7;
+  console.log(today_weekday);
+  let day = today_epoch-today_weekday-7*7;
+  console.log(day);
+  date.setTime(day*86400000);
+  console.log("date: ", date);
+
+  let monthDisplay = document.getElementById('month-display');
+  monthDisplay.innerHTML = '<strong>'+months[month]+'</strong> '+year;
+  let calendar = document.getElementById('calendar-content');
+  const el = calendar.children[8].children[today_weekday];
+  el.classList.add('today');
+  console.log(el);
+  for (let i = 0; i < calendar.children.length; i++) {
+    if (calendar.children[i].classList.contains('block-marker')) {
+      continue;
+    }
+
+    let week = calendar.children[i];
+    for (let j = 0; j < week.children.length; j++) {
+      week.children[j].children[0].textContent = date.getDate();
+      if (date.getMonth() == month) {
+        week.children[j].classList.add('focused-month');
+      }
+      date.setDate(date.getDate() + 1);
+    }
+  }
 });
 
 document.addEventListener('click', (event) => {
-  if (event.target.id == 'new-event-button') {
+  if (event.target.id === 'new-event-button' || event.target.id === 'info-event-button') {
   // we fucking can't do that in click function because after this button
   // handling function we get immidiately a click event and that is fucking
   // retarded because this handleClickForOptionMenu function closes the menu
@@ -191,7 +264,7 @@ document.addEventListener('click', (event) => {
   }
 });
 
-// @nocheckin
+// @nocheckin: factor out
 document.addEventListener('contextmenu', function(e) {
   const menu = elements.rightClickMenu;
   if (elements.sideMenu.contains(e.target)) {
@@ -216,7 +289,29 @@ document.addEventListener('contextmenu', function(e) {
       document.getElementById('new-venue-button').style.display = 'block';
       document.addEventListener('click', handleClickForContextMenu);
   } 
+
+  for (const button of elements.sideMenu.children) {
+    if (button.contains(e.target)) {
+      menu.style.display = 'flex';
+      menu.style.left = e.clientX + 'px';
+      menu.style.top = e.clientY + 'px';
+      let infoButton = document.getElementById('info-event-button');
+      infoButton.style.display = 'block';
+      document.addEventListener('click', handleClickForContextMenu);
+      infoButton.onclick = showInfo(button);
+    }
+  }
 });
+
+function showInfo(element) {
+  return function() {
+    const rect = element.getBoundingClientRect();
+    let menu = document.getElementById('create-option-menu');
+    menu.style.display = 'flex';
+    menu.style.left = rect.right + 'px';
+    menu.style.top = rect.top + 'px';
+  }
+}
 
 function getPath(u) {
   try {
@@ -229,6 +324,7 @@ function getPath(u) {
 }
 window.getPath = getPath;
 
+// @todestroy
 document.addEventListener('htmx:afterSwap', (event) => {
   const url = event.detail.xhr.responseURL;
   const path = getPath(url);
@@ -254,6 +350,7 @@ document.addEventListener('htmx:afterSwap', (event) => {
   }
 });
 
+// @todestroy
 document.addEventListener('htmx:beforeSwap', (event) => {
   const url = event.detail.xhr.responseURL;
   const path = getPath(url);
@@ -330,42 +427,53 @@ function handleClickForOptionMenu(event) {
     document.removeEventListener('click', handleClickForOptionMenu);
     let input = menu.querySelectorAll('input')[0];
     input.removeEventListener('input', state.handleTyping);
+    let value = input.value;
 
-    const staffIds = [];
-    const nameList = elements.nameList;
-    for (const name of nameList.children) {
-      if (name.classList.contains('clicked')) {
-        staffIds.push(parseInt(name.dataset.idx));
+    if (value !== "") {
+      const staffIds = [];
+      const nameList = elements.nameList;
+      for (const name of nameList.children) {
+        if (name.classList.contains('clicked')) {
+          name.classList.remove('clicked');
+          staffIds.push(parseInt(name.dataset.idx));
+        }
+      }
+
+      const venueIds = [];
+      const venueList = elements.venueList;
+      for (const venue of venueList.children) {
+        if (venue.classList.contains('clicked')) {
+          venue.classList.remove('clicked');
+          venueIds.push(parseInt(venue.dataset.idx));
+        }
+      }
+
+      const writer = new BufferWriter();
+      writer.writeString(input.value);
+      writer.writeInt32Array(staffIds);
+      writer.writeInt32Array(venueIds);
+
+      fetch("store/event", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/octet-stream',
+        },
+        body: writer.getBuffer(),
+      })
+        .then(resp => {
+          if (!resp.ok) {
+            throw new Error(`HTTP error! status: ${resp.status}`);
+          }})
+        .catch(e => {
+          console.error(`Error: ${e}`);
+        });
+    } else {
+      let menu = document.getElementById('side-menu');
+      if (state.focusedElement) {
+        menu.removeChild(state.focusedElement);
+        state.focusedElement = null;
       }
     }
-
-    const venueIds = [];
-    const venueList = elements.venueList;
-    for (const venue of venueList.children) {
-      if (venue.classList.contains('clicked')) {
-        venueIds.push(parseInt(venue.dataset.idx));
-      }
-    }
-
-    const writer = new BufferWriter();
-    writer.writeString(input.value);
-    writer.writeInt32Array(staffIds);
-    writer.writeInt32Array(venueIds);
-
-    fetch("store/event", {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/octet-stream',
-      },
-      body: writer.getBuffer(),
-    })
-    .then(resp => {
-      if (!resp.ok) {
-        throw new Error(`HTTP error! status: ${resp.status}`);
-      }})
-    .catch(e => {
-      console.error(`Error: ${e}`);
-    });
 
     input.value = "";
   }
@@ -406,6 +514,7 @@ function handleCreateNewEvent() {
   let input = menu.querySelectorAll('input')[0];
   input.focus();
   
+  state.focusedElement = new_button;
   state.handleTyping = function(event) {
     if (event.target.value === "") {
       new_button.textContent = "Nouvel Événement";

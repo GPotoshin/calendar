@@ -1,7 +1,5 @@
 {{ define "month" }}
-
 <div id="month-display">
-  <strong>{{ .MonthName }}</strong> 2025
 </div>
 
 <div id="weekdays">
@@ -17,19 +15,9 @@
 <div id="calendar-body">
   <div id="calendar-content" class="v-container">
     {{template "weeksblock" (index .Blocks 0)}}
-    <div class="block-marker"
-      hx-get="/api/scrolling-up"
-      hx-trigger="intersect root:calendar-body once"
-      hx-target="#view-content"
-      hx-swap="innerHTML"
-      ></div>
+    <div class="block-marker"></div>
     {{template "weeksblock" (index .Blocks 1)}}
-    <div class="block-marker"
-      hx-get="/api/scrolling-down"
-      hx-trigger="intersect root:calendar-body once"
-      hx-target="#view-content"
-      hx-swap="innerHTML"
-      ></div>
+    <div class="block-marker"></div>
     {{template "weeksblock" (index .Blocks 2)}}
   </div>
 </div>
@@ -45,9 +33,8 @@
 
 {{ define "weekrow" }}
 {{ range .Days }}
-<div class="day-cell{{if .IsToday}} today{{end}} no-select"
-  data-id={{ .Id }}>
-  <div class = "day-number no-select">{{ .DayNumber }}</div>
+<div class="day-cell no-select">
+  <div class = "day-number no-select"></div>
 </div>
 {{end}}
 {{end}}

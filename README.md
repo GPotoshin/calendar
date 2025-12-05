@@ -11,6 +11,10 @@ for some reason
 + correct scrolling
 + day highlighting
 
+Subject to change:
++ the main scroll bar should be dynamically changed via js, this should be fairly
+easy to achieve. Because we just need to rewire events to js
+
 Constrain solution:
 + location \w personal
 

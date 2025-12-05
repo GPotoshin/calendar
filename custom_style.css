@@ -162,7 +162,8 @@
   text-align: right;
   align-items: flex-end;
   justify-content: flex-start;
-  color: #1f2937;
+  color: var(--base1-color);
+  /* color: #1f2937; */
   position: relative;
 }
 
@@ -171,8 +172,10 @@
 }
 
 .day-number {
-  width: 32px;
-  height: 32px;
+  font-size: 14px;
+  width: 30px;
+  height: 30px;
+  margin: 1px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -183,6 +186,10 @@
 .day-cell.today .day-number {
   background-color: #EB5545;
   color: white;
+}
+
+.day-cell.focused-month .day-number {
+  color: #1f2937;
 }
 
 .event-occurence {
