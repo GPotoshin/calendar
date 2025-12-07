@@ -162,7 +162,7 @@
   text-align: right;
   align-items: flex-end;
   justify-content: flex-start;
-  color: var(--base1-color);
+  color: var(--grey-color);
   /* color: #1f2937; */
   position: relative;
 }
@@ -183,13 +183,13 @@
   border-radius: 9999px; /* Full circle */
 }
 
+.day-cell.focused-month .day-number {
+  color: black;
+}
+
 .day-cell.today .day-number {
   background-color: #EB5545;
   color: white;
-}
-
-.day-cell.focused-month .day-number {
-  color: #1f2937;
 }
 
 .event-occurence {

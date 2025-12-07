@@ -8,12 +8,14 @@ import {
 import { palette } from './color.js';
 import { BufferReader, BufferWriter } from './Io.js';
 
+const MS_IN_DAY = 86400000;
+
 let state = {
   sideMenuIsOpen: false,
   selected_element: null,
-  previousScroll: 0,
   handleTyping: null,
   focusedElement: null,
+  baseDayNumber: 0,
 };
 
 function storeValue(array, freeList, value) {
@@ -142,12 +144,17 @@ const data = new DataManager();
 window.data = data;
 
 let elements = {
+  calendarBody: null,
+  calendarContent: null,
+  createOptionMenu: null,
+  markerBlocks: null,
+  monthDisplay: null,
+  nameList: null,
+  rightClickMenu: null,
   sideMenu: null,
   sideMenuContainer: null,
-  createOptionMenu: null,
-  nameList: null,
   venueList: null,
-  rightClickMenu: null,
+  todayFrame: null,
 }
 window.elements = elements;
 
@@ -170,6 +177,20 @@ const months = [
   'Décembre',
 ];
 
+function setMonthDisplay(date) {
+  elements.monthDisplay.innerHTML = '<strong>'+months[date.getMonth()]+'</strong> '+date.getFullYear();
+}
+
+let observers = {
+  topMonthWeek: null,
+  bottumMonthWeek: null,
+  calendarScrolling: null,
+};
+
+let focus = {
+  date: null,
+};
+
 function setUiList(ui, list) {
   for (let i = 0; i < list.length; i++) {
     var button = document.createElement('button');
@@ -183,12 +204,82 @@ function setUiList(ui, list) {
   }
 }
 
+function iterateOverDays(dayCallback) {
+  const list = elements.calendarContent.children;
+  for (let i = 0; i < list.length; i++) {
+    var el = list[i];
+    if (el.classList.contains('block-marker')) {
+      continue;
+    }
+    for (let j = 0; j < el.children.length; j++) {
+      dayCallback(el.children[j]);
+    }
+  }
+}
+
+function refocusMonth() {
+  setMonthDisplay(focus.date);
+  let date = new Date();
+  date.setTime(Number(elements.calendarContent.children[0].children[0].dataset.dayNum)*MS_IN_DAY)
+  const focusMonth = focus.date.getMonth();
+  iterateOverDays((day) => {
+    if (date.getMonth() == focusMonth) {
+      day.classList.add('focused-month');
+    } else {
+      day.classList.remove('focused-month');
+    }
+    date.setDate(date.getDate() + 1);
+  });
+}
+
+function dateFromDayNum(n) {
+  let date = new Date();
+  date.setTime(Number(n)*MS_IN_DAY);
+}
+
+function setMonthObserver() {
+  observers.topWeek.disconnect();
+  observers.bottomWeek.disconnect();
+  const weeks = elements.calendarContent.children;
+  const month = focus.date.getMonth();
+
+  let testDate = new Date();
+  for (let i = 0; i < weeks.length; i++) {
+    var el = weeks[i];
+    if (el.classList.contains('block-marker')) {
+      continue;
+    }
+    const day = el.children[6];
+    testDate.setTime(Number(day.dataset.dayNum)*MS_IN_DAY);
+    if (testDate.getMonth() == month) {
+      observers.topWeek.observe(el);
+      break;
+    }
+  }
+  for (let i = weeks.length-1; i >= 0; i--) {
+    var el = weeks[i];
+    if (el.classList.contains('block-marker')) {
+      continue;
+    }
+    const day = el.children[0];
+    testDate.setTime(Number(day.dataset.dayNum)*MS_IN_DAY);
+    if (testDate.getMonth() == month) {
+      observers.bottomWeek.observe(el);
+      break;
+    }
+  }
+}
+
 document.addEventListener('DOMContentLoaded', async (event) => {
-  elements.sideMenuContainer = document.getElementById('side-menu-container');
-  elements.nameList = document.getElementById('name-list');
-  elements.venueList = document.getElementById('venue-list');
-  elements.rightClickMenu = document.getElementById('right-click-menu');
+  elements.markerBlocks = document.getElementsByClassName('block-marker');
+  elements.calendarBody = document.getElementById('calendar-body');
+  elements.calendarContent = document.getElementById('calendar-content');
   elements.createOptionMenu = document.getElementById('create-option-menu');
+  elements.monthDisplay = document.getElementById('month-display');
+  elements.nameList = document.getElementById('name-list');
+  elements.rightClickMenu = document.getElementById('right-click-menu');
+  elements.sideMenuContainer = document.getElementById('side-menu-container');
+  elements.venueList = document.getElementById('venue-list');
 
   setMonthScrollPosition();
   const calendarBody = document.getElementById('calendar-body');
@@ -220,38 +311,93 @@ document.addEventListener('DOMContentLoaded', async (event) => {
     console.error('Could not fetch data:', e);
   });
 
-  const date = new Date();
-  console.log("date: ", date);
-  const month = date.getMonth();
-  const year = date.getFullYear();
-  const today_epoch = Math.floor(date.getTime() / 86400000);
+  observers.topWeek = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        focus.date.setMonth(focus.date.getMonth()-1);
+        refocusMonth();
+        setMonthObserver();
+      }
+    });
+  }, {
+    root: calendarBody,
+    threshold: [1],
+    rootMargin: '-66% 0px 0px 0px'
+  });
+  observers.bottomWeek = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        focus.date.setMonth(focus.date.getMonth()+1);
+        refocusMonth();
+        setMonthObserver();
+      }
+    });
+  }, {
+    root: calendarBody,
+    threshold: [1],
+    rootMargin: '0px 0px -66% 0px'
+  });
+  observers.calendarScrolling = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        elements.todayFrame.classList.remove('today');
+        const SHIFTING_BY = 5;
+        let shiftingBy = SHIFTING_BY;
+        if (entry.target === elements.markerBlocks[0]) {
+          shiftingBy = -SHIFTING_BY;
+        }
+        const week = elements.calendarContent.querySelectorAll('.week-row')[0];
+        const originalScrollBehavior = elements.calendarBody.style.scrollBehavior;
+        elements.calendarBody.style.scrollBehavior = 'auto';
+        elements.calendarBody.scrollTop -= shiftingBy*week.offsetHeight;
+        elements.calendarBody.style.scrollBehavior = originalScrollBehavior;
+
+        state.baseDayNumber += shiftingBy*7;
+        let date = new Date();
+        const today = Math.floor(date.getTime()/MS_IN_DAY);
+        const offset = today - state.baseDayNumber;
+        
+
+        date.setTime(state.baseDayNumber*MS_IN_DAY);
+        const focusMonth = focus.date.getMonth();
+        iterateOverDays((day) => {
+          day.children[0].textContent = date.getDate();
+          day.dataset.dayNum = Math.floor(date.getTime() / MS_IN_DAY);
+          date.setDate(date.getDate() + 1);
+        });
+        refocusMonth();
+        setMonthObserver();
+      }
+    });
+  }, {
+    root: calendarBody,
+  });
+  observers.calendarScrolling.observe(elements.markerBlocks[0]);
+  observers.calendarScrolling.observe(elements.markerBlocks[1]);
+
+  let date = new Date();
+  focus.date = new Date();
+  const today_epoch = Math.floor(date.getTime() / MS_IN_DAY);
   const today_weekday = (date.getDay()+6)%7;
-  console.log(today_weekday);
-  let day = today_epoch-today_weekday-7*7;
-  console.log(day);
-  date.setTime(day*86400000);
-  console.log("date: ", date);
+  elements.todayFrame = elements.calendarContent.children[8].children[today_weekday];
+  elements.todayFrame.classList.add('today');
 
-  let monthDisplay = document.getElementById('month-display');
-  monthDisplay.innerHTML = '<strong>'+months[month]+'</strong> '+year;
-  let calendar = document.getElementById('calendar-content');
-  const el = calendar.children[8].children[today_weekday];
-  el.classList.add('today');
-  console.log(el);
-  for (let i = 0; i < calendar.children.length; i++) {
-    if (calendar.children[i].classList.contains('block-marker')) {
-      continue;
-    }
+  state.baseDayNumber = today_epoch-today_weekday-7*7;
+  date.setTime(state.baseDayNumber*MS_IN_DAY);
 
-    let week = calendar.children[i];
-    for (let j = 0; j < week.children.length; j++) {
-      week.children[j].children[0].textContent = date.getDate();
-      if (date.getMonth() == month) {
-        week.children[j].classList.add('focused-month');
+  setMonthDisplay(focus.date);
+  const focusMonth = focus.date.getMonth();
+  iterateOverDays((day) => {
+      day.children[0].textContent = date.getDate();
+      day.dataset.dayNum = Math.floor(date.getTime() / MS_IN_DAY);
+      if (date.getMonth() == focusMonth) {
+        day.classList.add('focused-month');
       }
       date.setDate(date.getDate() + 1);
-    }
-  }
+  });
+  setMonthObserver(focus.month);
+
+  const weekRows = document.querySelectorAll('.week-row');
 });
 
 document.addEventListener('click', (event) => {
@@ -324,41 +470,6 @@ function getPath(u) {
 }
 window.getPath = getPath;
 
-// @todestroy
-document.addEventListener('htmx:afterSwap', (event) => {
-  const url = event.detail.xhr.responseURL;
-  const path = getPath(url);
-
-  if (path === '/' || path === '/view/month') {
-    setMonthScrollPosition();
-  } else if (path === '/api/scrolling-up') {
-    const calendarBody = document.getElementById('calendar-body');
-    const calendarContent = document.getElementById('calendar-content');
-    const week = calendarContent.querySelectorAll('.week-row')[0];
-    const originalScrollBehavior = calendarBody.style.scrollBehavior;
-    calendarBody.style.scrollBehavior = 'auto';
-    calendarBody.scrollTop = state.previousScroll + 6*week.offsetHeight;
-    calendarBody.style.scrollBehavior = originalScrollBehavior;
-  } else if (path === '/api/scrolling-down') {
-    const calendarBody = document.getElementById('calendar-body');
-    const calendarContent = document.getElementById('calendar-content');
-    const week = calendarContent.querySelectorAll('.week-row')[0];
-    const originalScrollBehavior = calendarBody.style.scrollBehavior;
-    calendarBody.style.scrollBehavior = 'auto';
-    calendarBody.scrollTop = state.previousScroll - 6*week.offsetHeight;
-    calendarBody.style.scrollBehavior = originalScrollBehavior;
-  }
-});
-
-// @todestroy
-document.addEventListener('htmx:beforeSwap', (event) => {
-  const url = event.detail.xhr.responseURL;
-  const path = getPath(url);
-
-  if (path === '/api/scrolling-up' || path === '/api/scrolling-down') {
-    state.previousScroll = document.getElementById("calendar-body").scrollTop;
-  }
-});
 
 function handleClickOnSideMenuButton(button) {
   let sideMenuContainer = elements.sideMenuContainer;
