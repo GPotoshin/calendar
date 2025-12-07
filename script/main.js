@@ -155,6 +155,7 @@ let elements = {
   sideMenuContainer: null,
   venueList: null,
   todayFrame: null,
+  isUpdating: false,
 }
 window.elements = elements;
 
@@ -340,33 +341,39 @@ document.addEventListener('DOMContentLoaded', async (event) => {
   observers.calendarScrolling = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
+        if (state.isUpdating) return;
+        state.isUpdating = true;
         elements.todayFrame.classList.remove('today');
         const SHIFTING_BY = 5;
         let shiftingBy = SHIFTING_BY;
         if (entry.target === elements.markerBlocks[0]) {
           shiftingBy = -SHIFTING_BY;
         }
+        console.log('we are hitting');
         const week = elements.calendarContent.querySelectorAll('.week-row')[0];
         const originalScrollBehavior = elements.calendarBody.style.scrollBehavior;
         elements.calendarBody.style.scrollBehavior = 'auto';
         elements.calendarBody.scrollTop -= shiftingBy*week.offsetHeight;
         elements.calendarBody.style.scrollBehavior = originalScrollBehavior;
+        requestAnimationFrame(() => {
+          state.baseDayNumber += shiftingBy*7;
+          let date = new Date();
+          const today = Math.floor(date.getTime()/MS_IN_DAY);
+          const offset = today - state.baseDayNumber;
 
-        state.baseDayNumber += shiftingBy*7;
-        let date = new Date();
-        const today = Math.floor(date.getTime()/MS_IN_DAY);
-        const offset = today - state.baseDayNumber;
-        
-
-        date.setTime(state.baseDayNumber*MS_IN_DAY);
-        const focusMonth = focus.date.getMonth();
-        iterateOverDays((day) => {
-          day.children[0].textContent = date.getDate();
-          day.dataset.dayNum = Math.floor(date.getTime() / MS_IN_DAY);
-          date.setDate(date.getDate() + 1);
+          date.setTime(state.baseDayNumber*MS_IN_DAY);
+          const focusMonth = focus.date.getMonth();
+          iterateOverDays((day) => {
+            day.children[0].textContent = date.getDate();
+            day.dataset.dayNum = Math.floor(date.getTime() / MS_IN_DAY);
+            date.setDate(date.getDate() + 1);
+          });
+          refocusMonth();
+          setMonthObserver();
+          setTimeout(() => {
+            state.isUpdating = false;
+          }, 100);
         });
-        refocusMonth();
-        setMonthObserver();
       }
     });
   }, {

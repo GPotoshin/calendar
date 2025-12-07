@@ -6,7 +6,6 @@
     <title>Calendar</title>
     <link rel="stylesheet" href="/custom_style.css">
     <link rel="stylesheet" href="/general_style.css">
-    <script src="/htmx.js"></script>
     <script type="module" src="/main.js"></script>
   </head>
   <body>
@@ -25,10 +24,10 @@
     <div id="body-container" class="v-container">
       <div class="header-container">
         <div class="button-container">
-          <button hx-get="/view/calendar" hx-target="#view-content" hx-swap="innerHTML">Calendrier</button>
-          <button hx-get="/view/events" hx-target="#view-content" hx-swap="innerHTML">Événements</button>
-          <button hx-get="/view/staff" hx-target="#view-content" hx-swap="innerHTML">Personnel</button>
-          <button hx-get="/view/venues" hx-target="#view-content" hx-swap="innerHTML">Lieux</button>
+          <button>Calendrier</button>
+          <button>Événements</button>
+          <button>Personnel</button>
+          <button>Lieux</button>
         </div>
       </div>
 
