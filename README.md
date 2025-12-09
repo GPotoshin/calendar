@@ -9,7 +9,6 @@ for some reason
 + event placing
 + correct month swapping
 + correct scrolling
-+ day highlighting
 
 Subject to change:
 + the main scroll bar should be dynamically changed via js, this should be fairly

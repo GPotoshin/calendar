@@ -23,15 +23,13 @@
 
     <div id="body-container" class="v-container">
       <div class="header-container">
-        <div class="button-container">
-          <button>Calendrier</button>
-          <button>Événements</button>
-          <button>Personnel</button>
-          <button>Lieux</button>
+        <div id="view-type" class="button-container">
+          <button onclick="switchToCalendarView()">Calendrier</button>
+          <button onclick="switchToInformationView()">Information</button>
         </div>
       </div>
 
-      <div id="view-content" class="v-container">
+      <div class="view-content v-container">
         {{ template "month" . }}
       </div>
     </div>
@@ -43,13 +41,13 @@
         Nouvel Événement
       </button>
       <button id="new-member-button"
-        onclick="handleAddToList(elements.nameList, 'Nouveau Agent',
+        onclick="handleAddToList(elms.nameList, 'Nouveau Agent',
                                 '/store/agent', data.staffNames)"
         style="display: none;">
         Nouvel Agent
       </button>
       <button id="new-venue-button"
-        onclick="handleAddToList(elements.venueList, 'Nouveau Lieu',
+        onclick="handleAddToList(elms.venueList, 'Nouveau Lieu',
                                 '/store/venue', data.venueNames)"
         style="display: none;">
         Nouvel Lieu

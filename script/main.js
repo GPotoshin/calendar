@@ -12,10 +12,15 @@ const MS_IN_DAY = 86400000;
 
 let state = {
   sideMenuIsOpen: false,
-  selected_element: null,
+  viewSelection: 0,
+  datasetSelection: 0,
+  eventsSelection: -1,
+  staffSelection: -1,
+  venueSelection: -1,
   handleTyping: null,
   focusedElement: null,
   baseDayNumber: 0,
+  isUpdating: false,
 };
 
 function storeValue(array, freeList, value) {
@@ -60,11 +65,18 @@ class DataManager {
       this.eventNames = [];
       this.eventStaff = [];
       this.eventVenues = [];
+      this.eventStaffDiplReq = [];
+      this.eventAttendeeDiplReq = [];
+      this.eventDuration = [];
       this.eventFreeList = [];
+
       this.staffNames = [];
       this.staffFreeList = [];
       this.venueNames = [];
       this.venueFreeList = [];
+
+      this.staffsDiplomesNames = [];
+      this.attendeesDiplomesNames = [];
   }
 
   storeEvent(name, staffIndices = [], venueIndices = []) {
@@ -132,18 +144,30 @@ class DataManager {
   }
 
   read(reader) {
+    const version = "bin_state.v0.0.1"; 
+    const format = reader.readString();
+    
+    if (version != format) {
+      throw new Error(`reading format: \`${format}\`. Supporting format: \`${version}\``);
+    }
+
     this.eventNames = reader.readStringArray();
     this.eventStaff = reader.readArrayOfInt32Arrays();
     this.eventVenues = reader.readArrayOfInt32Arrays();
+    this.eventStaffDiplReq = reader.readInt32Array();
+    this.eventAttendeeDiplReq = reader.readInt32Array();
+    this.eventDuration = reader.readInt32Array();
     this.staffNames = reader.readStringArray();
     this.venueNames = reader.readStringArray();
+    this.staffsDiplomesNames = reader.readStringArray();
+    this.attendeesDiplomesNames = reader.readStringArray();
   }
 }
 
 const data = new DataManager();
 window.data = data;
 
-let elements = {
+let elms = {
   calendarBody: null,
   calendarContent: null,
   createOptionMenu: null,
@@ -151,17 +175,99 @@ let elements = {
   monthDisplay: null,
   nameList: null,
   rightClickMenu: null,
-  sideMenu: null,
+  sideMenu: document.createElement('div'),
+  bodyContainer: null,
   sideMenuContainer: null,
   venueList: null,
   todayFrame: null,
-  isUpdating: false,
+  calendarView: null,
+  informationView: null,
+  dataListContainer: document.createElement('div'),
+  eventDatalist: document.createElement('div'),
+  staffDatalist: document.createElement('div'),
+  venueDatalist: document.createElement('div'),
 }
-window.elements = elements;
+window.elms = elms;
 
-elements.sideMenu = document.createElement('div');
-elements.sideMenu.classList.add('v-container');
-elements.sideMenu.id = 'side-menu';
+{
+  elms.sideMenu.classList.add('v-container');
+  elms.sideMenu.id = 'side-menu';
+  elms.sideMenu.innerHTML = `
+    <div class="header-container">
+    <div id="data-type" class="button-container">
+    <button>Événements</button>
+    <button>Personnel</button>
+    <button>Lieux</button>
+    </div>
+    </div>
+    <div id="data-list-container"></div>
+    `;
+  elms.sideMenu.appendChild(elms.dataListContainer);
+  elms.dataListContainer.appendChild(elms.eventDatalist);
+}
+
+{
+  elms.informationView = document.createElement('div');
+  elms.informationView.classList.add('view-content');
+  elms.informationView.classList.add('v-container');
+  elms.informationView.innerHTML = `
+    <div class="h-container" style="flex-grow: 1 0 auto; width: 100%; justify-items: center;">
+    <div style="display: flex; flex-grow: 1; width: 50%; justify-content: center;">
+    <table style="width: 200px;">
+    <caption>
+    Nomber de
+    </caption>
+    <thead>
+    <tr>
+    <th>Stagier</th><th>Formateur</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    <tr><td>
+    de <button class="hover">5</button> à <button class="hover">6</button></td>
+    <td><button class="hover">1</button></td></tr>
+    <tr><td>
+    de <button class="hover">7</button> à <button class="hover">12</button></td>
+    <td><button class="hover">2</button></td></tr>
+    <tr><td>
+    de <button class="hover"> </button> à <button class="hover"> </button></td>
+    <td><button class="hover"> </button></td></tr>
+    </tbody>
+    </table>
+    </div>
+
+    <div style="display: flex; flex-grow: 1; width: 50%; justify-content: center;">
+    <table style="width: 200px;">
+    <caption>
+    Competences de
+    </caption>
+    <thead>
+    <tr>
+    <th>Stagier</th><th>Formateur</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    <tr><td>
+    de <button class="hover">5</button> à <button class="hover">6</button></td>
+    <td><button class="hover">1</button></td></tr>
+    <tr><td>
+    de <button class="hover">7</button> à <button class="hover">12</button></td>
+    <td><button class="hover">2</button></td></tr>
+    <tr><td>
+    de <button class="hover"> </button> à <button class="hover"> </button></td>
+    <td><button class="hover"> </button></td></tr>
+    </tbody>
+    </table>
+    </div>
+
+    </div>
+    <div>
+    Durée: <button class="hover">1</button>d
+    </div>
+  `
+}
 
 const months = [
   'Janvier',
@@ -179,7 +285,7 @@ const months = [
 ];
 
 function setMonthDisplay(date) {
-  elements.monthDisplay.innerHTML = '<strong>'+months[date.getMonth()]+'</strong> '+date.getFullYear();
+  elms.monthDisplay.innerHTML = '<strong>'+months[date.getMonth()]+'</strong> '+date.getFullYear();
 }
 
 let observers = {
@@ -206,7 +312,7 @@ function setUiList(ui, list) {
 }
 
 function iterateOverDays(dayCallback) {
-  const list = elements.calendarContent.children;
+  const list = elms.calendarContent.children;
   for (let i = 0; i < list.length; i++) {
     var el = list[i];
     if (el.classList.contains('block-marker')) {
@@ -221,7 +327,7 @@ function iterateOverDays(dayCallback) {
 function refocusMonth() {
   setMonthDisplay(focus.date);
   let date = new Date();
-  date.setTime(Number(elements.calendarContent.children[0].children[0].dataset.dayNum)*MS_IN_DAY)
+  date.setTime(Number(elms.calendarContent.children[0].children[0].dataset.dayNum)*MS_IN_DAY)
   const focusMonth = focus.date.getMonth();
   iterateOverDays((day) => {
     if (date.getMonth() == focusMonth) {
@@ -241,7 +347,7 @@ function dateFromDayNum(n) {
 function setMonthObserver() {
   observers.topWeek.disconnect();
   observers.bottomWeek.disconnect();
-  const weeks = elements.calendarContent.children;
+  const weeks = elms.calendarContent.children;
   const month = focus.date.getMonth();
 
   let testDate = new Date();
@@ -272,15 +378,17 @@ function setMonthObserver() {
 }
 
 document.addEventListener('DOMContentLoaded', async (event) => {
-  elements.markerBlocks = document.getElementsByClassName('block-marker');
-  elements.calendarBody = document.getElementById('calendar-body');
-  elements.calendarContent = document.getElementById('calendar-content');
-  elements.createOptionMenu = document.getElementById('create-option-menu');
-  elements.monthDisplay = document.getElementById('month-display');
-  elements.nameList = document.getElementById('name-list');
-  elements.rightClickMenu = document.getElementById('right-click-menu');
-  elements.sideMenuContainer = document.getElementById('side-menu-container');
-  elements.venueList = document.getElementById('venue-list');
+  elms.bodyContainer = document.getElementById('body-container');
+  elms.markerBlocks = document.getElementsByClassName('block-marker');
+  elms.calendarBody = document.getElementById('calendar-body');
+  elms.calendarContent = document.getElementById('calendar-content');
+  elms.createOptionMenu = document.getElementById('create-option-menu');
+  elms.monthDisplay = document.getElementById('month-display');
+  elms.nameList = document.getElementById('name-list');
+  elms.rightClickMenu = document.getElementById('right-click-menu');
+  elms.sideMenuContainer = document.getElementById('side-menu-container');
+  elms.venueList = document.getElementById('venue-list');
+  elms.calendarView = document.getElementsByClassName('view-content')[0];
 
   setMonthScrollPosition();
   const calendarBody = document.getElementById('calendar-body');
@@ -297,14 +405,16 @@ document.addEventListener('DOMContentLoaded', async (event) => {
       bin => {
         const r = new BufferReader(bin);
         data.read(r)
-        setUiList(elements.nameList, data.staffNames);
-        setUiList(elements.venueList, data.venueNames);
-        for (const name of data.eventNames) {
+        setUiList(elms.nameList, data.staffNames);
+        setUiList(elms.venueList, data.venueNames);
+        for (let i = 0; i < data.eventNames.length; i++) {
+          const name = data.eventNames[i];
           let button = document.createElement('button');
           button.classList.add('event-button');
-          button.setAttribute('onclick', 'handleClickOnEventButton(this)');
-          elements.sideMenu.appendChild(button);
+          button.setAttribute('onclick', 'handleClickOnButton(this, zonesId.EVENTLIST)');
+          elms.eventDatalist.appendChild(button);
           button.textContent = name;
+          button.dataset.bIdx = i;
         }
       });
   })
@@ -343,18 +453,18 @@ document.addEventListener('DOMContentLoaded', async (event) => {
       if (entry.isIntersecting) {
         if (state.isUpdating) return;
         state.isUpdating = true;
-        elements.todayFrame.classList.remove('today');
+        elms.todayFrame.classList.remove('today');
         const SHIFTING_BY = 5;
         let shiftingBy = SHIFTING_BY;
-        if (entry.target === elements.markerBlocks[0]) {
+        if (entry.target === elms.markerBlocks[0]) {
           shiftingBy = -SHIFTING_BY;
         }
         console.log('we are hitting');
-        const week = elements.calendarContent.querySelectorAll('.week-row')[0];
-        const originalScrollBehavior = elements.calendarBody.style.scrollBehavior;
-        elements.calendarBody.style.scrollBehavior = 'auto';
-        elements.calendarBody.scrollTop -= shiftingBy*week.offsetHeight;
-        elements.calendarBody.style.scrollBehavior = originalScrollBehavior;
+        const week = elms.calendarContent.querySelectorAll('.week-row')[0];
+        const originalScrollBehavior = elms.calendarBody.style.scrollBehavior;
+        elms.calendarBody.style.scrollBehavior = 'auto';
+        elms.calendarBody.scrollTop -= shiftingBy*week.offsetHeight;
+        elms.calendarBody.style.scrollBehavior = originalScrollBehavior;
         requestAnimationFrame(() => {
           state.baseDayNumber += shiftingBy*7;
           let date = new Date();
@@ -379,15 +489,15 @@ document.addEventListener('DOMContentLoaded', async (event) => {
   }, {
     root: calendarBody,
   });
-  observers.calendarScrolling.observe(elements.markerBlocks[0]);
-  observers.calendarScrolling.observe(elements.markerBlocks[1]);
+  observers.calendarScrolling.observe(elms.markerBlocks[0]);
+  observers.calendarScrolling.observe(elms.markerBlocks[1]);
 
   let date = new Date();
   focus.date = new Date();
   const today_epoch = Math.floor(date.getTime() / MS_IN_DAY);
   const today_weekday = (date.getDay()+6)%7;
-  elements.todayFrame = elements.calendarContent.children[8].children[today_weekday];
-  elements.todayFrame.classList.add('today');
+  elms.todayFrame = elms.calendarContent.children[8].children[today_weekday];
+  elms.todayFrame.classList.add('today');
 
   state.baseDayNumber = today_epoch-today_weekday-7*7;
   date.setTime(state.baseDayNumber*MS_IN_DAY);
@@ -419,22 +529,22 @@ document.addEventListener('click', (event) => {
 
 // @nocheckin: factor out
 document.addEventListener('contextmenu', function(e) {
-  const menu = elements.rightClickMenu;
-  if (elements.sideMenu.contains(e.target)) {
+  const menu = elms.rightClickMenu;
+  if (elms.sideMenu.contains(e.target)) {
       e.preventDefault();
       menu.style.display = 'flex';
       menu.style.left = e.clientX + 'px';
       menu.style.top = e.clientY + 'px';
       document.getElementById('new-event-button').style.display = 'block';
       document.addEventListener('click', handleClickForContextMenu);
-  } else if (elements.nameList.contains(e.target)) {
+  } else if (elms.nameList.contains(e.target)) {
       e.preventDefault();
       menu.style.display = 'flex';
       menu.style.left = e.clientX + 'px';
       menu.style.top = e.clientY + 'px';
       document.getElementById('new-member-button').style.display = 'block';
       document.addEventListener('click', handleClickForContextMenu);
-  } else if (elements.venueList.contains(e.target)) {
+  } else if (elms.venueList.contains(e.target)) {
       e.preventDefault();
       menu.style.display = 'flex';
       menu.style.left = e.clientX + 'px';
@@ -443,7 +553,7 @@ document.addEventListener('contextmenu', function(e) {
       document.addEventListener('click', handleClickForContextMenu);
   } 
 
-  for (const button of elements.sideMenu.children) {
+  for (const button of elms.sideMenu.children) {
     if (button.contains(e.target)) {
       menu.style.display = 'flex';
       menu.style.left = e.clientX + 'px';
@@ -466,27 +576,24 @@ function showInfo(element) {
   }
 }
 
-function getPath(u) {
-  try {
-    const url_obj = new URL(u);
-    return url_obj.pathname;
-  } catch (e) {
-    console.error("Invalid URL:", u, e);
-    return "";
-  }
+function switchToCalendarView() {
+  elms.bodyContainer.replaceChild(elms.calendarView, elms.bodyContainer.children[1]);
 }
-window.getPath = getPath;
+window.switchToCalendarView = switchToCalendarView;
 
+function switchToInformationView() {
+  elms.bodyContainer.replaceChild(elms.informationView, elms.bodyContainer.children[1]);
+
+}
+window.switchToInformationView = switchToInformationView;
 
 function handleClickOnSideMenuButton(button) {
-  let sideMenuContainer = elements.sideMenuContainer;
-
+  let sideMenuContainer = elms.sideMenuContainer;
   if (state.sideMenuIsOpen) {
-    sideMenuContainer.removeChild(elements.sideMenu);
+    sideMenuContainer.removeChild(elms.sideMenu);
   } else {
-    sideMenuContainer.appendChild(elements.sideMenu);
+    sideMenuContainer.appendChild(elms.sideMenu);
   }
-
   state.sideMenuIsOpen ^= true;
 }
 window.handleClickOnSideMenuButton = handleClickOnSideMenuButton;
@@ -539,8 +646,8 @@ function handleAddToList(target, placeholder, url, storage) {
 window.handleAddToList = handleAddToList;
 
 function handleClickForOptionMenu(event) {
-  let menu = elements.createOptionMenu;
-  if (!menu.contains(event.target) && !elements.rightClickMenu.contains(event.target)) {
+  let menu = elms.createOptionMenu;
+  if (!menu.contains(event.target) && !elms.rightClickMenu.contains(event.target)) {
     menu.style.display = 'none';
     document.removeEventListener('click', handleClickForOptionMenu);
     let input = menu.querySelectorAll('input')[0];
@@ -549,7 +656,7 @@ function handleClickForOptionMenu(event) {
 
     if (value !== "") {
       const staffIds = [];
-      const nameList = elements.nameList;
+      const nameList = elms.nameList;
       for (const name of nameList.children) {
         if (name.classList.contains('clicked')) {
           name.classList.remove('clicked');
@@ -558,7 +665,7 @@ function handleClickForOptionMenu(event) {
       }
 
       const venueIds = [];
-      const venueList = elements.venueList;
+      const venueList = elms.venueList;
       for (const venue of venueList.children) {
         if (venue.classList.contains('clicked')) {
           venue.classList.remove('clicked');
@@ -598,7 +705,7 @@ function handleClickForOptionMenu(event) {
 };
 
 function handleClickForContextMenu() {
-  let menu = elements.rightClickMenu;
+  let menu = elms.rightClickMenu;
   menu.style.display = 'none';
   document.removeEventListener('click', handleClickForContextMenu);
   for (const child of menu.children) {
@@ -606,17 +713,55 @@ function handleClickForContextMenu() {
   }
 }
 
-function handleClickOnEventButton(e) {
-  e.style.backgroundColor = palette.red;
-  if (state.selected_element) {
-    state.selected_element.style.backgroundColor = 'transparent';
+const zonesId = {
+  DATATYPE: 0,
+  VIEWTYPE: 1,
+  EVENTLIST: 2,
+  STAFFLIST: 3,
+  VENUELIST: 4,
+};
+window.zonesId = zonesId;
+
+let zones = [
+  {
+    selection: 0,
+    eList: document.getElementById("data-type"),
+  },
+  {
+    selection: 0,
+    eList: document.getElementById("view-type"),
+  },
+  {
+    selection: -1,
+    eList: elms.eventDatalist.children,
+  },
+  {
+    selection: -1,
+    eList: elms.staffDatalist.children,
+  },
+  {
+    selection: -1,
+    eList: elms.venueDatalist.children,
+  },
+];
+
+function handleClickOnButton(b, zn) {
+  const z = zones[zn];
+  if (z.selection == b.dataset.bIdx) {
+    b.style.backgroundColor = 'transparent';
+    z.selection = -1;
+    return;
   }
-  state.selected_element = e;
+  b.style.backgroundColor = palette.blue;
+  if (z.selection >= 0) {
+    z.eList[z.selection].style.backgroundColor = 'transparent';
+  }
+  z.selection = b.dataset.bIdx;
 }
-window.handleClickOnEventButton = handleClickOnEventButton;
+window.handleClickOnButton = handleClickOnButton;
 
 function handleCreateNewEvent() {
-  let menu = elements.sideMenu;
+  let menu = elms.sideMenu;
   let new_button = document.createElement('button');
   new_button.classList.add('event-button');
   new_button.textContent = "Nouvel Événement";

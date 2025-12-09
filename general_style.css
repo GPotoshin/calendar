@@ -10,6 +10,11 @@
   --hover-color: #f0f0f0;
 
   --red-color: #BF616A;
+  --orange-color: #D08770;
+  --yellow-color: #EBCB8B;
+  --green-color: #A3BE8C;
+  --violet-color: #B48EAD;
+  --blue-color: #88C0D0;
 }
 
 @font-face {
@@ -41,6 +46,15 @@ hr {
 
 input, button, textarea, select {
   font-family: inherit;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+td {
+  padding: 1px;
+  border: 1px solid #ccc;
 }
 
 input {
@@ -88,10 +102,16 @@ button {
   padding: 4px;
 }
 
+.m-box {
+  width: 200px;
+  height: 400px;
+  padding: 4px;
+}
+
 .hover:hover {
   background-color: #f0f0f0;
 }
 
 .clicked {
-  color: var(--red-color);
+  color: var(--rec-color);
 }

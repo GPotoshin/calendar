@@ -40,12 +40,18 @@ type ApplicationState struct {
   EventNames []string
   EventStaff [][]int32
   EventVenues [][]int32
+  EventStaffDiplReq []int32 // @new
+  EventAttendeeDiplReq []int32 // @new
+  EventDuration []int32 // @new
   EventFreeList []int32
 
   StaffNames []string
   StaffFreeList []int32
   VenueNames []string
   VenueFreeList []int32
+
+  StaffsDiplomesNames []string // @new
+  AttendeesDiplomesNames []string // @new
 }
 
 func storeValue[T any](array *[]T, freeList *[]int32, value T) int32 {
@@ -202,7 +208,14 @@ func (state *ApplicationState) RemoveVenueFromEvent(eventIndex, venueIndex int32
 
 func readApplicationState(r io.Reader) (ApplicationState, error) {
   var state ApplicationState
-  var err error
+  version := "bin_state.v0.0.1"
+  format, err := readString(r)
+  if err != nil {
+    return state, fmt.Errorf("Can't verify file format: %w", err)
+  }
+  if format != version {
+    return state, fmt.Errorf("The file format `%s` is outdated. the current format is `%s`. State is zero", format, version)
+  }
   if state.EventNames, err = readStringArray(r); err != nil {
     return state, fmt.Errorf("failed to read EventNames: %w", err)
   }
@@ -212,16 +225,35 @@ func readApplicationState(r io.Reader) (ApplicationState, error) {
   if state.EventVenues, err = readArrayOfInt32Arrays(r); err != nil {
     return state, fmt.Errorf("failed to read EventVenues: %w", err)
   }
+  if state.EventStaffDiplReq, err = readInt32Array(r); err != nil {
+    return state, fmt.Errorf("failed to read EventStaffDiplReq: %w", err)
+  }
+  if state.EventAttendeeDiplReq, err = readInt32Array(r); err != nil {
+    return state, fmt.Errorf("failed to read EventAttendeeDiplReq: %w", err)
+  }
+  if state.EventDuration, err = readInt32Array(r); err != nil {
+    return state, fmt.Errorf("failed to read EventDuration: %w", err)
+  }
   if state.StaffNames, err = readStringArray(r); err != nil {
     return state, fmt.Errorf("failed to read StaffNames: %w", err)
   }
   if state.VenueNames, err = readStringArray(r); err != nil {
     return state, fmt.Errorf("failed to read VenueNames: %w", err)
   }
+  if state.StaffsDiplomesNames, err = readStringArray(r); err != nil {
+    return state, fmt.Errorf("failed to read StaffsDiplomesNames: %w", err)
+  }
+  if state.AttendeesDiplomesNames, err = readStringArray(r); err != nil {
+    return state, fmt.Errorf("failed to read AttendeesDiplomesNames: %w", err)
+  }
   return state, nil
 }
 
 func writeApplicationState(w io.Writer, state ApplicationState) error {
+  version := "bin_state.v0.0.1"
+  if err := writeString(w, version); err != nil {
+    return fmt.Errorf("Failed to store data [file format]: %v\n", err)
+  }
   if err := writeStringArray(w, state.EventNames); err != nil {
     return fmt.Errorf("failed to write EventNames: %w", err)
   }
@@ -231,12 +263,28 @@ func writeApplicationState(w io.Writer, state ApplicationState) error {
   if err := writeArrayOfInt32Arrays(w, state.EventVenues); err != nil {
     return fmt.Errorf("failed to write EventVenues: %w", err)
   }
+  if err := writeInt32Array(w, state.EventStaffDiplReq); err != nil {
+    return fmt.Errorf("failed to write EventStaffDiplReq: %w", err)
+  }
+  if err := writeInt32Array(w, state.EventAttendeeDiplReq); err != nil {
+    return fmt.Errorf("failed to write EventAttendeeDiplReq: %w", err)
+  }
+  if err := writeInt32Array(w, state.EventDuration); err != nil {
+    return fmt.Errorf("failed to write EventDuration: %w", err)
+  }
   if err := writeStringArray(w, state.StaffNames); err != nil {
     return fmt.Errorf("failed to write StaffNames: %w", err)
   }
   if err := writeStringArray(w, state.VenueNames); err != nil {
     return fmt.Errorf("failed to write VenueNames: %w", err)
   }
+  if err := writeStringArray(w, state.StaffsDiplomesNames); err != nil {
+    return fmt.Errorf("failed to write StaffsDiplomesNames: %w", err)
+  }
+  if err := writeStringArray(w, state.AttendeesDiplomesNames); err != nil {
+    return fmt.Errorf("failed to write AttendeesDiplomesNames: %w", err)
+  }
+  
   return nil
 }
 
@@ -246,7 +294,6 @@ func main() {
   sigChan := make(chan os.Signal, 1)
   signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-  current_format := "bin_state.v0.0.0"
   file, err := os.OpenFile("data.db", os.O_RDWR, 0644)
   if err != nil {
     file, err = os.Create("data.db")
@@ -255,15 +302,6 @@ func main() {
     }
   } else {
     reader := bufio.NewReader(file)
-    format, err := readString(reader)
-    if err != nil {
-      log.Printf("Can't verify file format. State is unset")
-      goto _error_reading_state;
-    }
-    if format != current_format {
-      log.Printf("The file format `%s` is outdated. the current format is `%s`. State is zero", format, current_format)
-      goto _error_reading_state;
-    }
 
     state, err = readApplicationState(reader)
     if err != nil {
@@ -277,9 +315,6 @@ func main() {
       log.Printf("Failed to seek to beginning: %v\n", err)
     }
     writer := bufio.NewWriter(file)
-    if err = writeString(writer, current_format); err != nil {
-      log.Printf("Failed to store data [file format]: %v\n", err)
-    }
     if err = writeApplicationState(writer, state); err != nil {
       log.Printf("Failed to store data [binary]: %v\n", err)
     }
@@ -296,7 +331,6 @@ func main() {
     file.Close()
     log.Println("Database connection closed.")
   }()
-_error_reading_state:
 
   http.HandleFunc("/regular.ttf", serveFile("fonts/SourceSansPro-Regular.ttf", []HeaderPair{{Key: "Content-Type", Value: "font/ttf"}}))
   http.HandleFunc("/htmx.js", serveFile("deps/htmx.js", nil))
