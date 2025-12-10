@@ -39,6 +39,13 @@
   background-color: #ccc;
 }
 
+.vr {
+  content: '';
+  height: 100%;
+  width: 1px;
+  background-color: #ccc;
+}
+
 #side-menu-button {
   position: absolute;
   left: 10px;
@@ -269,3 +276,7 @@
   top: var(--menu-top, 0);
 }
 
+.two-column-glued {
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}

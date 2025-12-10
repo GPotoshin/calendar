@@ -74,6 +74,10 @@ h3 {
   padding: 0px 4px 0px 4px;
 }
 
+h4 {
+  margin: 2px;
+}
+
 button {
   border: none;
   cursor: pointer;
@@ -118,7 +122,12 @@ button {
 }
 
 .m-box {
-  width: 200px;
+  width: 250px;
+  height: 250px;
+}
+
+.with-padding {
+  padding: 4px;
 }
 
 .hover:hover {
@@ -157,6 +166,10 @@ button {
   justify-content: center;
 }
 
+.txt-center {
+  text-align: center;
+}
+
 .wide {
   width: 100%;
 }
@@ -167,4 +180,25 @@ button {
 
 .grow {
   flex-grow: 1;
+}
+
+.align-items-center {
+  align-items: center;
+}
+
+.fine {
+  margin: 0px;
+}
+
+.bottom-right-border {
+  border-bottom: 1px solid #ccc;
+  border-right: 1px solid #ccc;
+}
+
+.bottom-border {
+  border-bottom: 1px solid #ccc;
+}
+
+.m-width {
+  width: 250px;
 }

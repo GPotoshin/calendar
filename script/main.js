@@ -196,16 +196,6 @@ window.elms = elms;
 {
   elms.sideMenu.classList.add('v-container');
   elms.sideMenu.id = 'side-menu';
-  elms.sideMenu.innerHTML = `
-    <div class="header-container">
-    <div id="data-type" class="button-container">
-    <button onclick="elms.dataListContainer.replaceChildren(elms.eventDatalist)">Événements</button>
-    <button onclick="elms.dataListContainer.replaceChildren(elms.staffDatalist)">Personnel</button>
-    <button onclick="elms.dataListContainer.replaceChildren(elms.venueDatalist)">Lieux</button>
-    </div>
-    </div>
-    <div id="data-list-container"></div>
-    `;
   let hContainer = document.createElement('div');
   hContainer.className = 'header-container';
   let bContainer = document.createElement('div');
@@ -214,7 +204,7 @@ window.elms = elms;
   let lContainer = document.createElement('div');
   lContainer.id = 'button-container';
 
-  hContainer.append(bContainer, lContainer);
+  hContainer.append(bContainer);
   elms.dataListContainer = lContainer;
 
   let b1 = document.createElement('button');
@@ -228,8 +218,32 @@ window.elms = elms;
   b3.textContent = 'Lieux';
   bContainer.append(b1, b2, b3);
 
-  elms.sideMenu.appendChild(elms.dataListContainer);
+  elms.sideMenu.replaceChildren(hContainer, elms.dataListContainer);
   elms.dataListContainer.appendChild(elms.eventDatalist);
+}
+
+// <div class="h-container align-items-center wide">
+//  <div class="disp-flex grow half-wide justify-content-center bottom-right-border">
+//    <div class="with-padding">de <button class="hover">5</button> à <button class="hover">6</button></div>
+//  </div>
+//  <div class="disp-flex grow half-wide bottom-border">
+//    <div class="with-padding"><button class="hover">1</button></div>
+//  </div>
+// </div>
+
+function makeStaffNumberMap(from, to, staff) {
+  let line = document.createElement('div');
+  line.className = 'h-container align-items-center wide';
+  line.innerHTML = `
+    <div class="disp-flex grow half-wide justify-content-center bottom-right-border">
+    <div class="with-padding"></div>
+    </div>
+    <div class="disp-flex grow half-wide bottom-border">
+    <div class="with-padding"></div>
+    </div>
+    `;
+    // de <button class="hover">5</button> à <button class="hover">6</button>
+    // <button class="hover">1</button>
 }
 
 {
@@ -237,58 +251,37 @@ window.elms = elms;
   elms.informationView.classList.add('view-content');
   elms.informationView.classList.add('v-container');
   elms.informationView.innerHTML = `
-    <div class="h-container h-grow justify-items-center wide">
-    <div class="disp-flex grow half-wide justify-content-center">
-    <table class="m-box">
-    <caption>
-    Nomber de
-    </caption>
-    <thead>
-    <tr>
-    <th>Stagier</th><th>Formateur</th>
-    </tr>
-    </thead>
+    <div class="h-container justify-items-center wide">
 
-    <tbody>
-    <tr><td>
-    de <button class="hover">5</button> à <button class="hover">6</button></td>
-    <td><button class="hover">1</button></td></tr>
-    <tr><td>
-    de <button class="hover">7</button> à <button class="hover">12</button></td>
-    <td><button class="hover">2</button></td></tr>
-    <tr><td>
-    de <button class="hover"> </button> à <button class="hover"> </button></td>
-    <td><button class="hover"> </button></td></tr>
-    </tbody>
-    </table>
+    <div class="v-container grow half-wide align-items-center">
+    <h3 class="txt-center">Nomber de</h3>
+
+    <div class="h-container align-items-center wide m-width">
+      <div class="disp-flex grow half-wide justify-content-center">
+      <h4 class="txt-center">Participants(es)</h4>
+      </div>
+      <div class="disp-flex grow half-wide justify-content-center">
+      <h4 class="txt-center">Personnel</h4>
+      </div>
     </div>
-
-    <div class="disp-flex grow half-wide justify-content-center">
-    <table class="m-box">
-    <caption>
-    Competences de
-    </caption>
-    <thead>
-    <tr>
-    <th>Stagier</th><th>Formateur</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    <tr><td>
-    de <button class="hover">5</button> à <button class="hover">6</button></td>
-    <td><button class="hover">1</button></td></tr>
-    <tr><td>
-    de <button class="hover">7</button> à <button class="hover">12</button></td>
-    <td><button class="hover">2</button></td></tr>
-    <tr><td>
-    de <button class="hover"> </button> à <button class="hover"> </button></td>
-    <td><button class="hover"> </button></td></tr>
-    </tbody>
-    </table>
-    </div>
+    <div id="event-staff-number-map" class="v-container scrollable-box scroll-smooth m-box two-column-glued">
 
     </div>
+    </div>
+
+    <div class="v-container grow half-wide">
+    <h3 class="txt-center">Competences de</h3>
+    <div class="h-container wide">
+      <div class="disp-flex grow half-wide">
+        lalal
+      </div>
+      <div class="disp-flex grow half-wide">
+        alala
+      </div>
+    </div>
+    </div>
+    </div>
+
     <div>
     Durée: <button class="hover">1</button>d
     </div>
@@ -330,9 +323,10 @@ let focus = {
 function setUiList(ui, list) {
   for (let i = 0; i < list.length; i++) {
     var button = document.createElement('button');
-    button.onclick = function() {
-      handle2StateButtonClick(this);
-    };
+    button.addEventListener('click', function() {
+      handle2StateButtonClick(button);
+    });
+
     button.className = 'hover';
     button.textContent = list[i];
     button.dataset.idx = i;
@@ -439,7 +433,7 @@ document.addEventListener('DOMContentLoaded', async (event) => {
         for (let i = 0; i < data.eventNames.length; i++) {
           const name = data.eventNames[i];
           let button = document.createElement('button');
-          button.classList.add('event-button');
+          button.className = 'event-button dynamic_bg';
           button.addEventListener('click', function (){
             handleClickOnButton(button, zonesId.EVENTLIST);
           });
@@ -568,7 +562,6 @@ document.addEventListener('click', (event) => {
   }
 });
 
-// @nocheckin: factor out
 document.addEventListener('contextmenu', function(e) {
   const menu = elms.rightClickMenu;
   let show = true;
@@ -607,9 +600,9 @@ function showInfo(element) {
   return function() {
     const rect = element.getBoundingClientRect();
     let menu = document.getElementById('create-option-menu');
-    menu.style.display = 'flex';
-    menu.style.left = rect.right + 'px';
-    menu.style.top = rect.top + 'px';
+    menu.classList.replace('disp-none', 'disp-flex'); // @nocheckin: we can factor out that snippet
+    menu.style.setProperty('--menu-left', rect.right + 'px');
+    menu.style.setProperty('--menu-top', rect.top + 'px');
   }
 }
 
@@ -671,9 +664,10 @@ function handleAddToList(target, placeholder, url, storage) {
       input.remove();
       button.textContent = value;
       storage.push(value);
-      button.onclick = function() {
+      button.addEventListener('click', function() {
         handle2StateButtonClick(this);
-      };
+      });
+
       button.className = 'hover';
       postString(url, value);
     } else if (e.key === 'Escape') {
