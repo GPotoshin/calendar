@@ -70,6 +70,10 @@ input[type="text"]:focus {
   outline: none;
 }
 
+h3 {
+  padding: 0px 4px 0px 4px;
+}
+
 button {
   border: none;
   cursor: pointer;
@@ -92,8 +96,15 @@ button {
 .scrollable-box {
   overflow-y: scroll;
   scroll-snap-type: y mandatory; 
-  scroll-behavior: smooth; 
   -webkit-overflow-scrolling: touch;
+}
+
+.scroll-smooth {
+  scroll-behavior: smooth; 
+}
+
+.scroll-auto {
+  scroll-behavior: auto; 
 }
 
 .s-box {
@@ -104,8 +115,6 @@ button {
 
 .m-box {
   width: 200px;
-  height: 400px;
-  padding: 4px;
 }
 
 .hover:hover {
@@ -114,4 +123,40 @@ button {
 
 .clicked {
   color: var(--rec-color);
+}
+
+.disp-none {
+  display: none;  
+}
+
+.disp-flex {
+  display: flex;
+}
+
+.disp-block {
+  display: block;
+}
+
+.h-grow {
+  flex-grow: 1 0 auto;
+}
+
+.justify-items-center {
+  justify-items: center;
+}
+
+.justify-content-center {
+  justify-content: center;
+}
+
+.wide {
+  width: 100%;
+}
+
+.half-wide {
+  width: 50%;
+}
+
+.grow {
+  flex-grow: 1;
 }

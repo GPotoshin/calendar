@@ -116,10 +116,6 @@
 
 #calendar-body {
   flex-grow: 1;
-  overflow-y: scroll;
-  scroll-snap-type: y mandatory; 
-  scroll-behavior: smooth; 
-  -webkit-overflow-scrolling: touch;
   height: 100%;
 
   /* for firefox */
@@ -242,6 +238,9 @@
   z-index: 3;
   justify-content: flex-start;
   width: fit-content;
+
+  left: var(--menu-left, 0); 
+    top: var(--menu-top, 0);
 }
 
 #right-click-menu button {

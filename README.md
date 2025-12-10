@@ -7,8 +7,8 @@ for some reason
 ## TODO
 + not yet planed events list
 + event placing
-+ correct month swapping
-+ correct scrolling
++ correct month swapping (almost, it can fail with fast month scrolling)
++ correct scrolling (it's laggy)
 
 Subject to change:
 + the main scroll bar should be dynamically changed via js, this should be fairly

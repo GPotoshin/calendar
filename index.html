@@ -9,7 +9,7 @@
     <script type="module" src="/main.js"></script>
   </head>
   <body>
-    <button id="side-menu-button" onclick="handleClickOnSideMenuButton(this)">
+    <button id="side-menu-button">
       <svg viewBox="0 0 34 26">
         <rect x="2" y="2" width="30" height="22" rx="2" ry="2" fill="none" stroke="#737373" stroke-width="2"/>
         <line x1="14" y1="2" x2="14" y2="24" stroke="#737373" stroke-width="2"/>
@@ -24,8 +24,6 @@
     <div id="body-container" class="v-container">
       <div class="header-container">
         <div id="view-type" class="button-container">
-          <button onclick="switchToCalendarView()">Calendrier</button>
-          <button onclick="switchToInformationView()">Information</button>
         </div>
       </div>
 
@@ -37,23 +35,23 @@
     <div id="right-click-menu">
       <button id="new-event-button" 
         onclick="handleCreateNewEvent()"
-        style="display: none;">
+        class="disp-none">
         Nouvel Événement
       </button>
       <button id="new-member-button"
         onclick="handleAddToList(elms.nameList, 'Nouveau Agent',
                                 '/store/agent', data.staffNames)"
-        style="display: none;">
+        clsss="disp-none">
         Nouvel Agent
       </button>
       <button id="new-venue-button"
         onclick="handleAddToList(elms.venueList, 'Nouveau Lieu',
                                 '/store/venue', data.venueNames)"
-        style="display: none;">
+        class="disp-none">
         Nouvel Lieu
       </button>
       <button id="info-event-button"
-        style="display: none;">
+        class="disp-none">
         Information
       </button>
     </div>
@@ -63,13 +61,13 @@
       <hr>
       <div class="h-container">
         <div class="v-container">
-          <h3 style="padding: 0px 4px 0px 4px">Personnel</h3>
-          <div id="name-list" class="v-container scrollable-box s-box">
+          <h3>Personnel</h3>
+          <div id="name-list" class="v-container scrollable-box scroll-smooth s-box">
           </div>
         </div>
         <div class="v-container">
           <h3>Lieux</h3>
-          <div id="venue-list" class="v-container scrollable-box s-box">
+          <div id="venue-list" class="v-container scrollable-box scroll-smooth s-box">
           </div>
         </div>
       </div>

@@ -17,11 +17,15 @@ let state = {
   eventsSelection: -1,
   staffSelection: -1,
   venueSelection: -1,
-  handleTyping: null,
   focusedElement: null,
   baseDayNumber: 0,
   isUpdating: false,
 };
+
+let callbacks = {
+  handleTyping: {func: null, obj: null},
+  showInfo: {func: null, obj: null},
+}
 
 function storeValue(array, freeList, value) {
   if (freeList.length > 0) {
@@ -182,7 +186,7 @@ let elms = {
   todayFrame: null,
   calendarView: null,
   informationView: null,
-  dataListContainer: document.createElement('div'),
+  dataListContainer: null,
   eventDatalist: document.createElement('div'),
   staffDatalist: document.createElement('div'),
   venueDatalist: document.createElement('div'),
@@ -195,13 +199,35 @@ window.elms = elms;
   elms.sideMenu.innerHTML = `
     <div class="header-container">
     <div id="data-type" class="button-container">
-    <button>Événements</button>
-    <button>Personnel</button>
-    <button>Lieux</button>
+    <button onclick="elms.dataListContainer.replaceChildren(elms.eventDatalist)">Événements</button>
+    <button onclick="elms.dataListContainer.replaceChildren(elms.staffDatalist)">Personnel</button>
+    <button onclick="elms.dataListContainer.replaceChildren(elms.venueDatalist)">Lieux</button>
     </div>
     </div>
     <div id="data-list-container"></div>
     `;
+  let hContainer = document.createElement('div');
+  hContainer.className = 'header-container';
+  let bContainer = document.createElement('div');
+  bContainer.className = 'button-container';
+  bContainer.id = 'data-type';
+  let lContainer = document.createElement('div');
+  lContainer.id = 'button-container';
+
+  hContainer.append(bContainer, lContainer);
+  elms.dataListContainer = lContainer;
+
+  let b1 = document.createElement('button');
+  b1.addEventListener('click', () => { elms.dataListContainer.replaceChildren(elms.eventDatalist); });
+  b1.textContent = 'Événements';
+  let b2 = document.createElement('button');
+  b2.addEventListener('click', () => { elms.dataListContainer.replaceChildren(elms.staffDatalist); });
+  b2.textContent = 'Personnel';
+  let b3 = document.createElement('button');
+  b3.addEventListener('click', () => { elms.dataListContainer.replaceChildren(elms.venueDatalist); });
+  b3.textContent = 'Lieux';
+  bContainer.append(b1, b2, b3);
+
   elms.sideMenu.appendChild(elms.dataListContainer);
   elms.dataListContainer.appendChild(elms.eventDatalist);
 }
@@ -211,9 +237,9 @@ window.elms = elms;
   elms.informationView.classList.add('view-content');
   elms.informationView.classList.add('v-container');
   elms.informationView.innerHTML = `
-    <div class="h-container" style="flex-grow: 1 0 auto; width: 100%; justify-items: center;">
-    <div style="display: flex; flex-grow: 1; width: 50%; justify-content: center;">
-    <table style="width: 200px;">
+    <div class="h-container h-grow justify-items-center wide">
+    <div class="disp-flex grow half-wide justify-content-center">
+    <table class="m-box">
     <caption>
     Nomber de
     </caption>
@@ -237,8 +263,8 @@ window.elms = elms;
     </table>
     </div>
 
-    <div style="display: flex; flex-grow: 1; width: 50%; justify-content: center;">
-    <table style="width: 200px;">
+    <div class="disp-flex grow half-wide justify-content-center">
+    <table class="m-box">
     <caption>
     Competences de
     </caption>
@@ -285,7 +311,10 @@ const months = [
 ];
 
 function setMonthDisplay(date) {
-  elms.monthDisplay.innerHTML = '<strong>'+months[date.getMonth()]+'</strong> '+date.getFullYear();
+  let monthHolder = document.createElement('strong');
+  monthHolder.textContent = months[date.getMonth()];
+  let year = document.createTextNode(" " + date.getFullYear());
+  elms.monthDisplay.replaceChildren(monthHolder, year);
 }
 
 let observers = {
@@ -422,6 +451,17 @@ document.addEventListener('DOMContentLoaded', async (event) => {
     console.error('Could not fetch data:', e);
   });
 
+  {
+    let viewType = document.getElementById('view-type');
+    let b1 = document.createElement('button');
+    b1.textContent = 'Calendrier';
+    b1.addEventListener('click' ,()=>{ elms.bodyContainer.replaceChild(elms.calendarView, elms.bodyContainer.children[1]); });
+    let b2 = document.createElement('button');
+    b2.textContent = 'Information';
+    b2.addEventListener('click' ,()=>{ elms.bodyContainer.replaceChild(elms.informationView, elms.bodyContainer.children[1]); });
+    viewType.append(b1,b2);
+  }
+
   observers.topWeek = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
@@ -461,10 +501,9 @@ document.addEventListener('DOMContentLoaded', async (event) => {
         }
         console.log('we are hitting');
         const week = elms.calendarContent.querySelectorAll('.week-row')[0];
-        const originalScrollBehavior = elms.calendarBody.style.scrollBehavior;
-        elms.calendarBody.style.scrollBehavior = 'auto';
+        elms.calendarBody.classList.replace('scroll-smooth', 'scroll-auto');
         elms.calendarBody.scrollTop -= shiftingBy*week.offsetHeight;
-        elms.calendarBody.style.scrollBehavior = originalScrollBehavior;
+        elms.calendarBody.classList.replace('scroll-auto', 'scroll-smooth');
         requestAnimationFrame(() => {
           state.baseDayNumber += shiftingBy*7;
           let date = new Date();
@@ -530,40 +569,30 @@ document.addEventListener('click', (event) => {
 // @nocheckin: factor out
 document.addEventListener('contextmenu', function(e) {
   const menu = elms.rightClickMenu;
+  let show = true;
   if (elms.sideMenu.contains(e.target)) {
-      e.preventDefault();
-      menu.style.display = 'flex';
-      menu.style.left = e.clientX + 'px';
-      menu.style.top = e.clientY + 'px';
-      document.getElementById('new-event-button').style.display = 'block';
-      document.addEventListener('click', handleClickForContextMenu);
+      document.getElementById('new-event-button').classList.replace('disp-none', 'disp-block');
   } else if (elms.nameList.contains(e.target)) {
-      e.preventDefault();
-      menu.style.display = 'flex';
-      menu.style.left = e.clientX + 'px';
-      menu.style.top = e.clientY + 'px';
-      document.getElementById('new-member-button').style.display = 'block';
-      document.addEventListener('click', handleClickForContextMenu);
+      document.getElementById('new-member-button').classList.replace('disp-none', 'disp-block');
   } else if (elms.venueList.contains(e.target)) {
-      e.preventDefault();
-      menu.style.display = 'flex';
-      menu.style.left = e.clientX + 'px';
-      menu.style.top = e.clientY + 'px';
-      document.getElementById('new-venue-button').style.display = 'block';
-      document.addEventListener('click', handleClickForContextMenu);
-  } 
-
+      document.getElementById('new-venue-button').classList.replace('disp-none', 'disp-block');
+  } else {
+    show = false;
+  }
   for (const button of elms.sideMenu.children) {
     if (button.contains(e.target)) {
-      menu.style.display = 'flex';
-      menu.style.left = e.clientX + 'px';
-      menu.style.top = e.clientY + 'px';
+      show = true;
       let infoButton = document.getElementById('info-event-button');
-      infoButton.style.display = 'block';
-      document.addEventListener('click', handleClickForContextMenu);
-      infoButton.onclick = showInfo(button);
+      infoButton.classList.replace('disp-none', 'disp-block');
+      callbacks.showInfo = { func: showInfo(button), obj: infoButton };
+      infoButton.addEventListener('click', callbacks.showInfo.func);
     }
   }
+  e.preventDefault();
+  menu.classList.replace('disp-none', 'disp-flex');
+  menu.style.setProperty('--menu-left', e.clientX + 'px');
+  menu.style.setProperty('--menu-top', e.clientY + 'px');
+  document.addEventListener('click', handleClickForContextMenu);
 });
 
 function showInfo(element) {
@@ -587,16 +616,17 @@ function switchToInformationView() {
 }
 window.switchToInformationView = switchToInformationView;
 
-function handleClickOnSideMenuButton(button) {
-  let sideMenuContainer = elms.sideMenuContainer;
-  if (state.sideMenuIsOpen) {
-    sideMenuContainer.removeChild(elms.sideMenu);
-  } else {
-    sideMenuContainer.appendChild(elms.sideMenu);
+document.getElementById('side-menu-button').addEventListener('click', 
+  function(button) {
+    let sideMenuContainer = elms.sideMenuContainer;
+    if (state.sideMenuIsOpen) {
+      sideMenuContainer.removeChild(elms.sideMenu);
+    } else {
+      sideMenuContainer.appendChild(elms.sideMenu);
+    }
+    state.sideMenuIsOpen ^= true;
   }
-  state.sideMenuIsOpen ^= true;
-}
-window.handleClickOnSideMenuButton = handleClickOnSideMenuButton;
+);
 
 function postString(url, str) {
   let writer = new BufferWriter();
@@ -651,7 +681,8 @@ function handleClickForOptionMenu(event) {
     menu.style.display = 'none';
     document.removeEventListener('click', handleClickForOptionMenu);
     let input = menu.querySelectorAll('input')[0];
-    input.removeEventListener('input', state.handleTyping);
+    callbacks.handleTyping.obj.removeEventListener('input', callbacks.handleTyping.func);
+    callbacks.handleTyping = { func: null, obj: null };
     let value = input.value;
 
     if (value !== "") {
@@ -708,8 +739,10 @@ function handleClickForContextMenu() {
   let menu = elms.rightClickMenu;
   menu.style.display = 'none';
   document.removeEventListener('click', handleClickForContextMenu);
+  callbacks.showInfo.obj.removeEventListener('click', callbacks.showInfo.func);
+  callbacks.showInfo = { func: null, obj: null };
   for (const child of menu.children) {
-    child.style.display = 'none';
+    child.classList.replace('disp-block', 'disp-none');
   }
 }
 
@@ -778,7 +811,7 @@ function handleCreateNewEvent() {
   input.focus();
   
   state.focusedElement = new_button;
-  state.handleTyping = function(event) {
+  callbacks.handleTyping.func = function(event) {
     if (event.target.value === "") {
       new_button.textContent = "Nouvel Événement";
     } else {
@@ -786,7 +819,8 @@ function handleCreateNewEvent() {
     }
   };
 
-  input.addEventListener('input', state.handleTyping);
+  input.addEventListener('input', callbacks.handleTyping.func);
+  callbacks.handleTyping.obj = input;
 }
 window.handleCreateNewEvent = handleCreateNewEvent;
 

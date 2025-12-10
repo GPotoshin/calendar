@@ -12,12 +12,41 @@ import (
   "syscall"
   "io"
   "bufio"
+  "strings"
   // "encoding/gob"
 )
 
-func logRequest(handler http.Handler) http.Handler {
+func middleware(handler http.Handler) http.Handler {
   return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
     log.Printf("%s %s %s\n", r.RemoteAddr, r.Method, r.URL)
+    
+    csp := []string{
+			"default-src 'self'",           // Everything from my domain only
+			"script-src 'self'",            // JS files from mY domain only
+			"connect-src 'self'",           // fetch/XHR to my domain only
+			"style-src 'self'",             // CSS from my domain only
+      "img-src 'self' data:",         // Images from my domain + data URIs
+			"font-src 'self'",              // Fonts from my domain only
+			"object-src 'none'",            // No plugins (Flash, Java, etc.)
+			"base-uri 'self'",              // Prevent <base> tag injection
+			"form-action 'self'",           // Forms only submit to my domain
+			"frame-ancestors 'none'",       // Prevent clickjacking (can't be framed)
+			// "upgrade-insecure-requests",    // Auto-upgrade HTTP to HTTPS
+		}
+		w.Header().Set("Content-Security-Policy", strings.Join(csp, "; "))
+
+    w.Header().Set("X-Content-Type-Options", "nosniff")
+    w.Header().Set("X-Frame-Options", "DENY")
+    w.Header().Set("X-XSS-Protection", "1; mode=block")
+    w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+    w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+
+    // HSTS (only if using HTTPS)
+		// Uncomment when you enable HTTPS:
+		// if r.TLS != nil {
+		// 	w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
+		// }
+
     handler.ServeHTTP(w, r)
   })
 }
@@ -353,13 +382,13 @@ func main() {
 
   srv := &http.Server{
     Addr:    ":8080",
-    Handler: logRequest(http.DefaultServeMux),
+    Handler: middleware(http.DefaultServeMux),
   }
 
   go func() {
     fmt.Println("Server starting on :8080")
     if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-      log.Fatal(http.ListenAndServe(":8080", logRequest(http.DefaultServeMux)))
+      log.Fatal(http.ListenAndServe(":8080", middleware(http.DefaultServeMux)))
     }
   }()
 
