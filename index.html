@@ -32,21 +32,16 @@
       </div>
     </div>
 
-    <div id="right-click-menu">
+    <div id="right-click-menu" class="disp-none">
       <button id="new-event-button" 
-        onclick="handleCreateNewEvent()"
         class="disp-none">
         Nouvel Événement
       </button>
       <button id="new-member-button"
-        onclick="handleAddToList(elms.nameList, 'Nouveau Agent',
-                                '/store/agent', data.staffNames)"
         clsss="disp-none">
         Nouvel Agent
       </button>
       <button id="new-venue-button"
-        onclick="handleAddToList(elms.venueList, 'Nouveau Lieu',
-                                '/store/venue', data.venueNames)"
         class="disp-none">
         Nouvel Lieu
       </button>
@@ -56,7 +51,7 @@
       </button>
     </div>
 
-    <div id="create-option-menu">
+    <div id="create-option-menu" class="disp-none">
       <input class="l-input" type="text" id="eventname" name="eventname" placeholder="Nouvel Événement">
       <hr>
       <div class="h-container">

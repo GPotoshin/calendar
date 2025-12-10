@@ -440,7 +440,9 @@ document.addEventListener('DOMContentLoaded', async (event) => {
           const name = data.eventNames[i];
           let button = document.createElement('button');
           button.classList.add('event-button');
-          button.setAttribute('onclick', 'handleClickOnButton(this, zonesId.EVENTLIST)');
+          button.addEventListener('click', function (){
+            handleClickOnButton(button, zonesId.EVENTLIST);
+          });
           elms.eventDatalist.appendChild(button);
           button.textContent = name;
           button.dataset.bIdx = i;
@@ -579,6 +581,7 @@ document.addEventListener('contextmenu', function(e) {
   } else {
     show = false;
   }
+
   for (const button of elms.sideMenu.children) {
     if (button.contains(e.target)) {
       show = true;
@@ -586,13 +589,18 @@ document.addEventListener('contextmenu', function(e) {
       infoButton.classList.replace('disp-none', 'disp-block');
       callbacks.showInfo = { func: showInfo(button), obj: infoButton };
       infoButton.addEventListener('click', callbacks.showInfo.func);
+      break;
     }
   }
-  e.preventDefault();
-  menu.classList.replace('disp-none', 'disp-flex');
-  menu.style.setProperty('--menu-left', e.clientX + 'px');
-  menu.style.setProperty('--menu-top', e.clientY + 'px');
-  document.addEventListener('click', handleClickForContextMenu);
+
+  if (show) {
+    e.preventDefault();
+    console.log('cowabanga');
+    menu.classList.replace('disp-none', 'disp-flex');
+    menu.style.setProperty('--menu-left', e.clientX + 'px');
+    menu.style.setProperty('--menu-top', e.clientY + 'px');
+    document.addEventListener('click', handleClickForContextMenu);
+  }
 });
 
 function showInfo(element) {
@@ -673,12 +681,20 @@ function handleAddToList(target, placeholder, url, storage) {
     }
   });
 }
-window.handleAddToList = handleAddToList;
+
+document.getElementById('new-member-button').addEventListener('click', function() {
+  handleAddToList(elms.nameList, 'Nouveau Agent', '/store/agent', data.staffNames);
+});
+document.getElementById('new-venue-button').addEventListener('click', function() {
+  handleAddToList(elms.venueList, 'Nouveau Lieu', '/store/venue', data.venueNames);
+});
+
 
 function handleClickForOptionMenu(event) {
   let menu = elms.createOptionMenu;
   if (!menu.contains(event.target) && !elms.rightClickMenu.contains(event.target)) {
-    menu.style.display = 'none';
+    menu.classList.replace('disp-flex', 'disp-none');
+
     document.removeEventListener('click', handleClickForOptionMenu);
     let input = menu.querySelectorAll('input')[0];
     callbacks.handleTyping.obj.removeEventListener('input', callbacks.handleTyping.func);
@@ -737,9 +753,11 @@ function handleClickForOptionMenu(event) {
 
 function handleClickForContextMenu() {
   let menu = elms.rightClickMenu;
-  menu.style.display = 'none';
+  menu.classList.replace('disp-flex', 'disp-none');
   document.removeEventListener('click', handleClickForContextMenu);
-  callbacks.showInfo.obj.removeEventListener('click', callbacks.showInfo.func);
+  if (callbacks.showInfo.obj && callbacks.showInfo.func) {
+    callbacks.showInfo.obj.removeEventListener('click', callbacks.showInfo.func);
+  }
   callbacks.showInfo = { func: null, obj: null };
   for (const child of menu.children) {
     child.classList.replace('disp-block', 'disp-none');
@@ -781,48 +799,46 @@ let zones = [
 function handleClickOnButton(b, zn) {
   const z = zones[zn];
   if (z.selection == b.dataset.bIdx) {
-    b.style.backgroundColor = 'transparent';
+    b.style.setProperty('--bg-color', 'transparent');
     z.selection = -1;
     return;
   }
-  b.style.backgroundColor = palette.blue;
+  b.style.setProperty('--bg-color', palette.blue);
   if (z.selection >= 0) {
-    z.eList[z.selection].style.backgroundColor = 'transparent';
+    z.eList[z.selection].style.setProperty('--bg-color', 'transparent');
   }
   z.selection = b.dataset.bIdx;
 }
-window.handleClickOnButton = handleClickOnButton;
 
-function handleCreateNewEvent() {
-  let menu = elms.sideMenu;
-  let new_button = document.createElement('button');
-  new_button.classList.add('event-button');
-  new_button.textContent = "Nouvel Événement";
-  new_button.setAttribute('onclick', 'handleClickOnEventButton(this)');
-  menu.appendChild(new_button);
-  
-  const rect = new_button.getBoundingClientRect();
-  menu = document.getElementById('create-option-menu');
-  menu.style.display = 'flex';
-  menu.style.left = rect.right + 'px';
-  menu.style.top = rect.top + 'px';
+document.getElementById('new-event-button').addEventListener('click', 
+  function() {
+    let menu = elms.sideMenu;
+    let new_button = document.createElement('button');
+    new_button.classList.add('event-button');
+    new_button.textContent = "Nouvel Événement";
+    menu.appendChild(new_button);
 
-  let input = menu.querySelectorAll('input')[0];
-  input.focus();
-  
-  state.focusedElement = new_button;
-  callbacks.handleTyping.func = function(event) {
-    if (event.target.value === "") {
-      new_button.textContent = "Nouvel Événement";
-    } else {
-      new_button.textContent = event.target.value;
-    }
-  };
+    const rect = new_button.getBoundingClientRect();
+    menu = document.getElementById('create-option-menu');
+    menu.classList.replace('disp-none', 'disp-flex');
+    menu.style.setProperty('--menu-left', rect.right + 'px');
+    menu.style.setProperty('--menu-top', rect.top + 'px');
 
-  input.addEventListener('input', callbacks.handleTyping.func);
-  callbacks.handleTyping.obj = input;
-}
-window.handleCreateNewEvent = handleCreateNewEvent;
+    let input = menu.querySelectorAll('input')[0];
+    input.focus();
+
+    state.focusedElement = new_button;
+    callbacks.handleTyping.func = function(event) {
+      if (event.target.value === "") {
+        new_button.textContent = "Nouvel Événement";
+      } else {
+        new_button.textContent = event.target.value;
+      }
+    };
+
+    input.addEventListener('input', callbacks.handleTyping.func);
+    callbacks.handleTyping.obj = input;
+  });
 
 function handle2StateButtonClick(b) {
   b.classList.toggle('clicked');
