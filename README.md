@@ -1,5 +1,9 @@
 run `go build && ./calendar` and open `http://localhost:8080`
 
+![Main application screenshot](assets/calendar.png)
+
+![Settings screenshot](assets/settings.png)
+
 ## Bugs
 + when we switch views we lose scrolling position
 
@@ -14,6 +18,7 @@ run `go build && ./calendar` and open `http://localhost:8080`
 + correct scrolling (it's laggy): Optimise DOM manipulation (no trashing)
 + Think about gc and memory managemenet 
 + Minimise object creation and try to reuse them
++ We have slope in DataManager, clean it up
 
 ## Browsers quirks
 + if you have >20 weeks, than calendar body stops getting the correct scaling
