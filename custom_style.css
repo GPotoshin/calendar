@@ -276,7 +276,21 @@
   top: var(--menu-top, 0);
 }
 
-.two-column-glued {
+.bordered {
   border: 1px solid #ccc;
   border-radius: 6px;
+}
+
+.row-selection {
+  padding: 0 25px;
+}
+
+.tiny-input {
+  border-radius: 5px;
+  background-color: var(--hover-color);
+  padding: 0px;
+}
+
+.tiny-button {
+  padding: 1px;
 }

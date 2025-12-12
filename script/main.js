@@ -5,6 +5,10 @@ import {
   handleMouseUp,
 } from './scrollable_calendar.js';
 
+import {
+  measureText,
+} from './utils.js';
+
 import { palette } from './color.js';
 import { BufferReader, BufferWriter } from './Io.js';
 
@@ -26,6 +30,124 @@ let callbacks = {
   handleTyping: {func: null, obj: null},
   showInfo: {func: null, obj: null},
 }
+
+let elms = {
+  calendarBody: null,
+  calendarContent: null,
+  createOptionMenu: null,
+  markerBlocks: null,
+  monthDisplay: null,
+  nameList: null,
+  rightClickMenu: null,
+  sideMenu: document.createElement('div'),
+  bodyContainer: null,
+  sideMenuContainer: null,
+  venueList: null,
+  todayFrame: null,
+  calendarView: null,
+  informationView: null,
+  dataListContainer: null,
+  eventDatalist: document.createElement('div'),
+  staffDatalist: document.createElement('div'),
+  venueDatalist: document.createElement('div'),
+}
+window.elms = elms;
+
+let tmpls = {
+  eventInformation: document.createElement('div'),
+};
+
+{
+  tmpls.eventInformation.innerHTML = `
+    <div class="l-box">
+    <div class="h-container justify-items-center wide">
+
+    <div class="v-container grow half-wide align-items-center">
+    <h3 class="txt-center">Nomber de</h3>
+
+    <div class="h-container align-items-center wide m-width">
+      <div class="disp-flex grow half-wide justify-content-center">
+      <h4 class="txt-center">Participants(es)</h4>
+      </div>
+      <div class="disp-flex grow half-wide justify-content-center">
+      <h4 class="txt-center">Personnel</h4>
+      </div>
+    </div>
+
+    <div id="event-staff-number-map" class="v-container scrollable-box scroll-smooth m-box bordered">
+
+    </div>
+    </div>
+
+    <div class="v-container grow half-wide align-items-center">
+    <h3 class="txt-center">Competences de</h3>
+
+    <div class="h-container align-items-center wide m-width">
+      <div class="disp-flex grow half-wide justify-content-center">
+      <h4 class="txt-center">Participants(es)</h4>
+      </div>
+      <div class="disp-flex grow half-wide justify-content-center">
+      <h4 class="txt-center">Personnel</h4>
+      </div>
+    </div>
+
+    <div class="h-container m-box bordered">
+
+    <div id="event-attendee-diplomes" class="v-container grow half-wide scrollable-box scroll right-border">
+    </div>
+    <div id="event-staff-diplomes" class="v-container grow half-wide scrollable-box scroll right-border">
+    </div>
+
+    </div>
+
+    </div>
+    </div>
+
+    <div class="h-container">
+    <div class="row-selection">
+    Durée: <button id="event-duration" class="hover">\u00A0</button>d
+    </div>
+    </div>
+    </div>
+  `
+}
+
+const zonesId = {
+  DATATYPE: 0,
+  VIEWTYPE: 1,
+  EVENTLIST: 2,
+  STAFFLIST: 3,
+  VENUELIST: 4,
+};
+
+const datatypeId = {
+  EVENT: 0,
+  STAFF: 1,
+  VENUE: 2,
+};
+
+let zones = [
+  {
+    selection: 0,
+    eList: null,
+  },
+  {
+    selection: 0,
+    eList: null,
+  },
+  {
+    selection: -1,
+    eList: elms.eventDatalist.children,
+  },
+  {
+    selection: -1,
+    eList: elms.staffDatalist.children,
+  },
+  {
+    selection: -1,
+    eList: elms.venueDatalist.children,
+  },
+];
 
 function storeValue(array, freeList, value) {
   if (freeList.length > 0) {
@@ -69,6 +191,7 @@ class DataManager {
       this.eventNames = [];
       this.eventStaff = [];
       this.eventVenues = [];
+      this.eventPersonalNumMap = [];
       this.eventStaffDiplReq = [];
       this.eventAttendeeDiplReq = [];
       this.eventDuration = [];
@@ -148,7 +271,7 @@ class DataManager {
   }
 
   read(reader) {
-    const version = "bin_state.v0.0.1"; 
+    const version = "bin_state.v0.0.2"; 
     const format = reader.readString();
     
     if (version != format) {
@@ -158,6 +281,7 @@ class DataManager {
     this.eventNames = reader.readStringArray();
     this.eventStaff = reader.readArrayOfInt32Arrays();
     this.eventVenues = reader.readArrayOfInt32Arrays();
+    this.eventPersonalNumMap = reader.readInt32Array(); // its length should be a mutliple of 3. The question is when do we sanitize it?
     this.eventStaffDiplReq = reader.readInt32Array();
     this.eventAttendeeDiplReq = reader.readInt32Array();
     this.eventDuration = reader.readInt32Array();
@@ -171,27 +295,6 @@ class DataManager {
 const data = new DataManager();
 window.data = data;
 
-let elms = {
-  calendarBody: null,
-  calendarContent: null,
-  createOptionMenu: null,
-  markerBlocks: null,
-  monthDisplay: null,
-  nameList: null,
-  rightClickMenu: null,
-  sideMenu: document.createElement('div'),
-  bodyContainer: null,
-  sideMenuContainer: null,
-  venueList: null,
-  todayFrame: null,
-  calendarView: null,
-  informationView: null,
-  dataListContainer: null,
-  eventDatalist: document.createElement('div'),
-  staffDatalist: document.createElement('div'),
-  venueDatalist: document.createElement('div'),
-}
-window.elms = elms;
 
 {
   elms.sideMenu.classList.add('v-container');
@@ -202,90 +305,84 @@ window.elms = elms;
   bContainer.className = 'button-container';
   bContainer.id = 'data-type';
   let lContainer = document.createElement('div');
+  zones[0].eList = bContainer.children;
   lContainer.id = 'button-container';
 
   hContainer.append(bContainer);
   elms.dataListContainer = lContainer;
 
   let b1 = document.createElement('button');
-  b1.addEventListener('click', () => { elms.dataListContainer.replaceChildren(elms.eventDatalist); });
+  b1.addEventListener('click', () => {
+    elms.dataListContainer.replaceChildren(elms.eventDatalist); 
+    handleClickOnViewButton(b1, zonesId.DATATYPE);
+  });
   b1.textContent = 'Événements';
+  b1._bIdx = 0;
   let b2 = document.createElement('button');
-  b2.addEventListener('click', () => { elms.dataListContainer.replaceChildren(elms.staffDatalist); });
+  b2.addEventListener('click', () => {
+    elms.dataListContainer.replaceChildren(elms.staffDatalist);
+    handleClickOnViewButton(b2, zonesId.DATATYPE);
+  });
   b2.textContent = 'Personnel';
+  b2._bIdx = 1;
   let b3 = document.createElement('button');
-  b3.addEventListener('click', () => { elms.dataListContainer.replaceChildren(elms.venueDatalist); });
+  b3.addEventListener('click', () => {
+    elms.dataListContainer.replaceChildren(elms.venueDatalist);
+    handleClickOnViewButton(b3, zonesId.DATATYPE);
+  });
   b3.textContent = 'Lieux';
+  b3._bIdx = 2;
   bContainer.append(b1, b2, b3);
 
   elms.sideMenu.replaceChildren(hContainer, elms.dataListContainer);
   elms.dataListContainer.appendChild(elms.eventDatalist);
 }
 
-// <div class="h-container align-items-center wide">
-//  <div class="disp-flex grow half-wide justify-content-center bottom-right-border">
-//    <div class="with-padding">de <button class="hover">5</button> à <button class="hover">6</button></div>
-//  </div>
-//  <div class="disp-flex grow half-wide bottom-border">
-//    <div class="with-padding"><button class="hover">1</button></div>
-//  </div>
-// </div>
-
-function makeStaffNumberMap(from, to, staff) {
-  let line = document.createElement('div');
-  line.className = 'h-container align-items-center wide';
-  line.innerHTML = `
-    <div class="disp-flex grow half-wide justify-content-center bottom-right-border">
-    <div class="with-padding"></div>
-    </div>
-    <div class="disp-flex grow half-wide bottom-border">
-    <div class="with-padding"></div>
-    </div>
-    `;
-    // de <button class="hover">5</button> à <button class="hover">6</button>
-    // <button class="hover">1</button>
-}
-
 {
   elms.informationView = document.createElement('div');
   elms.informationView.classList.add('view-content');
   elms.informationView.classList.add('v-container');
-  elms.informationView.innerHTML = `
-    <div class="h-container justify-items-center wide">
-
-    <div class="v-container grow half-wide align-items-center">
-    <h3 class="txt-center">Nomber de</h3>
-
-    <div class="h-container align-items-center wide m-width">
-      <div class="disp-flex grow half-wide justify-content-center">
-      <h4 class="txt-center">Participants(es)</h4>
-      </div>
-      <div class="disp-flex grow half-wide justify-content-center">
-      <h4 class="txt-center">Personnel</h4>
-      </div>
-    </div>
-    <div id="event-staff-number-map" class="v-container scrollable-box scroll-smooth m-box two-column-glued">
-
-    </div>
-    </div>
-
-    <div class="v-container grow half-wide">
-    <h3 class="txt-center">Competences de</h3>
-    <div class="h-container wide">
-      <div class="disp-flex grow half-wide">
-        lalal
-      </div>
-      <div class="disp-flex grow half-wide">
-        alala
-      </div>
-    </div>
-    </div>
-    </div>
-
-    <div>
-    Durée: <button class="hover">1</button>d
-    </div>
-  `
+  elms.informationView.classList.add('align-items-center');
+  //   <div class="v-container grow half-wide align-items-center">
+  //   <h3 class="txt-center">Competences de</h3>
+  //
+  //   <div class="h-container align-items-center wide m-width">
+  //     <div class="disp-flex grow half-wide justify-content-center">
+  //     <h4 class="txt-center">Participants(es)</h4>
+  //     </div>
+  //     <div class="disp-flex grow half-wide justify-content-center">
+  //     <h4 class="txt-center">Personnel</h4>
+  //     </div>
+  //   </div>
+  //
+  //   <div class="h-container m-box bordered">
+  //
+  //   <div class="v-container grow half-wide scrollable-box scroll right-border">
+  //   <button class="hover snap-start">Diplome #1</button>
+  //   <button class="hover snap-start">Diplome #2</button>
+  //   <button class="hover snap-start">Diplome #3</button>
+  //   </div>
+  //   <div class="v-container grow half-wide scrollable-box scroll right-border">
+  //   <button class="hover snap-start">Diplome #1</button>
+  //   <button class="hover snap-start">Diplome #2</button>
+  //   <button class="hover snap-start">Diplome #3</button>
+  //   <button class="hover snap-start">Diplome #4</button>
+  //   <button class="hover snap-start">Diplome #5</button>
+  //   </div>
+  //
+  //   </div>
+  //
+  //   </div>
+  //   </div>
+  //
+  //   <div class="h-container">
+  //   <div class="row-selection">
+  //   Durée: <button class="hover">1</button>d
+  //   </div>
+  //   </div>
+  //   </div>
+  //   </div>
+  // `
 }
 
 const months = [
@@ -329,7 +426,7 @@ function setUiList(ui, list) {
 
     button.className = 'hover';
     button.textContent = list[i];
-    button.dataset.idx = i;
+    button._idx = i;
     ui.appendChild(button);
   }
 }
@@ -350,7 +447,7 @@ function iterateOverDays(dayCallback) {
 function refocusMonth() {
   setMonthDisplay(focus.date);
   let date = new Date();
-  date.setTime(Number(elms.calendarContent.children[0].children[0].dataset.dayNum)*MS_IN_DAY)
+  date.setTime(Number(elms.calendarContent.children[0].children[0]._dayNum)*MS_IN_DAY)
   const focusMonth = focus.date.getMonth();
   iterateOverDays((day) => {
     if (date.getMonth() == focusMonth) {
@@ -380,7 +477,7 @@ function setMonthObserver() {
       continue;
     }
     const day = el.children[6];
-    testDate.setTime(Number(day.dataset.dayNum)*MS_IN_DAY);
+    testDate.setTime(Number(day._dayNum)*MS_IN_DAY);
     if (testDate.getMonth() == month) {
       observers.topWeek.observe(el);
       break;
@@ -392,7 +489,7 @@ function setMonthObserver() {
       continue;
     }
     const day = el.children[0];
-    testDate.setTime(Number(day.dataset.dayNum)*MS_IN_DAY);
+    testDate.setTime(Number(day._dayNum)*MS_IN_DAY);
     if (testDate.getMonth() == month) {
       observers.bottomWeek.observe(el);
       break;
@@ -413,6 +510,8 @@ document.addEventListener('DOMContentLoaded', async (event) => {
   elms.venueList = document.getElementById('venue-list');
   elms.calendarView = document.getElementsByClassName('view-content')[0];
 
+  zones[1].eList = document.getElementById("view-type").children;
+
   setMonthScrollPosition();
   const calendarBody = document.getElementById('calendar-body');
   calendarBody.addEventListener('mousedown', handleMouseDown);
@@ -430,16 +529,41 @@ document.addEventListener('DOMContentLoaded', async (event) => {
         data.read(r)
         setUiList(elms.nameList, data.staffNames);
         setUiList(elms.venueList, data.venueNames);
-        for (let i = 0; i < data.eventNames.length; i++) {
+        for (let i = 0; i < data.eventNames.length; i++) { // @nocheckin: factor out
           const name = data.eventNames[i];
           let button = document.createElement('button');
           button.className = 'event-button dynamic_bg';
           button.addEventListener('click', function (){
-            handleClickOnButton(button, zonesId.EVENTLIST);
+            handleClickOnListButton(button, zonesId.EVENTLIST);
           });
           elms.eventDatalist.appendChild(button);
           button.textContent = name;
-          button.dataset.bIdx = i;
+          button._bIdx = i;
+          button._dIdx = i;
+        }
+        for (let i = 0; i < data.staffNames.length; i++) {
+          const name = data.staffNames[i];
+          let button = document.createElement('button');
+          button.className = 'event-button dynamic_bg';
+          button.addEventListener('click', function (){
+            handleClickOnListButton(button, zonesId.STAFFLIST);
+          });
+          elms.staffDatalist.appendChild(button);
+          button.textContent = name;
+          button._bIdx = i;
+          button._dIdx = i;
+        }
+        for (let i = 0; i < data.venueNames.length; i++) {
+          const name = data.venueNames[i];
+          let button = document.createElement('button');
+          button.className = 'event-button dynamic_bg';
+          button.addEventListener('click', function (){
+
+          });
+          elms.venueDatalist.appendChild(button);
+          button.textContent = name;
+          button._bIdx = i;
+          button._dIdx = i;
         }
       });
   })
@@ -454,7 +578,102 @@ document.addEventListener('DOMContentLoaded', async (event) => {
     b1.addEventListener('click' ,()=>{ elms.bodyContainer.replaceChild(elms.calendarView, elms.bodyContainer.children[1]); });
     let b2 = document.createElement('button');
     b2.textContent = 'Information';
-    b2.addEventListener('click' ,()=>{ elms.bodyContainer.replaceChild(elms.informationView, elms.bodyContainer.children[1]); });
+
+    const tmplHTML = `
+      <div class="disp-flex grow half-wide justify-content-center bottom-right-border">
+      <div class="with-padding">de <button class="hover"> </button> à <button class="hover"> </button></div>
+      </div>
+      <div class="disp-flex grow half-wide bottom-border">
+      <div class="with-padding"><button class="hover"> </button></div>
+      </div>
+      `;
+    function createTemplateLine() {
+      let line = document.createElement('div');
+      line.className = 'h-container align-items-center wide';
+      line.innerHTML = tmplHTML
+      return line;
+    }
+    function addEmptyLine(parent) {
+      let line = createTemplateLine();
+      const btns = line.querySelectorAll('button');
+      const btnsCallbacks = [];
+      btns.forEach(b => {
+        b.textContent = '\u00A0'; // '\u00A0' is an empty space with non zero size
+        b.className = 'std-min hover no-padding txt-center tiny-button';
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'with-width std-min txt-center tiny-input';
+        input.style.setProperty('--width', 0+'px');
+
+        input.addEventListener('input', () => {
+          input.value = input.value.replace(/\D/g, '');
+          input.style.setProperty('--width', (measureText(window.getComputedStyle(input), input.value)+2)+'px');
+        });
+        function localCallback() {
+          b.replaceWith(input);
+          input.focus();
+        }
+        btnsCallbacks.push(localCallback);
+        function endOfWriting() {
+          b.textContent = input.value || '\u00A0';
+          input.replaceWith(b);
+
+          let dataIsSet = true;
+          for (let _b of btns) {
+            if (_b.textContent == '\u00A0') {
+              dataIsSet = false;
+              break;
+            }
+          };
+          if (dataIsSet) {
+            for (let j = 0; j < btns.length; j++) {
+              btns[j].removeEventListener('click', btnsCallbacks[j]);
+            }
+            addEmptyLine(parent);
+          }
+        }
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            endOfWriting(b, input, btns);
+          }
+        });
+        input.addEventListener('blur', () => {
+          endOfWriting(b, input, btns);
+        });
+        b.addEventListener('click', localCallback);
+      });
+
+      parent.appendChild(line);
+    }
+
+    b2.addEventListener('click' ,()=>{ 
+      elms.bodyContainer.replaceChild(elms.informationView, elms.bodyContainer.children[1]);
+      blk: {
+        console.log("zone: ", zonesId.DATATYPE);
+        console.log("selection: ", zones[zonesId.DATATYPE].selection);
+        if (zones[zonesId.DATATYPE].selection === datatypeId.EVENT) {
+          console.log('cowabanga');
+          const zone = zones[zonesId.EVENTLIST];
+          if (zone.selection == -1) { // we need to show general setting
+            break blk;
+          }
+          const event_id = zone.eList[zone.selection]._dIdx;
+          elms.informationView.replaceChildren(tmpls.eventInformation);
+          let list = document.getElementById('event-staff-number-map');
+          list.innerHTML = '';
+          for (let i = 0; i < data.eventPersonalNumMap.length;) {
+            let line = createTemplateLine();
+            const btns = line.querySelectorAll('button');
+            btns.forEach(b => {
+              b.textContent = data.eventPersonalNumMap[i++];
+            });
+            list.appendChild(line);
+          }
+          addEmptyLine(list);
+        }
+      }
+    });
     viewType.append(b1,b2);
   }
 
@@ -510,7 +729,7 @@ document.addEventListener('DOMContentLoaded', async (event) => {
           const focusMonth = focus.date.getMonth();
           iterateOverDays((day) => {
             day.children[0].textContent = date.getDate();
-            day.dataset.dayNum = Math.floor(date.getTime() / MS_IN_DAY);
+            day._dayNum = Math.floor(date.getTime() / MS_IN_DAY);
             date.setDate(date.getDate() + 1);
           });
           refocusMonth();
@@ -541,7 +760,7 @@ document.addEventListener('DOMContentLoaded', async (event) => {
   const focusMonth = focus.date.getMonth();
   iterateOverDays((day) => {
       day.children[0].textContent = date.getDate();
-      day.dataset.dayNum = Math.floor(date.getTime() / MS_IN_DAY);
+      day._dayNum = Math.floor(date.getTime() / MS_IN_DAY);
       if (date.getMonth() == focusMonth) {
         day.classList.add('focused-month');
       }
@@ -701,7 +920,7 @@ function handleClickForOptionMenu(event) {
       for (const name of nameList.children) {
         if (name.classList.contains('clicked')) {
           name.classList.remove('clicked');
-          staffIds.push(parseInt(name.dataset.idx));
+          staffIds.push(parseInt(name._idx));
         }
       }
 
@@ -710,7 +929,7 @@ function handleClickForOptionMenu(event) {
       for (const venue of venueList.children) {
         if (venue.classList.contains('clicked')) {
           venue.classList.remove('clicked');
-          venueIds.push(parseInt(venue.dataset.idx));
+          venueIds.push(parseInt(venue._idx));
         }
       }
 
@@ -758,41 +977,9 @@ function handleClickForContextMenu() {
   }
 }
 
-const zonesId = {
-  DATATYPE: 0,
-  VIEWTYPE: 1,
-  EVENTLIST: 2,
-  STAFFLIST: 3,
-  VENUELIST: 4,
-};
-window.zonesId = zonesId;
-
-let zones = [
-  {
-    selection: 0,
-    eList: document.getElementById("data-type"),
-  },
-  {
-    selection: 0,
-    eList: document.getElementById("view-type"),
-  },
-  {
-    selection: -1,
-    eList: elms.eventDatalist.children,
-  },
-  {
-    selection: -1,
-    eList: elms.staffDatalist.children,
-  },
-  {
-    selection: -1,
-    eList: elms.venueDatalist.children,
-  },
-];
-
-function handleClickOnButton(b, zn) {
+function handleClickOnListButton(b, zn) {
   const z = zones[zn];
-  if (z.selection == b.dataset.bIdx) {
+  if (z.selection == b._bIdx) {
     b.style.setProperty('--bg-color', 'transparent');
     z.selection = -1;
     return;
@@ -801,7 +988,12 @@ function handleClickOnButton(b, zn) {
   if (z.selection >= 0) {
     z.eList[z.selection].style.setProperty('--bg-color', 'transparent');
   }
-  z.selection = b.dataset.bIdx;
+  z.selection = b._bIdx;
+}
+
+function handleClickOnViewButton(b, zn) {
+  const z = zones[zn];
+  z.selection = b._bIdx;
 }
 
 document.getElementById('new-event-button').addEventListener('click', 

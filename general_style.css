@@ -58,8 +58,13 @@ td {
 }
 
 input {
+  font-size: 12px;
   border: none;
   background-color: transparent;
+}
+
+.with-width {
+  width: var(--width);
 }
 
 .l-input {
@@ -85,6 +90,15 @@ button {
   border-radius: 5px;
   text-align: left;
   font-size: 12px;
+}
+
+.std-height {
+  height: 18px;
+}
+
+.std-min {
+  min-width: 15px;
+  min-height: 18px;
 }
 
 .bg-transp {
@@ -126,12 +140,17 @@ button {
   height: 250px;
 }
 
+.l-box {
+  width: 600px;
+  height: 350px;
+}
+
 .with-padding {
   padding: 4px;
 }
 
 .hover:hover {
-  background-color: #f0f0f0;
+  background-color: var(--hover-color);
 }
 
 .clicked {
@@ -199,6 +218,14 @@ button {
   border-bottom: 1px solid #ccc;
 }
 
+.right-border {
+  border-right: 1px solid #ccc;
+}
+
 .m-width {
   width: 250px;
+}
+
+.snap-start {
+  scroll-snap-align: start;
 }

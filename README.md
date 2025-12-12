@@ -1,5 +1,8 @@
 run `go build && ./calendar` and open `http://localhost:8080`
 
+## Bugs
++ when we switch views we lose scrolling position
+
 ## TODO
 + settings for calendar
 + show settings for events
