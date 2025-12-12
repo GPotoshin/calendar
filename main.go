@@ -69,7 +69,7 @@ type ApplicationState struct {
   EventNames []string
   EventStaff [][]int32
   EventVenues [][]int32
-  EventPresonalNumMap []int32 // @new
+  EventPresonalNumMap [][]int32 // @new
   EventStaffDiplReq []int32
   EventAttendeeDiplReq []int32
   EventDuration []int32
@@ -238,7 +238,7 @@ func (state *ApplicationState) RemoveVenueFromEvent(eventIndex, venueIndex int32
 
 func readApplicationState(r io.Reader) (ApplicationState, error) {
   var state ApplicationState
-  version := "bin_state.v0.0.2"
+  version := "bin_state.v0.0.3"
   format, err := readString(r)
   if err != nil {
     return state, fmt.Errorf("Can't verify file format: %w", err)
@@ -255,7 +255,7 @@ func readApplicationState(r io.Reader) (ApplicationState, error) {
   if state.EventVenues, err = readArrayOfInt32Arrays(r); err != nil {
     return state, fmt.Errorf("failed to read EventVenues: %w", err)
   }
-  if state.EventPresonalNumMap, err = readInt32Array(r); err != nil {
+  if state.EventPresonalNumMap, err = readArrayOfInt32Arrays(r); err != nil {
     return state, fmt.Errorf("failed to read EventPresonalNumMap: %w", err)
   }
   if state.EventStaffDiplReq, err = readInt32Array(r); err != nil {
@@ -283,7 +283,7 @@ func readApplicationState(r io.Reader) (ApplicationState, error) {
 }
 
 func writeApplicationState(w io.Writer, state ApplicationState) error {
-  version := "bin_state.v0.0.2"
+  version := "bin_state.v0.0.3"
   if err := writeString(w, version); err != nil {
     return fmt.Errorf("Failed to store data [file format]: %v\n", err)
   }
@@ -296,7 +296,7 @@ func writeApplicationState(w io.Writer, state ApplicationState) error {
   if err := writeArrayOfInt32Arrays(w, state.EventVenues); err != nil {
     return fmt.Errorf("failed to write EventVenues: %w", err)
   }
-  if err := writeInt32Array(w, state.EventPresonalNumMap); err != nil {
+  if err := writeArrayOfInt32Arrays(w, state.EventPresonalNumMap); err != nil {
     return fmt.Errorf("failed to write EventPresonalNumMap: %w", err)
   }
   if err := writeInt32Array(w, state.EventStaffDiplReq); err != nil {

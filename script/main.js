@@ -7,7 +7,7 @@ import {
 
 import { measureText } from './utils.js';
 import { palette } from './color.js';
-import { BufferReader, BufferWriter } from './Io.js';
+import { BufferReader, BufferWriter } from './io.js';
 import { DataManager } from './data_manager.js';
 
 const MS_IN_DAY = 86400000;
@@ -93,7 +93,7 @@ let tmpls = {
 
     <div id="event-attendee-diplomes" class="v-container grow half-wide scrollable-box scroll right-border">
     </div>
-    <div id="event-staff-diplomes" class="v-container grow half-wide scrollable-box scroll right-border">
+    <div id="event-staff-diplomes" class="v-container grow half-wide scrollable-box scroll">
     </div>
 
     </div>
@@ -436,10 +436,10 @@ document.addEventListener('DOMContentLoaded', async (event) => {
 
     const tmplHTML = `
       <div class="disp-flex grow half-wide justify-content-center bottom-right-border">
-      <div class="with-padding">de <button class="hover"> </button> à <button class="hover"> </button></div>
+      <div class="with-padding">de <button class="std-min hover no-padding txt-center tiny-button"></button> à <button class="std-min hover no-padding txt-center tiny-button"></button></div>
       </div>
       <div class="disp-flex grow half-wide bottom-border">
-      <div class="with-padding"><button class="hover"> </button></div>
+      <div class="with-padding"><button class="hover std-min hover no-padding txt-center tiny-button"> </button></div>
       </div>
       `;
     function createTemplateLine() {
@@ -482,7 +482,13 @@ document.addEventListener('DOMContentLoaded', async (event) => {
             }
           };
           if (dataIsSet) {
+            line.classList.add('deletable');
+            let dataarr = data.eventPersonalNumMap[zones[zonesId.EVENTLIST].selection];
+            line._dIdx = dataarr.length/3;
             for (let j = 0; j < btns.length; j++) {
+              btns[j]._dIdx = dataarr.length;
+              dataarr.push(Number(btns[j].textContent));
+              btns[j].classList.add('editable');
               btns[j].removeEventListener('click', btnsCallbacks[j]);
             }
             addEmptyLine(parent);
@@ -490,11 +496,11 @@ document.addEventListener('DOMContentLoaded', async (event) => {
         }
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') {
-            endOfWriting(b, input, btns);
+            endOfWriting();
           }
         });
         input.addEventListener('blur', () => {
-          endOfWriting(b, input, btns);
+          endOfWriting();
         });
         b.addEventListener('click', localCallback);
       });
@@ -514,12 +520,21 @@ document.addEventListener('DOMContentLoaded', async (event) => {
           elms.informationView.replaceChildren(tmpls.eventInformation);
           let list = document.getElementById('event-staff-number-map');
           list.innerHTML = '';
-          for (let i = 0; i < data.eventPersonalNumMap.length;) {
+
+          let dataarr = data.eventPersonalNumMap[zones[zonesId.EVENTLIST].selection];
+          if (dataarr === undefined) {
+            dataarr = [];
+            data.eventPersonalNumMap[zones[zonesId.EVENTLIST].selection] = [];
+          }
+          for (let i = 0; i < dataarr.length;) {
             let line = createTemplateLine();
+            line._dIdx = i/3;
             const btns = line.querySelectorAll('button');
-            btns.forEach(b => {
-              b.textContent = data.eventPersonalNumMap[i++];
-            });
+            for (let j = 0; j < btns.length; j++) {
+              let b = btns[j];
+              b._dIdx = i;
+              b.textContent = dataarr[i++];
+            };
             list.appendChild(line);
           }
           addEmptyLine(list);
@@ -636,14 +651,19 @@ document.addEventListener('click', (event) => {
 document.addEventListener('contextmenu', function(e) {
   const menu = elms.rightClickMenu;
   let show = true;
+  let target = null;
   if (elms.sideMenu.contains(e.target)) {
     document.getElementById('new-event-button').classList.replace('disp-none', 'disp-block');
   } else if (elms.nameList.contains(e.target)) {
     document.getElementById('new-member-button').classList.replace('disp-none', 'disp-block');
   } else if (elms.venueList.contains(e.target)) {
     document.getElementById('new-venue-button').classList.replace('disp-none', 'disp-block');
-  } else if (e.target.classList.contains('tiny-button')) { // we probably should change classes name
-    document.getElementById('change-button').classList.replace('disp-none', 'disp-block');
+  } else if (e.target.classList.contains('editable')) {
+    document.getElementById('edit-button').classList.replace('disp-none', 'disp-block');
+    contextmenuData.target = e.target;
+  } else if (target = e.target.closest('.deletable')) { 
+    document.getElementById('delete-button').classList.replace('disp-none', 'disp-block');
+    contextmenuData.target = target;
   } else {
     show = false;
   }
@@ -672,7 +692,7 @@ function showInfo(element) {
   return function() {
     const rect = element.getBoundingClientRect();
     let menu = document.getElementById('create-option-menu');
-    menu.classList.replace('disp-none', 'disp-flex'); // @nocheckin: we can factor out that snippet
+    menu.classList.replace('disp-none', 'disp-flex');
     menu.style.setProperty('--menu-left', rect.right + 'px');
     menu.style.setProperty('--menu-top', rect.top + 'px');
   }
@@ -748,13 +768,60 @@ function handleAddToList(target, placeholder, url, storage) {
   });
 }
 
+let contextmenuData = {
+  target: null,
+};
+
 document.getElementById('new-member-button').addEventListener('click', function() {
   handleAddToList(elms.nameList, 'Nouveau Agent', '/store/agent', data.staffNames);
 });
+
 document.getElementById('new-venue-button').addEventListener('click', function() {
   handleAddToList(elms.venueList, 'Nouveau Lieu', '/store/venue', data.venueNames);
 });
 
+document.getElementById('edit-button').addEventListener('click', function() {
+  let input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'with-width std-min txt-center tiny-input';
+  input.style.setProperty('--width', 0+'px');
+
+  input.addEventListener('input', () => {
+    input.value = input.value.replace(/\D/g, '');
+    input.style.setProperty('--width', (measureText(window.getComputedStyle(input), input.value)+2)+'px');
+  });
+
+  let b = contextmenuData.target;
+  input.value = b.textContent;
+  b.replaceWith(input);
+  input.focus();
+
+  let dataarr = data.eventPersonalNumMap[zones[zonesId.EVENTLIST].selection];
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      b.textContent = input.value;
+      input.replaceWith(b);
+      dataarr[b._dIdx] = Number(b.textContent);
+    }
+  });
+  input.addEventListener('blur', () => {
+    b.textContent = input.value;
+    input.replaceWith(b);
+    dataarr[b._dIdx] = Number(b.textContent);
+  });
+});
+
+document.getElementById('delete-button').addEventListener('click', function() {
+  contextmenuData.target.remove();
+  let idx = contextmenuData.target._dIdx*3;
+  let dataarr = data.eventPersonalNumMap[zones[zonesId.EVENTLIST].selection];
+  for (let i = idx+3; i<dataarr.length; i += 3) {
+    dataarr[i-3] = dataarr[i];
+    dataarr[i-2] = dataarr[i+1];
+    dataarr[i-1] = dataarr[i+2];
+  }
+  dataarr.length -= 3;
+});
 
 function handleClickForOptionMenu(event) {
   let menu = elms.createOptionMenu;
@@ -763,7 +830,7 @@ function handleClickForOptionMenu(event) {
 
     document.removeEventListener('click', handleClickForOptionMenu);
     let input = menu.querySelectorAll('input')[0];
-    callbacks.handleTyping.obj.removeEventListener('input', callbacks.handleTyping.func);
+    callbacks.handleTyping.obj.removeEventListener('input', callbacks.handleTyping.func); // @nocheckin: we have an error here
     callbacks.handleTyping = { func: null, obj: null };
     let value = input.value;
 

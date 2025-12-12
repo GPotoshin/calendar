@@ -120,7 +120,7 @@ export class DataManager {
   }
 
   read(reader) {
-    const version = "bin_state.v0.0.2"; 
+    const version = "bin_state.v0.0.3"; 
     const format = reader.readString();
     
     if (version != format) {
@@ -130,7 +130,7 @@ export class DataManager {
     this.eventNames = reader.readStringArray();
     this.eventStaff = reader.readArrayOfInt32Arrays();
     this.eventVenues = reader.readArrayOfInt32Arrays();
-    this.eventPersonalNumMap = reader.readInt32Array(); // its length should be a mutliple of 3. The question is when do we sanitize it?
+    this.eventPersonalNumMap = reader.readArrayOfInt32Arrays();
     this.eventStaffDiplReq = reader.readInt32Array();
     this.eventAttendeeDiplReq = reader.readInt32Array();
     this.eventDuration = reader.readInt32Array();
