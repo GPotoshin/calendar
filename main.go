@@ -374,7 +374,7 @@ func main() {
   http.HandleFunc("/utils.js", serveFile("script/utils.js", []HeaderPair{{Key: "Content-Type", Value: "text/javascript"}}))
   http.HandleFunc("/io.js", serveFile("script/io.js", []HeaderPair{{Key: "Content-Type", Value: "text/javascript"}}))
   http.HandleFunc("/data_manager.js", serveFile("script/data_manager.js", []HeaderPair{{Key: "Content-Type", Value: "text/javascript"}}))
-  http.HandleFunc("/scrollable_calendar.js", serveFile("script/scrollable_calendar.js", nil))
+  http.HandleFunc("/scrollable_calendar.js", serveFile("script/scrollable_calendar.js", []HeaderPair{{Key: "Content-Type", Value: "text/javascript"}}))
   http.HandleFunc("/general_style.css", serveFile("general_style.css", []HeaderPair{{Key: "Content-Type", Value: "text/css"}}))
   http.HandleFunc("/custom_style.css", serveFile("custom_style.css", []HeaderPair{{Key: "Content-Type", Value: "text/css"}}))
   http.HandleFunc("/", serveIndex)
