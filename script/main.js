@@ -127,7 +127,7 @@ let tmpls = [ document.createElement('div'), null, null, null ];
 
     <div class="h-container">
     <div class="row-selection">
-    Durée: <button id="event-duration" class="hover">\u00A0</button>d
+    Durée: <button id="event-duration" class="hover editable">\u00A0</button>d
     </div>
     </div>
     </div>
@@ -223,31 +223,45 @@ function resetEventInfoView() {
   }
 
   // actual function code
-    const zone = zones[zonesId.EVENTLIST];
-    if (zone.selection == -1) { // we need to show general setting
-      return;
-    }
-    const event_id = zone.eList[zone.selection]._dIdx;
-    let list = document.getElementById('event-staff-number-map');
-    list.innerHTML = '';
+  const zone = zones[zonesId.EVENTLIST];
+  if (zone.selection == -1) { // we need to show general setting
+    return;
+  }
+  const event_id = zone.eList[zone.selection]._dIdx;
+  let list = document.getElementById('event-staff-number-map');
+  list.innerHTML = '';
 
-    let dataarr = data.eventPersonalNumMap[zones[zonesId.EVENTLIST].selection];
-    if (dataarr === undefined) {
-      dataarr = [];
-      data.eventPersonalNumMap[zones[zonesId.EVENTLIST].selection] = [];
+  const _eventId = zones[zonesId.EVENTLIST].selection;
+
+  let dataArray = data.eventPersonalNumMap[_eventId];
+  if (dataArray === undefined) {
+    dataArray = [];
+    data.eventPersonalNumMap[_eventId] = [];
+  }
+  for (let i = 0; i < dataArray.length;) {
+    let line = createTemplateLine();
+    line._dIdx = Math.floor(i/3);
+    const btns = line.querySelectorAll('button');
+    for (let j = 0; j < btns.length; j++) {
+      let b = btns[j];
+      b._dIdx = i;
+      b.textContent = dataArray[i++];
+    };
+    list.appendChild(line);
+  }
+  addEmptyLine(list);
+
+  let duration = data.eventDuration[_eventId];
+  if (duration === undefined) {
+    data.eventDuration[_eventId] = -1;
+  } else {
+    let db = document.getElementById('event-duration');
+    if (duration === -1) {
+      db.textContent = '\u00A0';
+    } else {
+      db.textContent = duration;
     }
-    for (let i = 0; i < dataarr.length;) {
-      let line = createTemplateLine();
-      line._dIdx = Math.floor(i/3);
-      const btns = line.querySelectorAll('button');
-      for (let j = 0; j < btns.length; j++) {
-        let b = btns[j];
-        b._dIdx = i;
-        b.textContent = dataarr[i++];
-      };
-      list.appendChild(line);
-    }
-    addEmptyLine(list);
+  }
 }
 
 {
@@ -763,18 +777,31 @@ document.getElementById('edit-button').addEventListener('click', function() {
   b.replaceWith(input);
   input.focus();
 
-  let dataarr = data.eventPersonalNumMap[zones[zonesId.EVENTLIST].selection];
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
+  const _eventId = zones[zonesId.EVENTLIST].selection;
+  let dataArray = null;
+  let idx = -1;
+
+  if (b.id === 'event-duration') {
+    dataArray = data.eventDuration;
+    idx = _eventId;
+  } else { // @nocheckin: we should probably set a special class on a button or somewhat like that
+    dataArray = data.eventPersonalNumMap[_eventId];
+    idx = b._dIdx;
+  }
+  
+  function handleEndOfInput() {
       b.textContent = input.value;
       input.replaceWith(b);
-      dataarr[b._dIdx] = Number(b.textContent);
+      dataArray[idx] = Number(b.textContent);
+  }
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      handleEndOfInput();
     }
   });
   input.addEventListener('blur', () => {
-    b.textContent = input.value;
-    input.replaceWith(b);
-    dataarr[b._dIdx] = Number(b.textContent);
+    handleEndOfInput();
   });
 });
 
