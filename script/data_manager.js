@@ -37,22 +37,25 @@ function getAll(array) {
 
 export class DataManager {
   constructor() {
-      this.eventNames = [];
-      this.eventStaff = [];
-      this.eventVenues = [];
-      this.eventPersonalNumMap = [];
-      this.eventStaffDiplReq = [];
-      this.eventAttendeeDiplReq = [];
-      this.eventDuration = [];
-      this.eventFreeList = [];
+    this.eventNames = [];
+    this.eventStaff = [];
+    this.eventVenues = [];
+    this.eventPersonalNumMap = [];
+    this.eventStaffDiplReq = [];
+    this.eventAttendeeDiplReq = [];
+    this.eventDuration = [];
+    this.eventFreeList = [];
+    this.eventStaffRoles = [];
 
-      this.staffNames = [];
-      this.staffFreeList = [];
-      this.venueNames = [];
-      this.venueFreeList = [];
+    this.staffNames = [];
+    this.staffFreeList = [];
+    this.venueNames = [];
+    this.venueFreeList = [];
 
-      this.staffsDiplomesNames = [];
-      this.attendeesDiplomesNames = [];
+    this.staffsDiplomesNames = [];
+    this.attendeesDiplomesNames = [];
+
+    this.staffsRoles = [];
   }
 
   storeEvent(name, staffIndices = [], venueIndices = []) {

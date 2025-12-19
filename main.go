@@ -369,13 +369,22 @@ func main() {
   }()
 
   http.HandleFunc("/regular.ttf", serveFile("fonts/SourceSansPro-Regular.ttf", []HeaderPair{{Key: "Content-Type", Value: "font/ttf"}}))
-  http.HandleFunc("/main.js", serveFile("script/main.js", []HeaderPair{{Key: "Content-Type", Value: "text/javascript"}}))
-  http.HandleFunc("/color.js", serveFile("script/color.js", []HeaderPair{{Key: "Content-Type", Value: "text/javascript"}}))
-  http.HandleFunc("/utils.js", serveFile("script/utils.js", []HeaderPair{{Key: "Content-Type", Value: "text/javascript"}}))
-  http.HandleFunc("/io.js", serveFile("script/io.js", []HeaderPair{{Key: "Content-Type", Value: "text/javascript"}}))
-  http.HandleFunc("/num_input.js", serveFile("script/num_input.js", []HeaderPair{{Key: "Content-Type", Value: "text/javascript"}}))
-  http.HandleFunc("/data_manager.js", serveFile("script/data_manager.js", []HeaderPair{{Key: "Content-Type", Value: "text/javascript"}}))
-  http.HandleFunc("/scrollable_calendar.js", serveFile("script/scrollable_calendar.js", []HeaderPair{{Key: "Content-Type", Value: "text/javascript"}}))
+
+  jsFiles := []string{
+    "main.js",
+    "color.js",
+    "utils.js",
+    "io.js",
+    "num_input.js",
+    "data_manager.js",
+    "search_display.js",
+    "scrollable_calendar.js",
+  }
+  jsHeaders := []HeaderPair{{Key: "Content-Type", Value: "text/javascript"}}
+  for _, file := range jsFiles {
+    http.HandleFunc("/"+file, serveFile("script/"+file, jsHeaders))
+  }
+
   http.HandleFunc("/general_style.css", serveFile("general_style.css", []HeaderPair{{Key: "Content-Type", Value: "text/css"}}))
   http.HandleFunc("/custom_style.css", serveFile("custom_style.css", []HeaderPair{{Key: "Content-Type", Value: "text/css"}}))
   http.HandleFunc("/", serveIndex)
@@ -390,14 +399,14 @@ func main() {
   http.HandleFunc("/data", handleData)
 
   srv := &http.Server{
-    Addr:    ":8080",
+    Addr:    ":80",
     Handler: middleware(http.DefaultServeMux),
   }
 
   go func() {
-    fmt.Println("Server starting on :8080")
+    fmt.Println("Server starting on :80")
     if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-      log.Fatal(http.ListenAndServe(":8080", middleware(http.DefaultServeMux)))
+      log.Fatal(http.ListenAndServe(":80", middleware(http.DefaultServeMux)))
     }
   }()
 

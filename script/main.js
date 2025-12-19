@@ -9,8 +9,12 @@ import { palette } from './color.js';
 import { BufferReader, BufferWriter } from './io.js';
 import { DataManager } from './data_manager.js';
 import { numInput } from './num_input.js';
+import * as SearchDisplay from './search_display.js';
 
 const MS_IN_DAY = 86400000;
+
+const data = new DataManager();
+window.data = data;
 
 let state = {
   sideMenuIsOpen: false,
@@ -79,106 +83,13 @@ let zones = [
 
 let tmpls = [ document.createElement('div'), null, null, null ];
 
-function createSearchMenuButton(name) {
-  let b = document.createElement('button');
-  b.classList.add('hover', 'snap-start');
-  b.textContent = name;
-  return b;
-}
-
-function createSearchMenu(name) {
-  let menu = document.createElement('div');
-  let name_list = ["Formateur", "Responsable Pedagogique", "Assistant"];
-  let itemElements = new Map();
-
-  menu.classList.add('m-box', 'v-container');
-  menu.innerHTML = `
-    <h4 class="js-set txt-center">Personnel</h4>
-    <div class="h-container">
-    <div class="searching-field h-container disp-flex grow half-wide"><div class="arrow">></div><input class="searching-input" type="text" placeholder="Trouver"></input></div>
-    </div>
-    <div class="h-container grow">
-    <div id="event-attendee-diplomes" class="js-set text-box v-container scrollable-box scroll bordered grow half-wide">
-    </div>
-    </div>
-    `;
-  const objList = menu.querySelectorAll('.js-set');
-  const searchInput = menu.querySelector('.searching-input');
-  objList[0].textContent = name;
-  const container = objList[1];
-
-  // Create and store all buttons
-  for (const n of name_list) {
-    const btn = createSearchMenuButton(n);
-    itemElements.set(n, btn);
-    container.append(btn);
-  }
-  
-  function fuzzyMatch(pattern, text) {
-    pattern = pattern.toLowerCase();
-    text = text.toLowerCase();
-    let patternIdx = 0;
-    let textIdx = 0;
-    let score = 0;
-    let consecutiveMatches = 0;
-    const matches = [];
-    while (patternIdx < pattern.length && textIdx < text.length) {
-      if (pattern[patternIdx] === text[textIdx]) {
-        matches.push(textIdx);
-        if (patternIdx > 0 && matches[patternIdx - 1] === textIdx - 1) {
-          consecutiveMatches++;
-          score += 5 + consecutiveMatches;
-        } else {
-          consecutiveMatches = 0;
-          score += 1;
-        }
-        if (textIdx === 0 || text[textIdx - 1] === ' ') {
-          score += 10;
-        }
-        if (text[textIdx] === text[textIdx].toUpperCase() && text[textIdx] !== ' ') {
-          score += 5;
-        }
-        patternIdx++;
-      }
-      textIdx++;
-    }
-    if (patternIdx !== pattern.length) {
-      return null;
-    }
-    score -= (text.length - pattern.length) * 0.5;
-    return score;
-  }
-  
-  function updateList() {
-    const query = searchInput.value;
-    if (!query) {
-      container.innerHTML = '';
-      for (const n of name_list) {
-        container.append(itemElements.get(n));
-      }
-      return;
-    }
-    const scored = [];
-    for (const n of name_list) {
-      const score = fuzzyMatch(query, n);
-      if (score !== null) {
-        scored.push({ name: n, score: score });
-      }
-    }
-    scored.sort((a, b) => b.score - a.score);
-    container.innerHTML = '';
-    for (const item of scored) {
-      container.append(itemElements.get(item.name));
-    }
-  }
-  searchInput.addEventListener('input', updateList);
-
-  return menu;
-}
-
 function createStaffTable() {
   let table = document.createElement('div');
   table.classList.add('v-container', 'align-items-center');
+
+  const columnWidth = 125;
+  const list = ["Formateur", "Responsable Pedagogique", "Assistant"];
+
   table.innerHTML = `
     <h3 class="txt-center">Nomber de</h3>
 
@@ -191,12 +102,13 @@ function createStaffTable() {
       </div>
     </div>
 
-    <div class="m-box v-container">
+    <div class="m-box v-container with-width">
     <div id="event-staff-number-map" class="v-container scrollable-box disp-flex grow scroll-smooth bordered">
-
     </div>
     </div>
     `;
+  let container = table.children[2];
+  container.style.setProperty('--width', (columnWidth*(list.length+1)) + 'px');
   
   return table;
 }
@@ -254,15 +166,13 @@ function createFooterOptions() {
     </div>
   `;
   tmpls[scopeId.EVENT].children[0].append(
-    createSearchMenu('Personelle'),
+    SearchDisplay.create('Personelle', data.staffsRoles),
     createStaffTable(),
     createCompetencesTable(),
     createFooterOptions(),
   );
 }
 
-const data = new DataManager();
-window.data = data;
 
 function createTemplateLine() {
   let line = document.createElement('div');
@@ -761,6 +671,7 @@ document.addEventListener('click', (event) => {
   }
 });
 
+
 document.addEventListener('contextmenu', function(e) {
   const menu = elms.rightClickMenu;
   let show = true;
@@ -779,6 +690,24 @@ document.addEventListener('contextmenu', function(e) {
     contextmenuData.target = target;
   } else {
     show = false;
+  }
+
+  if (e.target.classList.contains('editable')) {
+    document.getElementById('edit-button').classList.replace('disp-none', 'disp-block');
+    contextmenuData.target = e.target;
+    show = true;
+  }
+
+  if (e.target.classList.contains('togglable')) {
+    document.getElementById('toggle-button').classList.replace('disp-none', 'disp-block');
+    contextmenuData.target = e.target;
+    show = true;
+  }
+
+  if (target = e.target.closest('.extendable')) {
+    document.getElementById('create-button').classList.replace('disp-none', 'disp-block');
+    contextmenuData.target = target;
+    show = true;
   }
 
   for (const button of elms.sideMenu.children) { // @nocheckin, ??
@@ -814,13 +743,39 @@ function showInfo(element) {
 function switchToCalendarView() {
   elms.bodyContainer.replaceChild(elms.view[viewId.CALENDER], elms.bodyContainer.children[1]);
 }
-window.switchToCalendarView = switchToCalendarView;
 
 function switchToInformationView() {
   elms.bodyContainer.replaceChild(elms.view[viewId.INFORMATION], elms.bodyContainer.children[1]);
-
 }
-window.switchToInformationView = switchToInformationView;
+
+document.getElementById('create-button').addEventListener('click', () => {
+  const target = contextmenuData.target;
+  console.log(target);
+  const button = target._createButton();
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.placeholder = placeholder;
+  button.appendChild(input);
+  target.appendChild(button);
+  input.focus();
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const value = input.value;
+      input.remove();
+      button.textContent = value;
+      // storage.push(value);
+      // postString(url, value);
+    } else if (e.key === 'Escape') {
+      button.remove();
+    }
+  });
+});
+
+document.getElementById('toggle-button').addEventListener('click', () => {
+  contextmenuData.target.classList.toggle('clicked');
+});
 
 document.getElementById('side-menu-button').addEventListener('click', 
   function(button) {
