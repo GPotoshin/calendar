@@ -294,3 +294,28 @@
 .tiny-button {
   padding: 1px;
 }
+
+.searching-input {
+  padding: 0px;
+  width: 110px;
+}
+
+.searching-field {
+  margin: 1px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.arrow {
+  color: #ccc;
+  padding-right: 3px;
+}
+
+.text-box {
+  margin: 1px;
+}
+
+#event-staff-number-map {
+  margin: 1px;
+}

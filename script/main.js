@@ -5,10 +5,10 @@ import {
   handleMouseUp,
 } from './scrollable_calendar.js';
 
-import { measureText } from './utils.js';
 import { palette } from './color.js';
 import { BufferReader, BufferWriter } from './io.js';
 import { DataManager } from './data_manager.js';
+import { numInput } from './num_input.js';
 
 const MS_IN_DAY = 86400000;
 
@@ -81,9 +81,9 @@ let tmpls = [ document.createElement('div'), null, null, null ];
 
 {
   tmpls[scopeId.EVENT].innerHTML = `
-    <div class="l-box">
-    <div class="h-container justify-items-center wide">
+    <div class="v-container">
 
+    <div class="h-container justify-items-center wide">
     <div class="v-container grow half-wide align-items-center">
     <h3 class="txt-center">Nomber de</h3>
 
@@ -96,8 +96,10 @@ let tmpls = [ document.createElement('div'), null, null, null ];
       </div>
     </div>
 
-    <div id="event-staff-number-map" class="v-container scrollable-box scroll-smooth m-box bordered">
+    <div class="m-box v-container">
+    <div id="event-staff-number-map" class="v-container scrollable-box disp-flex grow scroll-smooth bordered">
 
+    </div>
     </div>
     </div>
 
@@ -113,11 +115,18 @@ let tmpls = [ document.createElement('div'), null, null, null ];
       </div>
     </div>
 
-    <div class="h-container m-box bordered">
-
-    <div id="event-attendee-diplomes" class="v-container grow half-wide scrollable-box scroll right-border">
+    <div class="m-box v-container">
+    <div class="h-container">
+    <div class="searching-field h-container disp-flex grow half-wide"><div class="arrow">></div><input class="searching-input" type="text" placeholder="Trouver"></input></div>
+    <div class="searching-field h-container disp-flex grow half-wide"><div class="arrow">></div><input class="searching-input" type="text" placeholder="Trouver"></input></div>
     </div>
-    <div id="event-staff-diplomes" class="v-container grow half-wide scrollable-box scroll">
+    <div class="h-container grow">
+    <div id="event-attendee-diplomes" class="text-box v-container scrollable-box scroll bordered grow half-wide">
+    <button class="hover snap-start">Diplome #3</button>
+    </div>
+    <div id="event-staff-diplomes" class="text-box v-container scrollable-box scroll bordered grow half-wide">
+    <button class="hover snap-start">Diplome #3</button>
+    </div>
     </div>
 
     </div>
@@ -127,9 +136,10 @@ let tmpls = [ document.createElement('div'), null, null, null ];
 
     <div class="h-container">
     <div class="row-selection">
-    Durée: <button id="event-duration" class="hover editable">\u00A0</button>d
+    Durée: <button id="event-duration" class="hover std-min no-padding txt-center tiny-button">\u00A0</button>d
     </div>
     </div>
+
     </div>
   `
 }
@@ -151,7 +161,7 @@ function resetEventInfoView() {
     <div class="with-padding">de <button class="std-min hover no-padding txt-center tiny-button"></button> à <button class="std-min hover no-padding txt-center tiny-button"></button></div>
     </div>
     <div class="disp-flex grow half-wide bottom-border">
-    <div class="with-padding"><button class="hover std-min hover no-padding txt-center tiny-button"> </button></div>
+    <div class="with-padding"><button class="hover std-min no-padding txt-center tiny-button"> </button></div>
     </div>
     `;
 
@@ -166,56 +176,40 @@ function resetEventInfoView() {
     let line = createTemplateLine();
     const btns = line.querySelectorAll('button');
     const btnsCallbacks = [];
+    function endOfWriting(b) {
+      b.textContent = numInput.elm.value || '\u00A0';
+      numInput.elm.replaceWith(b);
+
+      let dataIsSet = true;
+      for (let _b of btns) {
+        if (_b.textContent == '\u00A0') {
+          dataIsSet = false;
+          break;
+        }
+      };
+      if (dataIsSet) {
+        line.classList.add('deletable');
+        let dataArray = data.eventPersonalNumMap[zones[zonesId.EVENTLIST].selection];
+        line._dIdx = dataArray.length/3;
+        for (let j = 0; j < btns.length; j++) {
+          btns[j]._dIdx = dataArray.length;
+          dataArray.push(Number(btns[j].textContent));
+          btns[j].classList.add('editable');
+          btns[j].removeEventListener('click', btnsCallbacks[j]);
+        }
+        addEmptyLine(parent);
+      }
+    }
     btns.forEach(b => {
       b.textContent = '\u00A0'; // '\u00A0' is an empty space with non zero size
       b.className = 'std-min hover no-padding txt-center tiny-button';
 
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.className = 'with-width std-min txt-center tiny-input';
-      input.style.setProperty('--width', 0+'px');
-
-      input.addEventListener('input', () => {
-        input.value = input.value.replace(/\D/g, '');
-        input.style.setProperty('--width', (measureText(window.getComputedStyle(input), input.value)+2)+'px');
-      });
       function localCallback() {
-        b.replaceWith(input);
-        input.focus();
+        b.replaceWith(numInput.elm);
+        numInput.elm.focus();
+        numInput.endOfWriting = () => { endOfWriting(b) };
       }
       btnsCallbacks.push(localCallback);
-      function endOfWriting() {
-        b.textContent = input.value || '\u00A0';
-        input.replaceWith(b);
-
-        let dataIsSet = true;
-        for (let _b of btns) {
-          if (_b.textContent == '\u00A0') {
-            dataIsSet = false;
-            break;
-          }
-        };
-        if (dataIsSet) {
-          line.classList.add('deletable');
-          let dataarr = data.eventPersonalNumMap[zones[zonesId.EVENTLIST].selection];
-          line._dIdx = dataarr.length/3;
-          for (let j = 0; j < btns.length; j++) {
-            btns[j]._dIdx = dataarr.length;
-            dataarr.push(Number(btns[j].textContent));
-            btns[j].classList.add('editable');
-            btns[j].removeEventListener('click', btnsCallbacks[j]);
-          }
-          addEmptyLine(parent);
-        }
-      }
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          endOfWriting();
-        }
-      });
-      input.addEventListener('blur', () => {
-        endOfWriting();
-      });
       b.addEventListener('click', localCallback);
     });
 
@@ -254,13 +248,34 @@ function resetEventInfoView() {
   let duration = data.eventDuration[_eventId];
   if (duration === undefined) {
     data.eventDuration[_eventId] = -1;
-  } else {
-    let db = document.getElementById('event-duration');
-    if (duration === -1) {
-      db.textContent = '\u00A0';
-    } else {
-      db.textContent = duration;
+    duration = -1;
+  }
+
+  let b = document.getElementById('event-duration');
+  if (duration === -1) {
+    b.textContent = '\u00A0';
+
+    function localCallback() {
+      b.replaceWith(numInput.elm);
+      numInput.elm.focus();
+      numInput.endOfWriting = () => { endOfWriting() };
     }
+    function endOfWriting() {
+      numInput.elm.replaceWith(b);
+      const _eventId = zones[zonesId.EVENTLIST].selection;
+      if (numInput.elm.value === '') {
+        data.eventDuration[_eventId] = -1;
+        return;
+      }
+      b.textContent = numInput.elm.value;
+      data.eventDuration[_eventId] = Number(numInput.elm.value);
+      b.classList.add('editable');
+      b.removeEventListener('click', localCallback);
+    }
+    b.addEventListener('click', localCallback);
+  } else {
+    b.textContent = duration;
+    b.classList.add('editable');
   }
 }
 
@@ -762,47 +777,76 @@ document.getElementById('new-venue-button').addEventListener('click', function()
 });
 
 document.getElementById('edit-button').addEventListener('click', function() {
-  let input = document.createElement('input');
-  input.type = 'text';
-  input.className = 'with-width std-min txt-center tiny-input';
-  input.style.setProperty('--width', 0+'px');
-
-  input.addEventListener('input', () => {
-    input.value = input.value.replace(/\D/g, '');
-    input.style.setProperty('--width', (measureText(window.getComputedStyle(input), input.value)+2)+'px');
-  });
-
   let b = contextmenuData.target;
-  input.value = b.textContent;
-  b.replaceWith(input);
-  input.focus();
+  numInput.elm.value = b.textContent;
+  b.replaceWith(numInput.elm);
+  numInput.elm.focus();
 
   const _eventId = zones[zonesId.EVENTLIST].selection;
   let dataArray = null;
   let idx = -1;
 
   if (b.id === 'event-duration') {
-    dataArray = data.eventDuration;
-    idx = _eventId;
+    numInput.endOfWriting = () => {
+      const _eventId = zones[zonesId.EVENTLIST].selection;
+      if (numInput.elm.value === '') {
+        b.textContent = '\u00A0';
+        data.eventDuration[_eventId] = -1;
+        function localCallback() {
+          b.replaceWith(numInput.elm);
+          numInput.elm.focus();
+          numInput.endOfWriting = () => { endOfWriting() };
+        }
+        function endOfWriting() {
+          const _eventId = zones[zonesId.EVENTLIST].selection;
+          numInput.elm.replaceWith(b);
+          if (numInput.elm.value === '') {
+            data.eventDuration[_eventId] = -1;
+            return;
+          }
+          b.textContent = numInput.elm.value;
+          data.eventDuration[_eventId] = Number(numInput.elm.value);
+          b.classList.add('editable');
+          b.removeEventListener('click', localCallback);
+        }
+        b.addEventListener('click', localCallback);
+      } else {
+        b.textContent = numInput.elm.value;
+        data.eventDuration[_eventId] = Number(b.textContent);
+      }
+      numInput.elm.replaceWith(b);
+    };
   } else { // @nocheckin: we should probably set a special class on a button or somewhat like that
-    dataArray = data.eventPersonalNumMap[_eventId];
-    idx = b._dIdx;
+    numInput.endOfWriting = () => {
+      const _eventId = zones[zonesId.EVENTLIST].selection;
+      if (numInput.elm.value === '') {
+        b.textContent = '\u00A0';
+        data.eventPersonalNumMap[_eventId][b._dIdx] = -1;
+        function localCallback() {
+          b.replaceWith(numInput.elm);
+          numInput.elm.focus();
+          numInput.endOfWriting = () => { endOfWriting() };
+        }
+        function endOfWriting() {
+          numInput.elm.replaceWith(b);
+          const _eventId = zones[zonesId.EVENTLIST].selection;
+          if (numInput.elm.value === '') {
+            data.eventPersonalNumMap[_eventId][b._dIdx] = -1;
+            return;
+          }
+          b.textContent = numInput.elm.value;
+          data.eventPersonalNumMap[_eventId][b._dIdx] = Number(numInput.elm.value);
+          b.classList.add('editable');
+          b.removeEventListener('click', localCallback);
+        }
+        b.addEventListener('click', localCallback);
+      } else {
+        b.textContent = numInput.elm.value;
+        data.eventPersonalNumMap[_eventId][b._dIdx] = Number(b.textContent);
+      }
+      numInput.elm.replaceWith(b);
+    };
   }
-  
-  function handleEndOfInput() {
-      b.textContent = input.value;
-      input.replaceWith(b);
-      dataArray[idx] = Number(b.textContent);
-  }
-
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      handleEndOfInput();
-    }
-  });
-  input.addEventListener('blur', () => {
-    handleEndOfInput();
-  });
 });
 
 document.getElementById('delete-button').addEventListener('click', function() {

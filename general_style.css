@@ -92,10 +92,6 @@ button {
   font-size: 12px;
 }
 
-.std-height {
-  height: 18px;
-}
-
 .std-min {
   min-width: 15px;
   min-height: 18px;
@@ -138,11 +134,6 @@ button {
 .m-box {
   width: 250px;
   height: 250px;
-}
-
-.l-box {
-  width: 600px;
-  height: 350px;
 }
 
 .with-padding {
