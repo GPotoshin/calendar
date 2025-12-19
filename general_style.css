@@ -77,6 +77,8 @@ input[type="text"]:focus {
 
 h3 {
   padding: 0px 4px 0px 4px;
+  margin-bottom: 4px;
+  margin-top: 10px;
 }
 
 h4 {

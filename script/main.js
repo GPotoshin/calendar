@@ -79,17 +79,112 @@ let zones = [
 
 let tmpls = [ document.createElement('div'), null, null, null ];
 
-{
-  tmpls[scopeId.EVENT].innerHTML = `
-    <div class="v-container">
+function createSearchMenuButton(name) {
+  let b = document.createElement('button');
+  b.classList.add('hover', 'snap-start');
+  b.textContent = name;
+  return b;
+}
 
-    <div class="h-container justify-items-center wide">
-    <div class="v-container grow half-wide align-items-center">
+function createSearchMenu(name) {
+  let menu = document.createElement('div');
+  let name_list = ["Formateur", "Responsable Pedagogique", "Assistant"];
+  let itemElements = new Map();
+
+  menu.classList.add('m-box', 'v-container');
+  menu.innerHTML = `
+    <h4 class="js-set txt-center">Personnel</h4>
+    <div class="h-container">
+    <div class="searching-field h-container disp-flex grow half-wide"><div class="arrow">></div><input class="searching-input" type="text" placeholder="Trouver"></input></div>
+    </div>
+    <div class="h-container grow">
+    <div id="event-attendee-diplomes" class="js-set text-box v-container scrollable-box scroll bordered grow half-wide">
+    </div>
+    </div>
+    `;
+  const objList = menu.querySelectorAll('.js-set');
+  const searchInput = menu.querySelector('.searching-input');
+  objList[0].textContent = name;
+  const container = objList[1];
+
+  // Create and store all buttons
+  for (const n of name_list) {
+    const btn = createSearchMenuButton(n);
+    itemElements.set(n, btn);
+    container.append(btn);
+  }
+  
+  function fuzzyMatch(pattern, text) {
+    pattern = pattern.toLowerCase();
+    text = text.toLowerCase();
+    let patternIdx = 0;
+    let textIdx = 0;
+    let score = 0;
+    let consecutiveMatches = 0;
+    const matches = [];
+    while (patternIdx < pattern.length && textIdx < text.length) {
+      if (pattern[patternIdx] === text[textIdx]) {
+        matches.push(textIdx);
+        if (patternIdx > 0 && matches[patternIdx - 1] === textIdx - 1) {
+          consecutiveMatches++;
+          score += 5 + consecutiveMatches;
+        } else {
+          consecutiveMatches = 0;
+          score += 1;
+        }
+        if (textIdx === 0 || text[textIdx - 1] === ' ') {
+          score += 10;
+        }
+        if (text[textIdx] === text[textIdx].toUpperCase() && text[textIdx] !== ' ') {
+          score += 5;
+        }
+        patternIdx++;
+      }
+      textIdx++;
+    }
+    if (patternIdx !== pattern.length) {
+      return null;
+    }
+    score -= (text.length - pattern.length) * 0.5;
+    return score;
+  }
+  
+  function updateList() {
+    const query = searchInput.value;
+    if (!query) {
+      container.innerHTML = '';
+      for (const n of name_list) {
+        container.append(itemElements.get(n));
+      }
+      return;
+    }
+    const scored = [];
+    for (const n of name_list) {
+      const score = fuzzyMatch(query, n);
+      if (score !== null) {
+        scored.push({ name: n, score: score });
+      }
+    }
+    scored.sort((a, b) => b.score - a.score);
+    container.innerHTML = '';
+    for (const item of scored) {
+      container.append(itemElements.get(item.name));
+    }
+  }
+  searchInput.addEventListener('input', updateList);
+
+  return menu;
+}
+
+function createStaffTable() {
+  let table = document.createElement('div');
+  table.classList.add('v-container', 'align-items-center');
+  table.innerHTML = `
     <h3 class="txt-center">Nomber de</h3>
 
     <div class="h-container align-items-center wide m-width">
       <div class="disp-flex grow half-wide justify-content-center">
-      <h4 class="txt-center">Participants(es)</h4>
+      <h4 class="txt-center">Participants</h4>
       </div>
       <div class="disp-flex grow half-wide justify-content-center">
       <h4 class="txt-center">Personnel</h4>
@@ -101,14 +196,21 @@ let tmpls = [ document.createElement('div'), null, null, null ];
 
     </div>
     </div>
-    </div>
+    `;
+  
+  return table;
+}
 
-    <div class="v-container grow half-wide align-items-center">
+function createCompetencesTable() {
+  let table = document.createElement('div');
+  table.classList.add('v-container', 'align-items-center');
+  table.innerHTML = `
+    <div class="v-container align-items-center">
     <h3 class="txt-center">Competences de</h3>
 
     <div class="h-container align-items-center wide m-width">
       <div class="disp-flex grow half-wide justify-content-center">
-      <h4 class="txt-center">Participants(es)</h4>
+      <h4 class="txt-center">Participants</h4>
       </div>
       <div class="disp-flex grow half-wide justify-content-center">
       <h4 class="txt-center">Personnel</h4>
@@ -128,20 +230,35 @@ let tmpls = [ document.createElement('div'), null, null, null ];
     <button class="hover snap-start">Diplome #3</button>
     </div>
     </div>
-
-    </div>
-
     </div>
     </div>
+    `;
 
-    <div class="h-container">
+  return table;
+}
+
+function createFooterOptions() {
+  let footer = document.createElement('div');
+  footer.className = 'h-container';
+  footer.innerHTML = `
     <div class="row-selection">
     Durée: <button id="event-duration" class="hover std-min no-padding txt-center tiny-button">\u00A0</button>d
     </div>
-    </div>
+    `;
+  return footer;
+}
 
+{
+  tmpls[scopeId.EVENT].innerHTML = `
+    <div class="v-container">
     </div>
-  `
+  `;
+  tmpls[scopeId.EVENT].children[0].append(
+    createSearchMenu('Personelle'),
+    createStaffTable(),
+    createCompetencesTable(),
+    createFooterOptions(),
+  );
 }
 
 const data = new DataManager();
