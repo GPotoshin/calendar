@@ -10,6 +10,8 @@ import { BufferReader, BufferWriter } from './io.js';
 import { DataManager } from './data_manager.js';
 import { numInput } from './num_input.js';
 import * as SearchDisplay from './search_display.js';
+import {} from './context_menu.js';
+import { callbacks } from './global_state.js';
 
 const MS_IN_DAY = 86400000;
 
@@ -27,11 +29,6 @@ let state = {
   baseDayNumber: 0,
   isUpdating: false,
 };
-
-let callbacks = {
-  handleTyping: {func: null, obj: null},
-  showInfo: {func: null, obj: null},
-}
 
 let elms = {
   calendarBody: null,
@@ -88,18 +85,12 @@ function createStaffTable() {
   table.classList.add('v-container', 'align-items-center');
 
   const columnWidth = 125;
-  const list = ["Formateur", "Responsable Pedagogique", "Assistant"];
+  const list = ["Participants", "Formateur", "Responsable Pedagogique", "Assistant"];
 
   table.innerHTML = `
     <h3 class="txt-center">Nomber de</h3>
 
-    <div class="h-container align-items-center wide m-width">
-      <div class="disp-flex grow half-wide justify-content-center">
-      <h4 class="txt-center">Participants</h4>
-      </div>
-      <div class="disp-flex grow half-wide justify-content-center">
-      <h4 class="txt-center">Personnel</h4>
-      </div>
+    <div class="h-container with-width">
     </div>
 
     <div class="m-box v-container with-width">
@@ -107,7 +98,24 @@ function createStaffTable() {
     </div>
     </div>
     `;
-  let container = table.children[2];
+  
+  function createLocalHeader(name) {
+    let retval = document.createElement('div');
+    retval.className = 'disp-flex grow half-wide justify-content-center';
+    let header = document.createElement('h4');
+    header.className = 'txt-center';
+    header.textContent = name;
+    retval.append(header);
+    return retval;
+  }
+
+  let container = table.children[1];
+  container.style.setProperty('--width', (columnWidth*(list.length+1)) + 'px');
+  for (let name of list) {
+    container.append(createLocalHeader(name));
+  }
+
+  container = table.children[2];
   container.style.setProperty('--width', (columnWidth*(list.length+1)) + 'px');
   
   return table;
@@ -120,31 +128,17 @@ function createCompetencesTable() {
     <div class="v-container align-items-center">
     <h3 class="txt-center">Competences de</h3>
 
-    <div class="h-container align-items-center wide m-width">
-      <div class="disp-flex grow half-wide justify-content-center">
-      <h4 class="txt-center">Participants</h4>
-      </div>
-      <div class="disp-flex grow half-wide justify-content-center">
-      <h4 class="txt-center">Personnel</h4>
-      </div>
-    </div>
-
-    <div class="m-box v-container">
-    <div class="h-container">
-    <div class="searching-field h-container disp-flex grow half-wide"><div class="arrow">></div><input class="searching-input" type="text" placeholder="Trouver"></input></div>
-    <div class="searching-field h-container disp-flex grow half-wide"><div class="arrow">></div><input class="searching-input" type="text" placeholder="Trouver"></input></div>
-    </div>
-    <div class="h-container grow">
-    <div id="event-attendee-diplomes" class="text-box v-container scrollable-box scroll bordered grow half-wide">
-    <button class="hover snap-start">Diplome #3</button>
-    </div>
-    <div id="event-staff-diplomes" class="text-box v-container scrollable-box scroll bordered grow half-wide">
-    <button class="hover snap-start">Diplome #3</button>
-    </div>
-    </div>
-    </div>
+    <div class="js-set h-container align-items-center">
     </div>
     `;
+
+  const container = table.querySelector('.js-set');
+
+  // const baseWidth = 125; 
+  let fields = ['Participant', 'Formatuer', 'Responsable Pedagogique', 'Assistant'];
+  for (let name of fields) {
+    container.append(SearchDisplay.create(name, data.staffsRoles, 'Nouvelle Compétence'));
+  }
 
   return table;
 }
@@ -166,13 +160,12 @@ function createFooterOptions() {
     </div>
   `;
   tmpls[scopeId.EVENT].children[0].append(
-    SearchDisplay.create('Personelle', data.staffsRoles),
+    SearchDisplay.create('Personel', data.staffsRoles, 'Nouveau Rôle'),
     createStaffTable(),
     createCompetencesTable(),
     createFooterOptions(),
   );
 }
-
 
 function createTemplateLine() {
   let line = document.createElement('div');
@@ -181,7 +174,7 @@ function createTemplateLine() {
   return line;
 }
 
-function resetEventInfoView() {
+function resetEventInfoView() { // @working
   // scoped functions
   const tmplHTML = `
     <div class="disp-flex grow half-wide justify-content-center bottom-right-border">
@@ -390,8 +383,8 @@ let focus = {
 function setUiList(ui, list) {
   for (let i = 0; i < list.length; i++) {
     var button = document.createElement('button');
-    button.addEventListener('click', function() {
-      handle2StateButtonClick(button);
+    button.addEventListener('click', () => {
+      this.classList.toggle('clicked');
     });
 
     button.className = 'hover';
@@ -671,65 +664,6 @@ document.addEventListener('click', (event) => {
   }
 });
 
-
-document.addEventListener('contextmenu', function(e) {
-  const menu = elms.rightClickMenu;
-  let show = true;
-  let target = null;
-  if (elms.sideMenu.contains(e.target)) {
-    document.getElementById('new-event-button').classList.replace('disp-none', 'disp-block');
-  } else if (elms.nameList.contains(e.target)) {
-    document.getElementById('new-member-button').classList.replace('disp-none', 'disp-block');
-  } else if (elms.venueList.contains(e.target)) {
-    document.getElementById('new-venue-button').classList.replace('disp-none', 'disp-block');
-  } else if (e.target.classList.contains('editable')) {
-    document.getElementById('edit-button').classList.replace('disp-none', 'disp-block');
-    contextmenuData.target = e.target;
-  } else if (target = e.target.closest('.deletable')) { 
-    document.getElementById('delete-button').classList.replace('disp-none', 'disp-block');
-    contextmenuData.target = target;
-  } else {
-    show = false;
-  }
-
-  if (e.target.classList.contains('editable')) {
-    document.getElementById('edit-button').classList.replace('disp-none', 'disp-block');
-    contextmenuData.target = e.target;
-    show = true;
-  }
-
-  if (e.target.classList.contains('togglable')) {
-    document.getElementById('toggle-button').classList.replace('disp-none', 'disp-block');
-    contextmenuData.target = e.target;
-    show = true;
-  }
-
-  if (target = e.target.closest('.extendable')) {
-    document.getElementById('create-button').classList.replace('disp-none', 'disp-block');
-    contextmenuData.target = target;
-    show = true;
-  }
-
-  for (const button of elms.sideMenu.children) { // @nocheckin, ??
-    if (button.contains(e.target)) {
-      show = true;
-      let infoButton = document.getElementById('info-event-button');
-      infoButton.classList.replace('disp-none', 'disp-block');
-      callbacks.showInfo = { func: showInfo(button), obj: infoButton };
-      infoButton.addEventListener('click', callbacks.showInfo.func);
-      break;
-    }
-  }
-
-  if (show) {
-    e.preventDefault();
-    menu.classList.replace('disp-none', 'disp-flex');
-    menu.style.setProperty('--menu-left', e.clientX + 'px');
-    menu.style.setProperty('--menu-top', e.clientY + 'px');
-    document.addEventListener('click', handleClickForContextMenu);
-  }
-});
-
 function showInfo(element) {
   return function() {
     const rect = element.getBoundingClientRect();
@@ -748,35 +682,6 @@ function switchToInformationView() {
   elms.bodyContainer.replaceChild(elms.view[viewId.INFORMATION], elms.bodyContainer.children[1]);
 }
 
-document.getElementById('create-button').addEventListener('click', () => {
-  const target = contextmenuData.target;
-  console.log(target);
-  const button = target._createButton();
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.placeholder = placeholder;
-  button.appendChild(input);
-  target.appendChild(button);
-  input.focus();
-
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const value = input.value;
-      input.remove();
-      button.textContent = value;
-      // storage.push(value);
-      // postString(url, value);
-    } else if (e.key === 'Escape') {
-      button.remove();
-    }
-  });
-});
-
-document.getElementById('toggle-button').addEventListener('click', () => {
-  contextmenuData.target.classList.toggle('clicked');
-});
-
 document.getElementById('side-menu-button').addEventListener('click', 
   function(button) {
     let sideMenuContainer = elms.sideMenuContainer;
@@ -788,155 +693,6 @@ document.getElementById('side-menu-button').addEventListener('click',
     state.sideMenuIsOpen ^= true;
   }
 );
-
-function postString(url, str) {
-  let writer = new BufferWriter();
-  writer.writeString(str);
-  fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/octet-stream',
-    },
-    body: writer.getBuffer(),
-  })
-    .then(resp => {
-      if (!resp.ok) {
-        throw new Error(`HTTP error! status: ${resp.status}`);
-      }})
-    .catch(e => {
-      console.error(`Error: ${e}`);
-    });
-}
-
-function handleAddToList(target, placeholder, url, storage) {
-  const button = document.createElement('button');
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.placeholder = placeholder;
-  button.appendChild(input);
-  target.appendChild(button);
-  input.focus();
-
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const value = input.value;
-      input.remove();
-      button.textContent = value;
-      storage.push(value);
-      button.addEventListener('click', function() {
-        handle2StateButtonClick(this);
-      });
-
-      button.className = 'hover';
-      postString(url, value);
-    } else if (e.key === 'Escape') {
-      input.remove();
-    }
-  });
-}
-
-let contextmenuData = {
-  target: null,
-};
-
-document.getElementById('new-member-button').addEventListener('click', function() {
-  handleAddToList(elms.nameList, 'Nouveau Agent', '/store/agent', data.staffNames);
-});
-
-document.getElementById('new-venue-button').addEventListener('click', function() {
-  handleAddToList(elms.venueList, 'Nouveau Lieu', '/store/venue', data.venueNames);
-});
-
-document.getElementById('edit-button').addEventListener('click', function() {
-  let b = contextmenuData.target;
-  numInput.elm.value = b.textContent;
-  b.replaceWith(numInput.elm);
-  numInput.elm.focus();
-
-  const _eventId = zones[zonesId.EVENTLIST].selection;
-  let dataArray = null;
-  let idx = -1;
-
-  if (b.id === 'event-duration') {
-    numInput.endOfWriting = () => {
-      const _eventId = zones[zonesId.EVENTLIST].selection;
-      if (numInput.elm.value === '') {
-        b.textContent = '\u00A0';
-        data.eventDuration[_eventId] = -1;
-        function localCallback() {
-          b.replaceWith(numInput.elm);
-          numInput.elm.focus();
-          numInput.endOfWriting = () => { endOfWriting() };
-        }
-        function endOfWriting() {
-          const _eventId = zones[zonesId.EVENTLIST].selection;
-          numInput.elm.replaceWith(b);
-          if (numInput.elm.value === '') {
-            data.eventDuration[_eventId] = -1;
-            return;
-          }
-          b.textContent = numInput.elm.value;
-          data.eventDuration[_eventId] = Number(numInput.elm.value);
-          b.classList.add('editable');
-          b.removeEventListener('click', localCallback);
-        }
-        b.addEventListener('click', localCallback);
-      } else {
-        b.textContent = numInput.elm.value;
-        data.eventDuration[_eventId] = Number(b.textContent);
-      }
-      numInput.elm.replaceWith(b);
-    };
-  } else { // @nocheckin: we should probably set a special class on a button or somewhat like that
-    numInput.endOfWriting = () => {
-      const _eventId = zones[zonesId.EVENTLIST].selection;
-      if (numInput.elm.value === '') {
-        b.textContent = '\u00A0';
-        data.eventPersonalNumMap[_eventId][b._dIdx] = -1;
-        function localCallback() {
-          b.replaceWith(numInput.elm);
-          numInput.elm.focus();
-          numInput.endOfWriting = () => { endOfWriting() };
-        }
-        function endOfWriting() {
-          numInput.elm.replaceWith(b);
-          const _eventId = zones[zonesId.EVENTLIST].selection;
-          if (numInput.elm.value === '') {
-            data.eventPersonalNumMap[_eventId][b._dIdx] = -1;
-            return;
-          }
-          b.textContent = numInput.elm.value;
-          data.eventPersonalNumMap[_eventId][b._dIdx] = Number(numInput.elm.value);
-          b.classList.add('editable');
-          b.removeEventListener('click', localCallback);
-        }
-        b.addEventListener('click', localCallback);
-      } else {
-        b.textContent = numInput.elm.value;
-        data.eventPersonalNumMap[_eventId][b._dIdx] = Number(b.textContent);
-      }
-      numInput.elm.replaceWith(b);
-    };
-  }
-});
-
-document.getElementById('delete-button').addEventListener('click', function() {
-  contextmenuData.target.remove();
-  let idx = contextmenuData.target._dIdx*3;
-  let dataarr = data.eventPersonalNumMap[zones[zonesId.EVENTLIST].selection];
-  let list = document.getElementById('event-staff-number-map');
-  let btns = list.querySelectorAll('button');
-  for (let i = idx+3; i<dataarr.length; i += 3) {
-    btns[i-3]._dIdx -= 3;
-    btns[i-2]._dIdx -= 3;
-    btns[i-1]._dIdx -= 3;
-    dataarr[i-3] = dataarr[i];
-    dataarr[i-2] = dataarr[i+1];
-    dataarr[i-1] = dataarr[i+2];
-  }
-  dataarr.length -= 3;
-});
 
 function handleClickForOptionMenu(event) {
   let menu = elms.createOptionMenu;
@@ -999,19 +755,6 @@ function handleClickForOptionMenu(event) {
   }
 };
 
-function handleClickForContextMenu() {
-  let menu = elms.rightClickMenu;
-  menu.classList.replace('disp-flex', 'disp-none');
-  document.removeEventListener('click', handleClickForContextMenu);
-  if (callbacks.showInfo.obj && callbacks.showInfo.func) {
-    callbacks.showInfo.obj.removeEventListener('click', callbacks.showInfo.func);
-  }
-  callbacks.showInfo = { func: null, obj: null };
-  for (const child of menu.children) {
-    child.classList.replace('disp-block', 'disp-none');
-  }
-}
-
 function handleClickOnListButton(b, zn) {
   const z = zones[zn];
   if (z.selection == b._bIdx) {
@@ -1030,38 +773,3 @@ function handleClickOnViewButton(b, zn) {
   const z = zones[zn];
   z.selection = b._bIdx;
 }
-
-document.getElementById('new-event-button').addEventListener('click', 
-  function() {
-    let menu = elms.sideMenu;
-    let new_button = document.createElement('button');
-    new_button.classList.add('event-button');
-    new_button.textContent = "Nouvel Événement";
-    menu.appendChild(new_button);
-
-    const rect = new_button.getBoundingClientRect();
-    menu = document.getElementById('create-option-menu');
-    menu.classList.replace('disp-none', 'disp-flex');
-    menu.style.setProperty('--menu-left', rect.right + 'px');
-    menu.style.setProperty('--menu-top', rect.top + 'px');
-
-    let input = menu.querySelectorAll('input')[0];
-    input.focus();
-
-    state.focusedElement = new_button;
-    callbacks.handleTyping.func = function(event) {
-      if (event.target.value === "") {
-        new_button.textContent = "Nouvel Événement";
-      } else {
-        new_button.textContent = event.target.value;
-      }
-    };
-
-    input.addEventListener('input', callbacks.handleTyping.func);
-    callbacks.handleTyping.obj = input;
-  });
-
-function handle2StateButtonClick(b) {
-  b.classList.toggle('clicked');
-}
-window.handle2StateButtonClick = handle2StateButtonClick;

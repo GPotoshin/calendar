@@ -65,11 +65,29 @@ func serveFile(fileName string, headers []HeaderPair) http.HandlerFunc {
   }
 }
 
+const (
+  EVENT_NAMES_ID int32 = iota
+  EVENT_STAFF_ID
+	EVENT_VENUES_ID
+	EVENT_PERSONAL_NUM_MAP_ID
+	EVENT_STAFF_DIPL_REQ_ID
+	EVENT_ATTENDEE_DIPL_REQ_ID
+	EVENT_DURATION_ID
+
+	STAFF_NAMES_ID
+	VENUE_NAMES_ID
+
+	STAFFS_DIPLOMES_NAMES_ID
+	ATTENDEES_DIPLOMES_NAMES_ID
+    
+	STATE_FIELD_COUNT
+)
+
 type ApplicationState struct {
   EventNames []string
   EventStaff [][]int32
   EventVenues [][]int32
-  EventPresonalNumMap [][]int32 // @new
+  EventPresonalNumMap [][]int32
   EventStaffDiplReq []int32
   EventAttendeeDiplReq []int32
   EventDuration []int32
@@ -379,6 +397,8 @@ func main() {
     "data_manager.js",
     "search_display.js",
     "scrollable_calendar.js",
+    "context_menu.js",
+    "global_state.js",
   }
   jsHeaders := []HeaderPair{{Key: "Content-Type", Value: "text/javascript"}}
   for _, file := range jsFiles {
@@ -388,14 +408,7 @@ func main() {
   http.HandleFunc("/general_style.css", serveFile("general_style.css", []HeaderPair{{Key: "Content-Type", Value: "text/css"}}))
   http.HandleFunc("/custom_style.css", serveFile("custom_style.css", []HeaderPair{{Key: "Content-Type", Value: "text/css"}}))
   http.HandleFunc("/", serveIndex)
-  http.HandleFunc("/view/calendar", handleCalendar)
-  http.HandleFunc("/view/events", handleEvents)
-  http.HandleFunc("/view/staff", handleStaff)
-  http.HandleFunc("/view/venues", handleVenues)
-  http.HandleFunc("/api/side-menu", handleSideMenu)
-  http.HandleFunc("/store/event", handleStoreEvent)
-  http.HandleFunc("/store/agent", handleStoreString(&state.StaffNames)) 
-  http.HandleFunc("/store/venue", handleStoreString(&state.VenueNames)) 
+  http.HandleFunc("/api/side-menu", handleSideMenu) // @nocheckin: we should have a single point for data manipulation
   http.HandleFunc("/data", handleData)
 
   srv := &http.Server{
@@ -479,22 +492,6 @@ func serveIndex(w http.ResponseWriter, r *http.Request) {
   }
 }
 
-func handleCalendar(w http.ResponseWriter, r *http.Request) {
-  t := template.New("month.html")
-  t, err := t.ParseFiles("month.html")
-
-  if err != nil {
-    http.Error(w, "Error parsing template", http.StatusInternalServerError)
-    return
-  }
-
-  data := generateMonthData()
-  err = t.ExecuteTemplate(w, "month", data)
-  if err != nil {
-    http.Error(w, "Error executing template", http.StatusInternalServerError)
-  }
-}
-
 func handleSideMenu(w http.ResponseWriter, r *http.Request) {
   t := template.New("side-menu.html")
   t, err := t.ParseFiles("side-menu.html")
@@ -510,94 +507,85 @@ func handleSideMenu(w http.ResponseWriter, r *http.Request) {
   }
 }
 
-func handleVenues(w http.ResponseWriter, r *http.Request) {
-  now := time.Now()
-  response := fmt.Sprintf("<h2>Venues</h2><p>%s</p>", now.Format("2006"))
-  w.Header().Set("Content-Type", "text/html")
-  fmt.Fprint(w, response)
-}
 
-func handleEvents(w http.ResponseWriter, r *http.Request) {
-  log.Print("handleDay")
-  now := time.Now()
-  response := fmt.Sprintf("<h2>Events</h2><p>%s</p>", now.Format("Monday, January 2, 2006"))
-  w.Header().Set("Content-Type", "text/html")
-  fmt.Fprint(w, response)
-}
+const (
+  STORE int32 = iota
+  REQUEST
+  DELETE
+  UPDATE
+) 
 
-func handleStaff(w http.ResponseWriter, r *http.Request) {
-  log.Print("handleStaff")
-  now := time.Now()
-  weekStart := now.AddDate(0, 0, -int(now.Weekday()))
-  weekEnd := weekStart.AddDate(0, 0, 6)
-  response := fmt.Sprintf("<h2>Staff</h2><p>%s - %s</p>", 
-  weekStart.Format("Jan 2"), 
-  weekEnd.Format("Jan 2, 2006"))
-  w.Header().Set("Content-Type", "text/html")
-  fmt.Fprint(w, response)
-}
-
-func handleStoreEvent(w http.ResponseWriter, r *http.Request) {
-  if r.Method != http.MethodPost {
-    http.Error(w, "Method not allowed. Only POST is supported.", http.StatusMethodNotAllowed)
-    return
-  }
-
-  name, err := readString(r.Body)
-  if err != nil {
-    log.Print(err)
-    http.Error(w, err.Error(), http.StatusBadRequest)
-    return
-  }
-
-  staff, err := readInt32Array(r.Body)
-  if err != nil {
-    log.Print(err)
-    http.Error(w, err.Error(), http.StatusBadRequest)
-    return
-  }
-
-  venues, err := readInt32Array(r.Body)
-  if err != nil {
-    log.Print(err)
-    http.Error(w, err.Error(), http.StatusBadRequest)
-    return
-  }
-
-  state.EventNames = append(state.EventNames, name)
-  state.EventStaff = append(state.EventStaff, staff)
-  state.EventVenues = append(state.EventVenues, venues)
-
-  if err != nil {
-    http.Error(w, err.Error(), http.StatusBadRequest)
-    return
-  }
-
-  w.WriteHeader(http.StatusOK)
-}
-
-func handleStoreString(dest *[]string) http.HandlerFunc {
-  return func(w http.ResponseWriter, r *http.Request) {
-    if r.Method != http.MethodPost {
-      http.Error(w, "Method not allowed. Only POST is supported.", http.StatusMethodNotAllowed)
-      return
-    }
-
-    str, err := readString(r.Body)
+func handleArrayOfStrings(r io.Reader, w http.ResponseWriter, mode int32, data *[]string, freelist *[]int32) {
+  switch mode {
+  case STORE:
+    str, err := readString(r)
     if err != nil {
       log.Print(err)
       http.Error(w, err.Error(), http.StatusBadRequest)
       return
     }
-    log.Println("string: ", str)
+    _ = storeValue(data, freelist, str)
 
-    *dest = append(*dest, str)
-    log.Print(state)
+  case REQUEST:
+  case DELETE:
+  case UPDATE:
+  default:
+    http.Error(w, "incorrect mode", http.StatusBadRequest)
+    return
+  }
+}
 
-    if err != nil {
-      http.Error(w, err.Error(), http.StatusBadRequest)
-      return
-    }
-    w.WriteHeader(http.StatusOK)
+func handleApi(w http.ResponseWriter, r *http.Request) {
+  if r.Method != http.MethodPost {
+    http.Error(w, "Method not allowed. Only POST is supported.", http.StatusMethodNotAllowed)
+    return
+  }
+  api_version, err := readString(r.Body)
+  if err != nil {
+    log.Print(err)
+    http.Error(w, err.Error(), http.StatusBadRequest)
+    return
+  }
+  if api_version != "bin_api.v0.0.0" {
+    http.Error(w, "incorrect api version", http.StatusBadRequest)
+    return
+  }
+  
+
+  mode, err := readInt32(r.Body)
+  if err != nil {
+    log.Print(err)
+    http.Error(w, err.Error(), http.StatusBadRequest)
+    return
+  }
+
+  field_id, err := readInt32(r.Body)
+  if err != nil {
+    log.Print(err)
+    http.Error(w, err.Error(), http.StatusBadRequest)
+    return
+  }
+
+  if field_id < 0 || field_id >= STATE_FIELD_COUNT {
+    http.Error(w, "incorrect field id", http.StatusBadRequest)
+    return
+  }
+
+  switch field_id {
+  case EVENT_NAMES_ID:
+    handleArrayOfStrings(r.Body, w, mode, &state.EventNames, &state.EventFreeList)
+  case EVENT_STAFF_ID:
+  case EVENT_VENUES_ID:
+  case EVENT_PERSONAL_NUM_MAP_ID:
+  case EVENT_STAFF_DIPL_REQ_ID:
+  case EVENT_ATTENDEE_DIPL_REQ_ID:
+  case EVENT_DURATION_ID:
+  case STAFF_NAMES_ID:
+  case VENUE_NAMES_ID:
+  case STAFFS_DIPLOMES_NAMES_ID:
+  case ATTENDEES_DIPLOMES_NAMES_ID:
+  default:
+    http.Error(w, "incorrect field id", http.StatusBadRequest)
+    return
   }
 }

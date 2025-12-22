@@ -63,7 +63,7 @@ function createButton(name = '') {
   return b;
 }
 
-export function create(name, list) {
+export function create(name, list, btnPlaceholder) {
   let menu = document.createElement('div');
   let itemElements = new Map();
 
@@ -85,6 +85,8 @@ export function create(name, list) {
   menu.children[1].style.setProperty('--width', '200px');
   menu.children[2].style.setProperty('--width', '200px');
   objList[1]._createButton = createButton;
+  objList[1]._btnPlaceholder = btnPlaceholder;
+  objList[1]._storage = list;
 
   for (const n of list) {
     const btn = createButton(n);

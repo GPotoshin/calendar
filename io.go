@@ -52,6 +52,12 @@ func readInt32(r io.Reader) (int32, error) {
   return val, err
 }
 
+func readByte(r io.Reader) (byte, error) {
+  var val byte
+  err := binary.Read(r, binary.LittleEndian, &val)
+  return val, err
+}
+
 func readString(r io.Reader) (string, error) {
   l, err := readInt32(r)
   if err != nil {
