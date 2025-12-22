@@ -16,41 +16,6 @@ import (
   // "encoding/gob"
 )
 
-func middleware(handler http.Handler) http.Handler {
-  return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-    log.Printf("%s %s %s\n", r.RemoteAddr, r.Method, r.URL)
-    
-    csp := []string{
-			"default-src 'self'",           // Everything from my domain only
-			"script-src 'self'",            // JS files from mY domain only
-			"connect-src 'self'",           // fetch/XHR to my domain only
-			"style-src 'self'",             // CSS from my domain only
-      "img-src 'self' data:",         // Images from my domain + data URIs
-			"font-src 'self'",              // Fonts from my domain only
-			"object-src 'none'",            // No plugins (Flash, Java, etc.)
-			"base-uri 'self'",              // Prevent <base> tag injection
-			"form-action 'self'",           // Forms only submit to my domain
-			"frame-ancestors 'none'",       // Prevent clickjacking (can't be framed)
-			// "upgrade-insecure-requests",    // Auto-upgrade HTTP to HTTPS
-		}
-		w.Header().Set("Content-Security-Policy", strings.Join(csp, "; "))
-
-    w.Header().Set("X-Content-Type-Options", "nosniff")
-    w.Header().Set("X-Frame-Options", "DENY")
-    w.Header().Set("X-XSS-Protection", "1; mode=block")
-    w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
-    w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
-
-    // HSTS (only if using HTTPS)
-		// Uncomment when you enable HTTPS:
-		// if r.TLS != nil {
-		// 	w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
-		// }
-
-    handler.ServeHTTP(w, r)
-  })
-}
-
 type HeaderPair struct {
   Key string
   Value string
@@ -344,6 +309,39 @@ func writeApplicationState(w io.Writer, state ApplicationState) error {
 
 var state ApplicationState
 
+func middleware(handler http.Handler) http.Handler {
+  return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+    log.Printf("%s %s %s\n", r.RemoteAddr, r.Method, r.URL)
+    
+    csp := []string{
+			"default-src 'self'",           // Everything from my domain only
+			"script-src 'self'",            // JS files from mY domain only
+			"connect-src 'self'",           // fetch/XHR to my domain only
+			"style-src 'self'",             // CSS from my domain only
+      "img-src 'self' data:",         // Images from my domain + data URIs
+			"font-src 'self'",              // Fonts from my domain only
+			"object-src 'none'",            // No plugins (Flash, Java, etc.)
+			"base-uri 'self'",              // Prevent <base> tag injection
+			"form-action 'self'",           // Forms only submit to my domain
+			"frame-ancestors 'none'",       // Prevent clickjacking (can't be framed)
+			"upgrade-insecure-requests",    // Auto-upgrade HTTP to HTTPS
+	}
+		w.Header().Set("Content-Security-Policy", strings.Join(csp, "; "))
+
+    w.Header().Set("X-Content-Type-Options", "nosniff")
+    w.Header().Set("X-Frame-Options", "DENY")
+    w.Header().Set("X-XSS-Protection", "1; mode=block")
+    w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+    w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+
+		if r.TLS != nil {
+			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
+		}
+
+    handler.ServeHTTP(w, r)
+  })
+}
+
 func main() {
   sigChan := make(chan os.Signal, 1)
   signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
@@ -389,6 +387,7 @@ func main() {
   http.HandleFunc("/regular.ttf", serveFile("fonts/SourceSansPro-Regular.ttf", []HeaderPair{{Key: "Content-Type", Value: "font/ttf"}}))
 
   jsFiles := []string{
+    "login_main.js",
     "main.js",
     "color.js",
     "utils.js",
@@ -407,19 +406,26 @@ func main() {
 
   http.HandleFunc("/general_style.css", serveFile("general_style.css", []HeaderPair{{Key: "Content-Type", Value: "text/css"}}))
   http.HandleFunc("/custom_style.css", serveFile("custom_style.css", []HeaderPair{{Key: "Content-Type", Value: "text/css"}}))
-  http.HandleFunc("/", serveIndex)
+  http.HandleFunc("/", serveFile("login_index.html", []HeaderPair{}))
   http.HandleFunc("/api/side-menu", handleSideMenu) // @nocheckin: we should have a single point for data manipulation
   http.HandleFunc("/data", handleData)
 
   srv := &http.Server{
-    Addr:    ":80",
+    Addr:    ":443",
     Handler: middleware(http.DefaultServeMux),
   }
 
   go func() {
-    fmt.Println("Server starting on :80")
-    if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-      log.Fatal(http.ListenAndServe(":80", middleware(http.DefaultServeMux)))
+    log.Println("Starting HTTP redirect server on :80")
+    http.ListenAndServe(":80", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+      http.Redirect(w, r, "https://"+r.Host+r.RequestURI, http.StatusMovedPermanently)
+    }))
+  }()
+
+  go func() {
+    fmt.Println("Server starting on :443 (HTTPS)")
+    if err := srv.ListenAndServeTLS("./test/cert.pem", "./test/key.pem"); err != nil && err != http.ErrServerClosed {
+      log.Fatal(err)
     }
   }()
 
