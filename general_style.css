@@ -178,6 +178,11 @@ button {
   text-align: center;
 }
 
+
+.txt-justify-center {
+  text-justify: center;
+}
+
 .wide {
   width: 100%;
 }

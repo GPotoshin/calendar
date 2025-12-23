@@ -307,6 +307,14 @@
   padding: 2px;
 }
 
+.login-field {
+  margin: 1px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 2px;
+  height: 25px;
+}
+
 .arrow {
   color: #ccc;
   padding-right: 3px;
@@ -318,4 +326,8 @@
 
 #event-staff-number-map {
   margin: 1px;
+}
+
+.connect-button {
+  margin-top: 5px;
 }

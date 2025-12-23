@@ -13,7 +13,6 @@ import (
   "io"
   "bufio"
   "strings"
-  // "encoding/gob"
 )
 
 type HeaderPair struct {
@@ -38,17 +37,29 @@ const (
 	EVENT_STAFF_DIPL_REQ_ID
 	EVENT_ATTENDEE_DIPL_REQ_ID
 	EVENT_DURATION_ID
-
 	STAFF_NAMES_ID
 	VENUE_NAMES_ID
-
 	STAFFS_DIPLOMES_NAMES_ID
 	ATTENDEES_DIPLOMES_NAMES_ID
-    
 	STATE_FIELD_COUNT
 )
 
+const (
+  PRIVILAGE_LEVEL_ADMIN int32 = iota - 2
+  PRIVILAGE_LEVEL_USER
+)
+
 type ApplicationState struct {
+  UserIDs []int32
+  UserPasswords [][32]byte
+  UserNames []string
+  UserMails []string
+  UserPhones []int32
+  UserCompetences [][]int32
+  UserDutyStation []int32
+  UserDutyPrivilageLevel []int32 // if it is >= 0, than that shows it as a chief of 
+                                 // the Duty Station. If it is a constant
+
   EventNames []string
   EventStaff [][]int32
   EventVenues [][]int32
@@ -60,57 +71,104 @@ type ApplicationState struct {
 
   StaffNames []string
   StaffFreeList []int32
+
   VenueNames []string
   VenueFreeList []int32
 
+  DutyStationNames []string
+
   StaffsDiplomesNames []string 
   AttendeesDiplomesNames []string
+  ComptencesNames []string
 }
+var state ApplicationState
 
-func storeValue[T any](array *[]T, freeList *[]int32, value T) int32 {
-	if len(*freeList) > 0 {
-		index := (*freeList)[len(*freeList)-1]
-		*freeList = (*freeList)[:len(*freeList)-1]
-		(*array)[index] = value
-		return index
-	} else {
-		*array = append(*array, value)
-		return int32(len(*array) - 1)
-	}
-}
-
-func deleteValue[T comparable](array *[]T, freeList *[]int32, index int32) {
-	idx := int(index)
-	var zero T
-	if (*array)[idx] == zero {
-		return
-	}
-
-	(*array)[idx] = zero
-	*freeList = append(*freeList, index)
-}
-
-func deleteOccurrences(array *[][]int32, value int32) {
-	for i := range *array {
-		temp := (*array)[i][:0]
-		for _, arrayValue := range (*array)[i] {
-			if arrayValue != value {
-				temp = append(temp, arrayValue)
-			}
-		}
-		(*array)[i] = temp
-	}
-}
-
-func getAll[T1 comparable, T2 any](array []T1, composeT func(T1, int)T2) []T2 {
-  var zero T1
-  var retval []T2
-  for i, val := range(array) {
-    if val != zero {
-      retval = append(retval, composeT(val, i))
-    }
+func readApplicationState(r io.Reader) (ApplicationState, error) {
+  var state ApplicationState
+  version := "bin_state.v0.0.3"
+  format, err := readString(r)
+  if err != nil {
+    return state, fmt.Errorf("Can't verify file format: %w", err)
   }
-  return retval
+  if format != version {
+    return state, fmt.Errorf("The file format `%s` is outdated. the current format is `%s`. State is zero", format, version)
+  }
+  if state.EventNames, err = readStringArray(r); err != nil {
+    return state, fmt.Errorf("failed to read EventNames: %w", err)
+  }
+  if state.EventStaff, err = readArrayOfInt32Arrays(r); err != nil {
+    return state, fmt.Errorf("failed to read EventStaff: %w", err)
+  }
+  if state.EventVenues, err = readArrayOfInt32Arrays(r); err != nil {
+    return state, fmt.Errorf("failed to read EventVenues: %w", err)
+  }
+  if state.EventPresonalNumMap, err = readArrayOfInt32Arrays(r); err != nil {
+    return state, fmt.Errorf("failed to read EventPresonalNumMap: %w", err)
+  }
+  if state.EventStaffDiplReq, err = readInt32Array(r); err != nil {
+    return state, fmt.Errorf("failed to read EventStaffDiplReq: %w", err)
+  }
+  if state.EventAttendeeDiplReq, err = readInt32Array(r); err != nil {
+    return state, fmt.Errorf("failed to read EventAttendeeDiplReq: %w", err)
+  }
+  if state.EventDuration, err = readInt32Array(r); err != nil {
+    return state, fmt.Errorf("failed to read EventDuration: %w", err)
+  }
+  if state.StaffNames, err = readStringArray(r); err != nil {
+    return state, fmt.Errorf("failed to read StaffNames: %w", err)
+  }
+  if state.VenueNames, err = readStringArray(r); err != nil {
+    return state, fmt.Errorf("failed to read VenueNames: %w", err)
+  }
+  if state.StaffsDiplomesNames, err = readStringArray(r); err != nil {
+    return state, fmt.Errorf("failed to read StaffsDiplomesNames: %w", err)
+  }
+  if state.AttendeesDiplomesNames, err = readStringArray(r); err != nil {
+    return state, fmt.Errorf("failed to read AttendeesDiplomesNames: %w", err)
+  }
+  return state, nil
+}
+
+func writeApplicationState(w io.Writer, state ApplicationState) error {
+  version := "bin_state.v0.0.3"
+  if err := writeString(w, version); err != nil {
+    return fmt.Errorf("Failed to store data [file format]: %v\n", err)
+  }
+  if err := writeStringArray(w, state.EventNames); err != nil {
+    return fmt.Errorf("failed to write EventNames: %w", err)
+  }
+  if err := writeArrayOfInt32Arrays(w, state.EventStaff); err != nil {
+    return fmt.Errorf("failed to write EventStaff: %w", err)
+  }
+  if err := writeArrayOfInt32Arrays(w, state.EventVenues); err != nil {
+    return fmt.Errorf("failed to write EventVenues: %w", err)
+  }
+  if err := writeArrayOfInt32Arrays(w, state.EventPresonalNumMap); err != nil {
+    return fmt.Errorf("failed to write EventPresonalNumMap: %w", err)
+  }
+  if err := writeInt32Array(w, state.EventStaffDiplReq); err != nil {
+    return fmt.Errorf("failed to write EventStaffDiplReq: %w", err)
+  }
+  if err := writeInt32Array(w, state.EventAttendeeDiplReq); err != nil {
+    return fmt.Errorf("failed to write EventAttendeeDiplReq: %w", err)
+  }
+  if err := writeInt32Array(w, state.EventDuration); err != nil {
+    return fmt.Errorf("failed to write EventDuration: %w", err)
+  }
+  if err := writeStringArray(w, state.StaffNames); err != nil {
+    return fmt.Errorf("failed to write StaffNames: %w", err)
+  }
+  if err := writeStringArray(w, state.VenueNames); err != nil {
+    return fmt.Errorf("failed to write VenueNames: %w", err)
+  }
+  if err := writeStringArray(w, state.StaffsDiplomesNames); err != nil {
+    return fmt.Errorf("failed to write StaffsDiplomesNames: %w", err)
+  }
+  if err := writeStringArray(w, state.AttendeesDiplomesNames); err != nil {
+    return fmt.Errorf("failed to write AttendeesDiplomesNames: %w", err)
+  }
+  
+  return nil
 }
 
 type EventData struct {
@@ -219,112 +277,23 @@ func (state *ApplicationState) RemoveVenueFromEvent(eventIndex, venueIndex int32
   state.EventVenues[i] = temp
 }
 
-func readApplicationState(r io.Reader) (ApplicationState, error) {
-  var state ApplicationState
-  version := "bin_state.v0.0.3"
-  format, err := readString(r)
-  if err != nil {
-    return state, fmt.Errorf("Can't verify file format: %w", err)
-  }
-  if format != version {
-    return state, fmt.Errorf("The file format `%s` is outdated. the current format is `%s`. State is zero", format, version)
-  }
-  if state.EventNames, err = readStringArray(r); err != nil {
-    return state, fmt.Errorf("failed to read EventNames: %w", err)
-  }
-  if state.EventStaff, err = readArrayOfInt32Arrays(r); err != nil {
-    return state, fmt.Errorf("failed to read EventStaff: %w", err)
-  }
-  if state.EventVenues, err = readArrayOfInt32Arrays(r); err != nil {
-    return state, fmt.Errorf("failed to read EventVenues: %w", err)
-  }
-  if state.EventPresonalNumMap, err = readArrayOfInt32Arrays(r); err != nil {
-    return state, fmt.Errorf("failed to read EventPresonalNumMap: %w", err)
-  }
-  if state.EventStaffDiplReq, err = readInt32Array(r); err != nil {
-    return state, fmt.Errorf("failed to read EventStaffDiplReq: %w", err)
-  }
-  if state.EventAttendeeDiplReq, err = readInt32Array(r); err != nil {
-    return state, fmt.Errorf("failed to read EventAttendeeDiplReq: %w", err)
-  }
-  if state.EventDuration, err = readInt32Array(r); err != nil {
-    return state, fmt.Errorf("failed to read EventDuration: %w", err)
-  }
-  if state.StaffNames, err = readStringArray(r); err != nil {
-    return state, fmt.Errorf("failed to read StaffNames: %w", err)
-  }
-  if state.VenueNames, err = readStringArray(r); err != nil {
-    return state, fmt.Errorf("failed to read VenueNames: %w", err)
-  }
-  if state.StaffsDiplomesNames, err = readStringArray(r); err != nil {
-    return state, fmt.Errorf("failed to read StaffsDiplomesNames: %w", err)
-  }
-  if state.AttendeesDiplomesNames, err = readStringArray(r); err != nil {
-    return state, fmt.Errorf("failed to read AttendeesDiplomesNames: %w", err)
-  }
-  return state, nil
-}
-
-func writeApplicationState(w io.Writer, state ApplicationState) error {
-  version := "bin_state.v0.0.3"
-  if err := writeString(w, version); err != nil {
-    return fmt.Errorf("Failed to store data [file format]: %v\n", err)
-  }
-  if err := writeStringArray(w, state.EventNames); err != nil {
-    return fmt.Errorf("failed to write EventNames: %w", err)
-  }
-  if err := writeArrayOfInt32Arrays(w, state.EventStaff); err != nil {
-    return fmt.Errorf("failed to write EventStaff: %w", err)
-  }
-  if err := writeArrayOfInt32Arrays(w, state.EventVenues); err != nil {
-    return fmt.Errorf("failed to write EventVenues: %w", err)
-  }
-  if err := writeArrayOfInt32Arrays(w, state.EventPresonalNumMap); err != nil {
-    return fmt.Errorf("failed to write EventPresonalNumMap: %w", err)
-  }
-  if err := writeInt32Array(w, state.EventStaffDiplReq); err != nil {
-    return fmt.Errorf("failed to write EventStaffDiplReq: %w", err)
-  }
-  if err := writeInt32Array(w, state.EventAttendeeDiplReq); err != nil {
-    return fmt.Errorf("failed to write EventAttendeeDiplReq: %w", err)
-  }
-  if err := writeInt32Array(w, state.EventDuration); err != nil {
-    return fmt.Errorf("failed to write EventDuration: %w", err)
-  }
-  if err := writeStringArray(w, state.StaffNames); err != nil {
-    return fmt.Errorf("failed to write StaffNames: %w", err)
-  }
-  if err := writeStringArray(w, state.VenueNames); err != nil {
-    return fmt.Errorf("failed to write VenueNames: %w", err)
-  }
-  if err := writeStringArray(w, state.StaffsDiplomesNames); err != nil {
-    return fmt.Errorf("failed to write StaffsDiplomesNames: %w", err)
-  }
-  if err := writeStringArray(w, state.AttendeesDiplomesNames); err != nil {
-    return fmt.Errorf("failed to write AttendeesDiplomesNames: %w", err)
-  }
-  
-  return nil
-}
-
-var state ApplicationState
 
 func middleware(handler http.Handler) http.Handler {
   return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
     log.Printf("%s %s %s\n", r.RemoteAddr, r.Method, r.URL)
     
     csp := []string{
-			"default-src 'self'",           // Everything from my domain only
-			"script-src 'self'",            // JS files from mY domain only
-			"connect-src 'self'",           // fetch/XHR to my domain only
-			"style-src 'self'",             // CSS from my domain only
-      "img-src 'self' data:",         // Images from my domain + data URIs
-			"font-src 'self'",              // Fonts from my domain only
-			"object-src 'none'",            // No plugins (Flash, Java, etc.)
-			"base-uri 'self'",              // Prevent <base> tag injection
-			"form-action 'self'",           // Forms only submit to my domain
-			"frame-ancestors 'none'",       // Prevent clickjacking (can't be framed)
-			"upgrade-insecure-requests",    // Auto-upgrade HTTP to HTTPS
+			"default-src 'self'",
+			"script-src 'self'",
+			"connect-src 'self'",
+			"style-src 'self'",
+      "img-src 'self' data:",
+			"font-src 'self'",
+			"object-src 'none'",
+			"base-uri 'self'",
+			"form-action 'self'",
+			"frame-ancestors 'none'",
+			"upgrade-insecure-requests",
 	}
 		w.Header().Set("Content-Security-Policy", strings.Join(csp, "; "))
 
@@ -409,6 +378,7 @@ func main() {
   http.HandleFunc("/", serveFile("login_index.html", []HeaderPair{}))
   http.HandleFunc("/api/side-menu", handleSideMenu) // @nocheckin: we should have a single point for data manipulation
   http.HandleFunc("/data", handleData)
+  http.HandleFunc("/api/public-key", handlePublicKey)
 
   srv := &http.Server{
     Addr:    ":443",
@@ -439,6 +409,7 @@ func main() {
   log.Println("Server Exiting")
 }
 
+// @nocheckin --> move it to js.
 type DayData struct {}
 
 type WeekData struct {
@@ -556,7 +527,6 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     http.Error(w, "incorrect api version", http.StatusBadRequest)
     return
   }
-  
 
   mode, err := readInt32(r.Body)
   if err != nil {
