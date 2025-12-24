@@ -14,6 +14,31 @@ export class BufferReader {
     return value;
   }
 
+  readHash() {
+    const length = 32;
+    if (this.offset + length > this.view.byteLength) {
+      throw new Error(`Buffer overrun reading Hash: expected ${length} bytes`);
+    }
+    const hash = new Uint8Array(this.view.buffer.slice(this.offset, this.offset + length));
+    this.offset += length;
+    
+    return hash;
+  }
+
+  readBytes() {
+    const length = this.readInt32();
+    if (length < 0) {
+        throw new Error(`Invalid byte array length: ${length}`);
+    }
+    if (this.offset + length > this.view.byteLength) {
+        throw new Error(`Buffer overrun reading Bytes of length ${length}`);
+    }
+
+    const bytes = new Uint8Array(this.view.buffer.slice(this.offset, this.offset + length));
+    this.offset += length;
+    return bytes;
+}
+
   readString() {
     const length = this.readInt32();
     if (length < 0) {
@@ -81,6 +106,15 @@ export class BufferWriter {
     this.offset += 4;
   }
 
+  writeHash(hashBytes) {
+    if (hashBytes.length !== 32) {
+      throw new Error(`Invalid hash length: expected 32, got ${hashBytes.length}`);
+    }
+    this.ensureCapacity(32);
+    new Uint8Array(this.buffer, this.offset, 32).set(hashBytes);
+    this.offset += 32;
+  }
+
   writeString(str) {
     const encoded = this.textEncoder.encode(str);
     const length = encoded.length;
@@ -95,6 +129,13 @@ export class BufferWriter {
     for (const item of array) {
       writeChild.call(this, item);
     }
+  }
+
+  writeUint8Array(array) {
+    this.writeInt32(array.length);
+    this.ensureCapacity(array.length);
+    new Uint8Array(this.buffer, this.offset, array.length).set(array);
+    this.offset += array.length;
   }
 
   writeStringArray(array) {

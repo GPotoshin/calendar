@@ -1,87 +1,74 @@
-<!DOCTYPE html>
-<html lang="fr">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calendar</title>
-    <link rel="stylesheet" href="/custom_style.css">
-    <link rel="stylesheet" href="/general_style.css">
-    <script type="module" src="/main.js"></script>
-  </head>
-  <body>
-    <button id="side-menu-button">
-      <svg viewBox="0 0 34 26">
-        <rect x="2" y="2" width="30" height="22" rx="2" ry="2" fill="none" stroke="#737373" stroke-width="2"/>
-        <line x1="14" y1="2" x2="14" y2="24" stroke="#737373" stroke-width="2"/>
-        <circle cx="8" cy="7" r="2" fill="#737373"/>
-        <circle cx="8" cy="13" r="2" fill="#737373"/>
-        <circle cx="8" cy="19" r="2" fill="#737373"/>
-      </svg>
-    </button>
-    <div id="side-menu-container">
+<button id="side-menu-button">
+  <svg viewBox="0 0 34 26">
+    <rect x="2" y="2" width="30" height="22" rx="2" ry="2" fill="none" stroke="#737373" stroke-width="2"/>
+    <line x1="14" y1="2" x2="14" y2="24" stroke="#737373" stroke-width="2"/>
+    <circle cx="8" cy="7" r="2" fill="#737373"/>
+    <circle cx="8" cy="13" r="2" fill="#737373"/>
+    <circle cx="8" cy="19" r="2" fill="#737373"/>
+  </svg>
+</button>
+<div id="side-menu-container">
+</div>
+
+<div id="body-container" class="v-container">
+  <div class="header-container">
+    <div id="view-type" class="button-container">
     </div>
+  </div>
 
-    <div id="body-container" class="v-container">
-      <div class="header-container">
-        <div id="view-type" class="button-container">
-        </div>
-      </div>
+  <div class="view-content v-container">
+    {{ template "month" . }}
+  </div>
+</div>
 
-      <div class="view-content v-container">
-        {{ template "month" . }}
-      </div>
-    </div>
+<div id="right-click-menu" class="disp-none">
+  <button id="new-event-button"
+    class="disp-none"> <!-- @nocheckin -->
+    Nouvel Événement
+  </button>
+  <button id="new-member-button"
+    class="disp-none"> <!-- @nocheckin -->
+    Nouvel Agent
+  </button>
+  <button id="new-venue-button"
+    class="disp-none"> <!-- @nocheckin -->
+    Nouvel Lieu
+  </button>
+  <button id="create-button"
+    class="disp-none">
+    Créer
+  </button>
+  <button id="info-event-button"
+    class="disp-none">
+    Information
+  </button>
+  <button id="delete-button"
+    class="disp-none">
+    Supprimer
+  </button>
+  <button id="edit-button"
+    class="disp-none">
+    Modifier
+  </button>
+  <button id="toggle-button"
+    class="disp-none">
+    Basculer
+  </button>
+</div>
 
-    <div id="right-click-menu" class="disp-none">
-      <button id="new-event-button"
-        class="disp-none"> <!-- @nocheckin -->
-        Nouvel Événement
-      </button>
-      <button id="new-member-button"
-        class="disp-none"> <!-- @nocheckin -->
-        Nouvel Agent
-      </button>
-      <button id="new-venue-button"
-        class="disp-none"> <!-- @nocheckin -->
-        Nouvel Lieu
-      </button>
-      <button id="create-button"
-        class="disp-none">
-        Créer
-      </button>
-      <button id="info-event-button"
-        class="disp-none">
-        Information
-      </button>
-      <button id="delete-button"
-        class="disp-none">
-        Supprimer
-      </button>
-      <button id="edit-button"
-        class="disp-none">
-        Modifier
-      </button>
-      <button id="toggle-button"
-        class="disp-none">
-        Basculer
-      </button>
-    </div>
-
-    <div id="create-option-menu" class="disp-none">
-      <input class="l-input" type="text" id="eventname" name="eventname" placeholder="Nouvel Événement">
-      <hr>
-      <div class="h-container">
-        <div class="v-container">
-          <h3>Personnel</h3>
-          <div id="name-list" class="v-container scrollable-box scroll-smooth s-box">
-          </div>
-        </div>
-        <div class="v-container">
-          <h3>Lieux</h3>
-          <div id="venue-list" class="v-container scrollable-box scroll-smooth s-box">
-          </div>
-        </div>
+<div id="create-option-menu" class="disp-none">
+  <input class="l-input" type="text" id="eventname" name="eventname" placeholder="Nouvel Événement">
+  <hr>
+  <div class="h-container">
+    <div class="v-container">
+      <h3>Personnel</h3>
+      <div id="name-list" class="v-container scrollable-box scroll-smooth s-box">
       </div>
     </div>
-  </body>
-</html>
+    <div class="v-container">
+      <h3>Lieux</h3>
+      <div id="venue-list" class="v-container scrollable-box scroll-smooth s-box">
+      </div>
+    </div>
+  </div>
+</div>

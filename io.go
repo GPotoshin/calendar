@@ -11,6 +11,18 @@ func writeInt32(w io.Writer, val int32) error {
   return binary.Write(w, binary.LittleEndian, val)
 }
 
+func writeBytes(w io.Writer, val []byte) error {
+  l := int32(len(val))
+  if err := writeInt32(w, l); err != nil {
+    return err
+  }
+  return binary.Write(w, binary.LittleEndian, val)
+}
+
+func writeHash(w io.Writer, val [32]byte) error {
+  return binary.Write(w, binary.LittleEndian, val)
+}
+
 func writeString(w io.Writer, s string) error {
   log.Println("writing string ", s) 
   l := int32(len(s))
@@ -34,12 +46,20 @@ func writeArray[T any](w io.Writer, arr []T, writeT func(io.Writer, T) error) er
   return nil
 }
 
+func writeBytesArray(w io.Writer, arr [][]byte) error {
+  return writeArray(w, arr, writeBytes)
+}
+
 func writeStringArray(w io.Writer, arr []string) error {
   return writeArray(w, arr, writeString)
 }
 
 func writeInt32Array(w io.Writer, arr []int32) error {
   return writeArray(w, arr, writeInt32)
+}
+
+func writeHashArray(w io.Writer, arr [][32]byte) error {
+  return writeArray(w, arr, writeHash)
 }
 
 func writeArrayOfInt32Arrays(w io.Writer, arr [][]int32) error {
@@ -56,6 +76,28 @@ func readByte(r io.Reader) (byte, error) {
   var val byte
   err := binary.Read(r, binary.LittleEndian, &val)
   return val, err
+}
+
+func readHash(r io.Reader) ([32]byte, error) {
+  var val [32]byte
+  err := binary.Read(r, binary.LittleEndian, &val)
+  return val, err
+}
+
+func readBytes(r io.Reader) ([]byte, error) {
+  l, err := readInt32(r)
+  if err != nil {
+    return nil, fmt.Errorf("failed to read string length: %w", err)
+  }
+  if l < 0 {
+    return nil, fmt.Errorf("data length is negative: %d", l)
+  }
+  buffer := make([]byte, l)
+  err = binary.Read(r, binary.LittleEndian, buffer)
+  if err != nil {
+    return nil, fmt.Errorf("failed to read string content: %w", err)
+  }
+  return buffer, nil
 }
 
 func readString(r io.Reader) (string, error) {
@@ -100,6 +142,14 @@ func readArray[T any](r io.Reader, readT func(io.Reader) (T, error)) ([]T, error
 
 func readStringArray(r io.Reader) ([]string, error) {
   return readArray(r, readString)
+}
+
+func readHashArray(r io.Reader) ([][32]byte, error) {
+  return readArray(r, readHash)
+}
+
+func readBytesArray(r io.Reader) ([][]byte, error) {
+  return readArray(r, readBytes)
 }
 
 func readInt32Array(r io.Reader) ([]int32, error) {

@@ -5,25 +5,27 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
-	"encoding/pem"
 	"io"
 	"log"
+  "fmt"
 	"net/http"
 	"sync"
 	"time"
+  "bytes"
+  "os"
 )
 
 type AuthSystem struct {
 	privateKey    *rsa.PrivateKey
-	publicKeyPEM  []byte
+	publicKey  []byte
 	keyGeneratedAt time.Time
 	mutex         sync.RWMutex
-	tokens        map[string]TokenData
+	tokens        map[[32]byte]TokenData
 	tokensMutex   sync.RWMutex
 }
 
 type TokenData struct {
-	Username  string
+	Username  int32
 	CreatedAt time.Time
 	ExpiresAt time.Time
 }
@@ -39,22 +41,19 @@ func (a *AuthSystem) generateKeys() error {
 	}
 	a.privateKey = privateKey
 	a.keyGeneratedAt = time.Now()
-	pubKeyBytes, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
+	a.publicKey, err = x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
 	if err != nil {
 		return err
 	}
-	pubKeyPEM := pem.EncodeToMemory(&pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: pubKeyBytes,
-	})
-	a.publicKeyPEM = pubKeyPEM
 	return nil
 }
 
 func (a *AuthSystem) getPublicKey() []byte {
 	a.mutex.RLock()
 	defer a.mutex.RUnlock()
-	return a.publicKeyPEM
+  retval := make([]byte, len(a.publicKey))
+  copy(retval, a.publicKey)
+	return retval
 }
 
 func (a *AuthSystem) decrypt(ciphertext []byte) ([]byte, error) {
@@ -63,15 +62,30 @@ func (a *AuthSystem) decrypt(ciphertext []byte) ([]byte, error) {
 	return rsa.DecryptOAEP(sha256.New(), rand.Reader, a.privateKey, ciphertext, nil)
 }
 
-func (a *AuthSystem) generateToken() (string, error) {
-	tokenBytes := make([]byte, 32)
-	if _, err := rand.Read(tokenBytes); err != nil {
-		return "", err
-	}
-	return string(tokenBytes), nil
+func (a *AuthSystem) generateToken() ([32]byte, error) {
+  const maxRetries = 10
+
+  for i := 0; i < maxRetries; i++ {
+    tokenBytes := make([]byte, 32)
+    if _, err := rand.Read(tokenBytes); err != nil {
+      return [32]byte{}, fmt.Errorf("entropy source error: %w", err)
+    }
+
+    token := [32]byte(tokenBytes)
+
+    a.tokensMutex.Lock()
+    _, exists := a.tokens[token]
+    if !exists {
+      a.tokensMutex.Unlock() // hey! we need to store it directly. I cannot believe how ai is bad at locking
+      return token, nil
+    }
+    a.tokensMutex.Unlock()
+  }
+
+  return [32]byte{}, fmt.Errorf("failed to generate unique token after %d attempts", maxRetries)
 }
 
-func (a *AuthSystem) storeToken(token, username string) {
+func (a *AuthSystem) storeToken(token [32]byte, username int32) {
 	a.tokensMutex.Lock()
 	defer a.tokensMutex.Unlock()
 
@@ -83,17 +97,17 @@ func (a *AuthSystem) storeToken(token, username string) {
 	}
 }
 
-func (a *AuthSystem) validateToken(token string) (string, bool) {
+func (a *AuthSystem) validateToken(token [32]byte) (int32, bool) {
 	a.tokensMutex.RLock()
 	defer a.tokensMutex.RUnlock()
 
 	data, exists := a.tokens[token]
 	if !exists {
-		return "", false
+		return -1, false
 	}
 
 	if time.Now().After(data.ExpiresAt) {
-		return "", false
+		return -1, false
 	}
 
 	return data.Username, true
@@ -112,6 +126,10 @@ func (a *AuthSystem) cleanupExpiredTokens() {
 }
 
 func startKeyRotation() {
+  if err := authSys.generateKeys(); err != nil {
+    log.Printf("Failed to iniate auth keys: %v\n", err)
+    os.Exit(1)
+  }
 	ticker := time.NewTicker(24 * time.Hour)
 	go func() {
 		for range ticker.C {
@@ -141,7 +159,7 @@ func handlePublicKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pubKey := authSys.getPublicKey()
-	if err := writeString(w, string(pubKey)); err != nil {
+	if err := writeBytes(w, pubKey); err != nil {
 		log.Printf("Failed to write public key: %v\n", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
@@ -183,80 +201,48 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	username, err := readStringFromBytes(decryptedData)
+  reader := bytes.NewReader(decryptedData)
+
+	username, err := readInt32(reader)
 	if err != nil {
 		log.Printf("Failed to parse username: %v\n", err)
-		if err := writeInt32(w, 0); err != nil {
-			log.Printf("Failed to write failure response: %v\n", err)
-		}
 		return
 	}
 
-	password, err := readStringFromBytes(decryptedData[4+len(username):])
+	password, err := readHash(reader)
 	if err != nil {
 		log.Printf("Failed to parse password: %v\n", err)
-		if err := writeInt32(w, 0); err != nil {
-			log.Printf("Failed to write failure response: %v\n", err)
-		}
 		return
 	}
 
-	// TODO: Validate credentials against database
-	// For now, accept any non-empty credentials
-	if username == "" || password == "" {
-		log.Println("Empty credentials provided")
-		if err := writeInt32(w, 0); err != nil {
-			log.Printf("Failed to write failure response: %v\n", err)
-		}
-		return
-	}
+  for i := 0; i < len(state.UserIDs); i++ {
+		if username == state.UserIDs[i] && password == state.UserPasswords[i] {
+      token, err := authSys.generateToken()
+      if err != nil {
+        log.Printf("Failed to generate token: %v\n", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+      }
 
-	token, err := authSys.generateToken()
-	if err != nil {
-		log.Printf("Failed to generate token: %v\n", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+      authSys.storeToken(token, username)
 
-	authSys.storeToken(token, username)
+      if err := writeHash(w, token); err != nil {
+        log.Printf("Failed to write token: %v\n", err)
+        return
+      }
 
-	if err := writeInt32(w, 1); err != nil {
-		log.Printf("Failed to write success flag: %v\n", err)
-		return
-	}
+      appHtml, err := composeApp()
+      if err != nil {
+        log.Printf("failed to compose App");
+      }
+      if err := writeBytes(w, appHtml); err != nil {
+        log.Printf("Failed to write App: %v\n", err)
+        return
+      }
+      log.Printf("User %s logged in successfully\n", username)
+      return
+    }
+  }
 
-	if err := writeString(w, token); err != nil {
-		log.Printf("Failed to write token: %v\n", err)
-		return
-	}
-
-	log.Printf("User %s logged in successfully\n", username)
-}
-
-func readStringFromBytes(data []byte) (string, error) {
-	if len(data) < 4 {
-		return "", io.ErrUnexpectedEOF
-	}
-	length := int32(data[0]) | int32(data[1])<<8 | int32(data[2])<<16 | int32(data[3])<<24
-	if length < 0 || int(length) > len(data)-4 {
-		return "", io.ErrUnexpectedEOF
-	}
-	return string(data[4 : 4+length]), nil
-}
-
-func requireAuth(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		token := r.Header.Get("X-Auth-Token")
-		if token == "" {
-			http.Redirect(w, r, "/auth", http.StatusSeeOther)
-			return
-		}
-
-		if _, valid := authSys.validateToken(token); !valid {
-			http.Redirect(w, r, "/auth", http.StatusSeeOther)
-			return
-		}
-
-		next(w, r)
-	}
+  http.Error(w, "Internal server error", http.StatusUnauthorized)
 }

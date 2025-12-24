@@ -13,6 +13,7 @@ import (
   "io"
   "bufio"
   "strings"
+  "bytes"
 )
 
 type HeaderPair struct {
@@ -85,13 +86,19 @@ var state ApplicationState
 
 func readApplicationState(r io.Reader) (ApplicationState, error) {
   var state ApplicationState
-  version := "bin_state.v0.0.3"
+  version := "bin_state.v0.0.5"
   format, err := readString(r)
   if err != nil {
     return state, fmt.Errorf("Can't verify file format: %w", err)
   }
   if format != version {
     return state, fmt.Errorf("The file format `%s` is outdated. the current format is `%s`. State is zero", format, version)
+  }
+  if state.UserIDs, err = readInt32Array(r); err != nil {
+    return state, fmt.Errorf("failed to read UserIDs: %w", err)
+  }
+  if state.UserPasswords, err = readHashArray(r); err != nil {
+    return state, fmt.Errorf("failed to read Password Hashes: %w", err)
   }
   if state.EventNames, err = readStringArray(r); err != nil {
     return state, fmt.Errorf("failed to read EventNames: %w", err)
@@ -130,9 +137,15 @@ func readApplicationState(r io.Reader) (ApplicationState, error) {
 }
 
 func writeApplicationState(w io.Writer, state ApplicationState) error {
-  version := "bin_state.v0.0.3"
+  version := "bin_state.v0.0.5"
   if err := writeString(w, version); err != nil {
     return fmt.Errorf("Failed to store data [file format]: %v\n", err)
+  }
+  if err := writeInt32Array(w, state.UserIDs); err != nil {
+    return fmt.Errorf("failed to write UserIDs: %w", err)
+  }
+  if err := writeHashArray(w, state.UserPasswords); err != nil {
+    return fmt.Errorf("failed to write Password Hashes: %w", err)
   }
   if err := writeStringArray(w, state.EventNames); err != nil {
     return fmt.Errorf("failed to write EventNames: %w", err)
@@ -315,6 +328,7 @@ func main() {
   sigChan := make(chan os.Signal, 1)
   signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
+  // reading data
   file, err := os.OpenFile("data.db", os.O_RDWR, 0644)
   if err != nil {
     file, err = os.Create("data.db")
@@ -329,6 +343,10 @@ func main() {
       log.Println("State is partially set because of: ", err)
     }
   }
+
+  // launching auth
+  startKeyRotation();
+  startTokenCleanup();
 
   defer func() {
     log.Println("Running cleanup...")
@@ -453,20 +471,17 @@ func handleData(w http.ResponseWriter, r *http.Request) {
   w.Header().Set("Content-Type", "application/octet-stream")
 }
 
-func serveIndex(w http.ResponseWriter, r *http.Request) {
-  t := template.New("index.html")
-  t, err := t.ParseFiles("index.html", "month.html")
-
+func composeApp() ([]byte, error) {
+  t, err := template.ParseFiles("index.html", "month.html")
   if err != nil {
-    http.Error(w, "Error parsing template", http.StatusInternalServerError)
-    return
+    return nil, err
   }
 
+  var buf bytes.Buffer
   data := generateMonthData()
-  err = t.Execute(w, data)
-  if err != nil {
-    http.Error(w, "Error executing template", http.StatusInternalServerError)
-  }
+  err = t.Execute(&buf, data)
+
+  return buf.Bytes(), err
 }
 
 func handleSideMenu(w http.ResponseWriter, r *http.Request) {

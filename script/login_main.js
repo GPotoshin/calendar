@@ -1,102 +1,48 @@
+import { BufferReader, BufferWriter } from './io.js';
 const idInput = document.getElementById('id');
 const passwordInput = document.getElementById('password');
 const connectButton = document.getElementById('connect');
 
+idInput.addEventListener('input', () => {
+  idInput.value = idInput.value.replace(/\D/g, '');
+});
+
 let publicKey = null;
 
-async function importPublicKey(pemKey) {
-  const pemContents = pemKey
-    .replace(/-----BEGIN RSA PUBLIC KEY-----/, '')
-    .replace(/-----END RSA PUBLIC KEY-----/, '')
-    .replace(/\s/g, '');
-  
-  const binaryDer = atob(pemContents);
-  const binaryArray = new Uint8Array(binaryDer.length);
-  for (let i = 0; i < binaryDer.length; i++) {
-    binaryArray[i] = binaryDer.charCodeAt(i);
-  }
-
-  return await crypto.subtle.importKey(
-    'spki',
-    binaryArray.buffer,
-    {
-      name: 'RSA-OAEP',
-      hash: 'SHA-256',
-    },
-    true,
-    ['encrypt']
-  );
-}
-
-async function generateMachineHash() {
-  const data = [
-    navigator.userAgent,
-    navigator.language,
-    navigator.hardwareConcurrency,
-    screen.width + 'x' + screen.height,
-    new Date().getTimezoneOffset()
-  ].join('|');
-
-  const encoder = new TextEncoder();
-  const dataBuffer = encoder.encode(data);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
-  
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-async function encryptCredentials(username, password) {
-  if (!publicKey) {
-    throw new Error('Public key not loaded');
-  }
-
-  const credentials = {
-    username: username,
-    password: password,
-    timestamp: Math.floor(Date.now() / 1000),
-    machineHash: await generateMachineHash()
-  };
-
-  const encoder = new TextEncoder();
-  const dataBuffer = encoder.encode(JSON.stringify(credentials));
-
+async function encryptCredentials(buf) {
   const encryptedBuffer = await crypto.subtle.encrypt(
     {
       name: 'RSA-OAEP'
     },
     publicKey,
-    dataBuffer
+    buf
   );
 
-  const encryptedArray = new Uint8Array(encryptedBuffer);
-  const encryptedBase64 = btoa(String.fromCharCode(...encryptedArray));
-  
-  return encryptedBase64;
-}
+  var bw = new BufferWriter();
+  bw.writeUint8Array(new Uint8Array(encryptedBuffer));
 
-async function sendLoginRequest(encryptedData) {
-  const response = await fetch('/api/login', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ encryptedData })
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Login failed');
-  }
-
-  return await response.json();
+  return bw.getBuffer();
 }
 
 (async function initializeAuth() {
   try {
     console.log('Fetching public key...');
     const response = await fetch('/api/public-key');
-    const data = await response.json();
-    publicKey = await importPublicKey(data.publicKey);
+    if (!response.ok) throw new Error('Network response was not ok');
+    const buffer = await response.arrayBuffer();
+    const reader = new BufferReader(buffer);
+
+    const publicKeyBytes = reader.readBytes();
+    publicKey = await window.crypto.subtle.importKey(
+      "spki",
+      publicKeyBytes,
+      {
+        name: "RSA-OAEP",
+        hash: "SHA-256",
+      },
+      true,
+      ["encrypt"]
+    );
     console.log('Public key received');
   } catch (error) {
     console.error('Failed to fetch public key:', error);
@@ -110,12 +56,12 @@ connectButton.addEventListener('click', async () => {
 
   // Validate input
   if (!username || !password) {
-    alert('Please enter both username and password');
+    alert('Please enter both username and password'); // @nocheckin
     return;
   }
 
   if (!publicKey) {
-    alert('Authentication not ready. Please wait or refresh the page.');
+    alert('Authentication not ready. Please wait or refresh the page.'); // @nocheckin
     return;
   }
 
@@ -124,22 +70,49 @@ connectButton.addEventListener('click', async () => {
   connectButton.textContent = 'Connecting...';
 
   try {
-    console.log('Encrypting credentials...');
-    const encryptedData = await encryptCredentials(username, password);
-
-    console.log('Sending login request...');
-    const result = await sendLoginRequest(encryptedData);
-
-    console.log('Login successful:', result);
-    
-    if (result.token) {
-      localStorage.setItem('authToken', result.token);
+    if (!publicKey) {
+      throw new Error('Public key not loaded');
     }
+
+    let bw = new BufferWriter();
+    bw.writeInt32(Number(username))
+
+    const encoder = new TextEncoder();
+    const passwordData = encoder.encode(password);
+    const hashBuffer = await window.crypto.subtle.digest('SHA-256', passwordData);
+    const hashBytes = new Uint8Array(hashBuffer);
+
+    bw.writeHash(hashBytes);
+
+    const timestamp = Math.floor(Date.now() / 1000);
+    bw.writeInt32(timestamp);
+
+    const encryptedData = await encryptCredentials(bw.getBuffer());
+    const resp = await fetch('/api/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: encryptedData,
+    });
+
+    if (!resp.ok) {
+      throw new Error(`HTTP error! status: ${resp.status}`);
+    }
+    const bin = await resp.arrayBuffer();
+    const r = new BufferReader(bin);
+
+    let token = r.readHash();
+    let html = r.readString();
+    document.body.innerHTML = html;
 
     passwordInput.value = '';
 
-    alert('Login successful!');
+    const script = document.createElement('script');
+    script.src = "/main.js";
+    script.type = "module";
 
+    document.head.appendChild(script)
   } catch (error) {
     alert('Login failed: ' + error.message);
   } finally {
