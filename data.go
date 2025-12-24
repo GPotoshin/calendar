@@ -1,26 +1,31 @@
 package main
 
-func storeValue[T any](array *[]T, freeList *[]int32, value T) int32 {
-	if len(*freeList) > 0 {
-		index := (*freeList)[len(*freeList)-1]
-		*freeList = (*freeList)[:len(*freeList)-1]
-		(*array)[index] = value
-		return index
+func storageIndex[T any](array []T, freeList []int32) int32 {
+	if len(freeList) > 0 {
+		return freeList[len(freeList)-1]
 	} else {
-		*array = append(*array, value)
-		return int32(len(*array) - 1)
+		return len(array)
 	}
 }
 
-func deleteValue[T comparable](array *[]T, freeList *[]int32, index int32) {
-	idx := int(index)
-	var zero T
-	if (*array)[idx] == zero {
-		return
+func storeValue[T any](array *[]T, freeList []int32, value T) {
+	if len(*freeList) > 0 {
+		index := freeList[len(*freeList)-1]
+		(*array)[index] = value
+	} else {
+		*array = append(*array, value)
 	}
+}
 
-	(*array)[idx] = zero
-	*freeList = append(*freeList, index)
+func popFreeList(freeList *[]int32) {
+	if len(*freeList) > 0 {
+		*freeList = (*freeList)[:len(*freeList)-1]
+  }
+}
+
+func deleteValue[K any](m map[K]int32, freeList *[]int32, id K) {
+	*freeList = append(*freeList, m[id])
+  delete(m, id)
 }
 
 func deleteOccurrences(array *[][]int32, value int32) {
@@ -33,15 +38,4 @@ func deleteOccurrences(array *[][]int32, value int32) {
 		}
 		(*array)[i] = temp
 	}
-}
-
-func getAll[T1 comparable, T2 any](array []T1, composeT func(T1, int)T2) []T2 {
-  var zero T1
-  var retval []T2
-  for i, val := range(array) {
-    if val != zero {
-      retval = append(retval, composeT(val, i))
-    }
-  }
-  return retval
 }

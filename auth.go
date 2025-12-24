@@ -42,48 +42,12 @@ func (s *ApplicationState) decrypt(data []byte) ([]byte, error) {
 	return rsa.DecryptOAEP(sha256.New(), rand.Reader, s.privateKey, data, nil)
 }
 
-func (s *ApplicationState) generateToken() ([32]byte, error) {
-  const maxRetries = 10
-
-  for i := 0; i < maxRetries; i++ {
-    tokenBytes := make([]byte, 32)
-    if _, err := rand.Read(tokenBytes); err != nil {
-      return [32]byte{}, fmt.Errorf("entropy source error: %w", err)
-    }
-
-    token := [32]byte(tokenBytes)
-
-    s.tokensMutex.Lock()
-    _, exists := s.tokens[token]
-    if !exists {
-      s.tokens = append(s.tokens, [32]byte(tokenBytes))
-      s.tokensMutex.Unlock()
-      return s.token, nil
-    }
-    s.tokensMutex.Unlock()
-  }
-
-  return [32]byte{}, fmt.Errorf("failed to generate unique token after %d attempts", maxRetries)
-}
-
-func (a *AuthSystem) storeToken(token [32]byte, username int32) {
-	a.tokensMutex.Lock()
-	defer a.tokensMutex.Unlock()
-
-	now := time.Now()
-	a.tokens[token] = TokenData{
-		Username:  username,
-		CreatedAt: now,
-		ExpiresAt: now.Add(5 * time.Minute),
-	}
-}
-
 func (a *AuthSystem) validateToken(token [32]byte) (int32, bool) {
 	a.tokensMutex.RLock()
 	defer a.tokensMutex.RUnlock()
 
-	data, exists := a.tokens[token]
-	if !exists {
+	idx, exists := a.tokens[token]
+	if !exists || idx < 0 {
 		return -1, false
 	}
 
@@ -189,7 +153,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 
   reader := bytes.NewReader(decryptedData)
 
-	username, err := readInt32(reader)
+	userid, err := readInt32(reader)
 	if err != nil {
 		log.Printf("Failed to parse username: %v\n", err)
 		return
@@ -202,8 +166,31 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
   for i := 0; i < len(state.UserIDs); i++ {
-		if username == state.UserIDs[i] && password == state.UserPasswords[i] {
+		if userId == state.UserIDs[i] && password == state.UserPasswords[i] {
       token, err := authSys.generateToken()
+
+      const maxRetries = 10
+
+      for i := 0; i < maxRetries; i++ {
+        tokenBytes := make([]byte, 32)
+        if _, err := rand.Read(tokenBytes); err != nil {
+          return [32]byte{}, fmt.Errorf("entropy source error: %w", err)
+        }
+
+        token := [32]byte(tokenBytes)
+
+        s.tokensMutex.Lock()
+        _, exists := s.Tokens[token]
+        if !exists {
+          s.ConnectionTokens[token] = storageIndex(s.ConnectionUsers, s.ConnectionFreeList);
+          storeValue(s.ConnectionUser, s.ConnectionFreeList);
+
+          s.tokensMutex.Unlock()
+          return s.token, nil
+        }
+        s.tokensMutex.Unlock()
+      }
+
       if err != nil {
         log.Printf("Failed to generate token: %v\n", err)
         http.Error(w, "Internal server error", http.StatusInternalServerError)

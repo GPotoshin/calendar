@@ -52,7 +52,7 @@ const (
 
 
 type ApplicationState struct {
-  UsersIDs []int32
+  UsersIDs map[int32]int32 // id -> idx
   UsersPasswords [][32]byte
   UsersNames []string
   UsersMails []string
@@ -62,6 +62,7 @@ type ApplicationState struct {
   UsersDutyPrivilageLevel []int32 // if it is >= 0, than that shows it as a chief of the Duty Station. If it is a constant
   UsersFreeList []int32
 
+  EventsIds map[int32]int32 // id -> idx
   EventsNames []string
   EventsVenues [][]int32
   EventsRoles [][]int32
@@ -70,33 +71,37 @@ type ApplicationState struct {
   EventsDuration []int32
   EventsFreeList []int32
 
+  VenuesIds map[int32]int32 // id -> idx
   VenuesNames []string
   VenuesFreeList []int32
 
+  CompetencesIds map[int32]int32 // id -> idx
   CompetencesNames []string
   CompetencesFreeList []int32
 
+  RolesIds map[int32]int32 // id -> idx
   RolesNames []string
   RolesFreeList []int32
 
+  OccerencesIds map[int32]int32 // id -> idx
   OccurencesVenues []int32
   OccurencesDates [][][2]int32
   OccurencesParticipants [][]int32
   OccurencesParticipantsRoles [][]int32
   OccurencesFreeList []int32
 
-  TokensValues [][32]byte
-  TokensUsers [][32]byte
-  TokensTimes [][2]time.Time
-  TokensChannel []chan byte[]
-  TokensFreeList []int32 // we need to recalculate everything once free list reaches a certain size (like 128 entries)
+  ConnectionsToken map[[32]byte]int32 // id -> idx
+  ConnectionsUsers []int32
+  ConnectionsTimes [][2]time.Time
+  ConnectionsChannel []chan byte[]
+  ConnectionsFreeList []int32 // we need to recalculate everything once free list reaches a certain size (like 128 entries)
 
   privateKey *rsa.ProvateKey
   publicKey [32]byte
   keyGeneratedAt time.Time
 
   mutex sync.RWMutex
-  stateFence uint64
+  stateID uint64
 }
 
 var state ApplicationState
@@ -200,113 +205,6 @@ func writeApplicationState(w io.Writer, state ApplicationState) error {
   
   return nil
 }
-
-type EventData struct {
-	Idx   int32
-	Name  string
-	Staff []int32
-	Venues []int32
-}
-
-type NamedData struct {
-	Idx  int32
-	Name string
-}
-
-func (state *ApplicationState) storeEvent(name string, staffIndices, venueIndices []int32) int32 {
-	idx := storeValue(&state.EventNames, &state.EventFreeList, name)
-	
-	if int(idx) == len(state.EventStaff) {
-		state.EventStaff = append(state.EventStaff, staffIndices)
-		state.EventVenues = append(state.EventVenues, venueIndices)
-  } else {
-    state.EventStaff[idx] = staffIndices
-    state.EventVenues[idx] = venueIndices
-  }
-	
-	return idx
-}
-
-func (state *ApplicationState) deleteEvent(idx int32) {
-	deleteValue(&state.EventNames, &state.EventFreeList, idx)
-	i := int(idx)
-  state.EventStaff[i] = nil
-  state.EventVenues[i] = nil
-}
-
-func (state *ApplicationState) storeStaff(name string) int32 {
-	return storeValue(&state.StaffNames, &state.StaffFreeList, name)
-}
-
-func (state *ApplicationState) deleteStaff(idx int32) {
-	deleteValue(&state.StaffNames, &state.StaffFreeList, idx)
-	deleteOccurrences(&state.EventStaff, idx)
-}
-
-func (state *ApplicationState) storeVenue(name string) int32 {
-	return storeValue(&state.VenueNames, &state.VenueFreeList, name)
-}
-
-func (state *ApplicationState) deleteVenue(idx int32) {
-	deleteValue(&state.VenueNames, &state.VenueFreeList, idx)
-	deleteOccurrences(&state.EventVenues, idx)
-}
-
-func (state *ApplicationState) getEvent(idx int32) EventData {
-	i := int(idx)
-
-	return EventData{
-		Idx:   idx,
-		Name:  state.EventNames[i],
-		Staff: state.EventStaff[i],
-		Venues: state.EventVenues[i],
-	}
-}
-
-func (state *ApplicationState) addStaffToEvent(eventIndex, staffIndex int32) {
-	i := int(eventIndex)
-  for _, idx := range state.EventStaff[i] {
-    if idx == staffIndex {
-      return
-    }
-  }
-  state.EventStaff[i] = append(state.EventStaff[i], staffIndex)
-}
-
-func (state *ApplicationState) removeStaffFromEvent(eventIndex, staffIndex int32) {
-  i := int(eventIndex)
-  arr := state.EventStaff[i]
-  temp := arr[:0]
-  for _, idx := range arr {
-    if idx != staffIndex {
-      temp = append(temp, idx)
-    }
-  }
-  state.EventStaff[i] = temp
-}
-
-func (state *ApplicationState) AddVenueToEvent(eventIndex, venueIndex int32) {
-	i := int(eventIndex)
-  for _, idx := range state.EventVenues[i] {
-    if idx == venueIndex {
-      return
-    }
-  }
-  state.EventVenues[i] = append(state.EventVenues[i], venueIndex)
-}
-
-func (state *ApplicationState) RemoveVenueFromEvent(eventIndex, venueIndex int32) {
-  i := int(eventIndex)
-  arr := state.EventVenues[i]
-  temp := arr[:0]
-  for _, idx := range arr {
-    if idx != venueIndex {
-      temp = append(temp, idx)
-    }
-  }
-  state.EventVenues[i] = temp
-}
-
 
 func middleware(handler http.Handler) http.Handler {
   return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
