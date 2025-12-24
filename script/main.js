@@ -28,7 +28,12 @@ let state = {
   focusedElement: null,
   baseDayNumber: 0,
   isUpdating: false,
+  token: null,
 };
+
+export function initApp(t) {
+  state.token = t;
+}
 
 let elms = {
   calendarBody: null,
@@ -460,206 +465,215 @@ function setMonthObserver() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', async (event) => {
-  elms.bodyContainer = document.getElementById('body-container');
-  elms.markerBlocks = document.getElementsByClassName('block-marker');
-  elms.calendarBody = document.getElementById('calendar-body');
-  elms.calendarContent = document.getElementById('calendar-content');
-  elms.createOptionMenu = document.getElementById('create-option-menu');
-  elms.monthDisplay = document.getElementById('month-display');
-  elms.nameList = document.getElementById('name-list');
-  elms.rightClickMenu = document.getElementById('right-click-menu');
-  elms.sideMenuContainer = document.getElementById('side-menu-container');
-  elms.venueList = document.getElementById('venue-list');
-  elms.view[viewId.CALENDER] = document.getElementsByClassName('view-content')[0];
+elms.bodyContainer = document.getElementById('body-container');
+elms.markerBlocks = document.getElementsByClassName('block-marker');
+elms.calendarBody = document.getElementById('calendar-body');
+elms.calendarContent = document.getElementById('calendar-content');
+elms.createOptionMenu = document.getElementById('create-option-menu');
+elms.monthDisplay = document.getElementById('month-display');
+elms.nameList = document.getElementById('name-list');
+elms.rightClickMenu = document.getElementById('right-click-menu');
+elms.sideMenuContainer = document.getElementById('side-menu-container');
+elms.venueList = document.getElementById('venue-list');
+elms.view[viewId.CALENDER] = document.getElementsByClassName('view-content')[0];
 
-  zones[1].eList = document.getElementById("view-type").children;
+zones[1].eList = document.getElementById("view-type").children;
 
-  setMonthScrollPosition();
-  const calendarBody = document.getElementById('calendar-body');
-  calendarBody.addEventListener('mousedown', handleMouseDown);
-  calendarBody.addEventListener('mouseup', handleMouseUp);
-  calendarBody.addEventListener('mousemove', handleMouseMove);
+setMonthScrollPosition();
+const calendarBody = document.getElementById('calendar-body');
+calendarBody.addEventListener('mousedown', handleMouseDown);
+calendarBody.addEventListener('mouseup', handleMouseUp);
+calendarBody.addEventListener('mousemove', handleMouseMove);
 
-  fetch('/data')
-  .then(resp => {
-    if (!resp.ok) {
-      throw new Error(`HTTP error! status: ${resp.status}`);
-    }
-    resp.arrayBuffer().then(
-      bin => {
-        const r = new BufferReader(bin);
-        data.read(r)
-        setUiList(elms.nameList, data.staffNames);
-        setUiList(elms.venueList, data.venueNames);
-        for (let i = 0; i < data.eventNames.length; i++) { // @nocheckin: factor out
-          const name = data.eventNames[i];
-          let button = document.createElement('button');
-          button.className = 'event-button dynamic_bg';
-          button.addEventListener('click', function (){
-            handleClickOnListButton(button, zonesId.EVENTLIST);
-            if (zones[zonesId.EVENTLIST].selection >= 0 &&
-              zones[zonesId.VIEWTYPE].selection === viewId.INFORMATION) {
-              resetEventInfoView();
-            }
-          });
-          elms.scope[scopeId.EVENT].appendChild(button);
-          button.textContent = name;
-          button._bIdx = i;
-          button._dIdx = i;
-        }
-        for (let i = 0; i < data.staffNames.length; i++) {
-          const name = data.staffNames[i];
-          let button = document.createElement('button');
-          button.className = 'event-button dynamic_bg';
-          button.addEventListener('click', function (){
-            handleClickOnListButton(button, zonesId.STAFFLIST);
-          });
-          elms.scope[scopeId.STAFF].appendChild(button);
-          button.textContent = name;
-          button._bIdx = i;
-          button._dIdx = i;
-        }
-        for (let i = 0; i < data.venueNames.length; i++) {
-          const name = data.venueNames[i];
-          let button = document.createElement('button');
-          button.className = 'event-button dynamic_bg';
-          button.addEventListener('click', function (){
+{
+  const writer = new BufferWriter();
+  writer.writeHash(token);
 
-          });
-          elms.scope[scopeId.VENUE].appendChild(button);
-          button.textContent = name;
-          button._bIdx = i;
-          button._dIdx = i;
-        }
-      });
+  fetch("/data", {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/octet-stream',
+    },
+    body: writer.getBuffer(),
   })
-  .catch(e => {
-    console.error('Could not fetch data:', e);
-  });
-
-  {
-    let viewType = document.getElementById('view-type');
-    let b1 = document.createElement('button');
-    b1.textContent = 'Calendrier';
-    b1.addEventListener('click' ,()=>{
-      zones[zonesId.VIEWTYPE].selection = viewId.CALENDAR;
-      elms.bodyContainer.replaceChild(elms.view[viewId.CALENDER], elms.bodyContainer.children[1]);
-    });
-    let b2 = document.createElement('button');
-    b2.textContent = 'Information';
-
-    b2.addEventListener('click' ,()=>{ 
-      elms.view[viewId.INFORMATION].replaceChildren(tmpls[scopeId.EVENT]);
-      elms.bodyContainer.replaceChild(elms.view[viewId.INFORMATION], elms.bodyContainer.children[1]);
-      zones[zonesId.VIEWTYPE].selection = viewId.INFORMATION;
-      if (zones[zonesId.DATATYPE].selection === scopeId.EVENT) {
-        resetEventInfoView();
+    .then(resp => {
+      if (!resp.ok) {
+        throw new Error(`HTTP error! status: ${resp.status}`);
       }
-    });
-    viewType.append(b1,b2);
-  }
+      resp.arrayBuffer().then(
+        bin => {
+          const r = new BufferReader(bin);
+          data.read(r)
+          setUiList(elms.nameList, data.staffNames);
+          setUiList(elms.venueList, data.venueNames);
+          for (let i = 0; i < data.eventNames.length; i++) { // @nocheckin: factor out
+            const name = data.eventNames[i];
+            let button = document.createElement('button');
+            button.className = 'event-button dynamic_bg';
+            button.addEventListener('click', function (){
+              handleClickOnListButton(button, zonesId.EVENTLIST);
+              if (zones[zonesId.EVENTLIST].selection >= 0 &&
+                zones[zonesId.VIEWTYPE].selection === viewId.INFORMATION) {
+                resetEventInfoView();
+              }
+            });
+            elms.scope[scopeId.EVENT].appendChild(button);
+            button.textContent = name;
+            button._bIdx = i;
+            button._dIdx = i;
+          }
+          for (let i = 0; i < data.staffNames.length; i++) {
+            const name = data.staffNames[i];
+            let button = document.createElement('button');
+            button.className = 'event-button dynamic_bg';
+            button.addEventListener('click', function (){
+              handleClickOnListButton(button, zonesId.STAFFLIST);
+            });
+            elms.scope[scopeId.STAFF].appendChild(button);
+            button.textContent = name;
+            button._bIdx = i;
+            button._dIdx = i;
+          }
+          for (let i = 0; i < data.venueNames.length; i++) {
+            const name = data.venueNames[i];
+            let button = document.createElement('button');
+            button.className = 'event-button dynamic_bg';
+            button.addEventListener('click', function (){
 
-  observers.topWeek = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        focus.date.setMonth(focus.date.getMonth()-1);
-        refocusMonth();
-        setMonthObserver();
-      }
-    });
-  }, {
-    root: calendarBody,
-    threshold: [1],
-    rootMargin: '-66% 0px 0px 0px'
-  });
-  observers.bottomWeek = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        focus.date.setMonth(focus.date.getMonth()+1);
-        refocusMonth();
-        setMonthObserver();
-      }
-    });
-  }, {
-    root: calendarBody,
-    threshold: [1],
-    rootMargin: '0px 0px -66% 0px'
-  });
-  observers.calendarScrolling = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        if (state.isUpdating) return;
-        state.isUpdating = true;
-        elms.todayFrame.classList.remove('today');
-        const SHIFTING_BY = 5;
-        let shiftingBy = SHIFTING_BY;
-        if (entry.target === elms.markerBlocks[0]) {
-          shiftingBy = -SHIFTING_BY;
-        }
-        console.log('we are hitting');
-        const week = elms.calendarContent.querySelectorAll('.week-row')[0];
-        elms.calendarBody.classList.replace('scroll-smooth', 'scroll-auto');
-        elms.calendarBody.scrollTop -= shiftingBy*week.offsetHeight;
-        elms.calendarBody.classList.replace('scroll-auto', 'scroll-smooth');
-        requestAnimationFrame(() => {
-          state.baseDayNumber += shiftingBy*7;
-          let date = new Date();
-          const today = Math.floor(date.getTime()/MS_IN_DAY);
-          const offset = today - state.baseDayNumber;
-
-          date.setTime(state.baseDayNumber*MS_IN_DAY);
-          const focusMonth = focus.date.getMonth();
-          iterateOverDays((day) => {
-            day.children[0].textContent = date.getDate();
-            day._dayNum = Math.floor(date.getTime() / MS_IN_DAY);
-            date.setDate(date.getDate() + 1);
-          });
-          refocusMonth();
-          setMonthObserver();
-          setTimeout(() => {
-            state.isUpdating = false;
-          }, 100);
+            });
+            elms.scope[scopeId.VENUE].appendChild(button);
+            button.textContent = name;
+            button._bIdx = i;
+            button._dIdx = i;
+          }
         });
-      }
+    })
+    .catch(e => {
+      console.error('Could not fetch data:', e);
     });
-  }, {
-    root: calendarBody,
+}
+
+{
+  let viewType = document.getElementById('view-type');
+  let b1 = document.createElement('button');
+  b1.textContent = 'Calendrier';
+  b1.addEventListener('click' ,()=>{
+    zones[zonesId.VIEWTYPE].selection = viewId.CALENDAR;
+    elms.bodyContainer.replaceChild(elms.view[viewId.CALENDER], elms.bodyContainer.children[1]);
   });
-  observers.calendarScrolling.observe(elms.markerBlocks[0]);
-  observers.calendarScrolling.observe(elms.markerBlocks[1]);
+  let b2 = document.createElement('button');
+  b2.textContent = 'Information';
 
-  let date = new Date();
-  focus.date = new Date();
-  const today_epoch = Math.floor(date.getTime() / MS_IN_DAY);
-  const today_weekday = (date.getDay()+6)%7;
-  elms.todayFrame = elms.calendarContent.children[8].children[today_weekday];
-  elms.todayFrame.classList.add('today');
-
-  state.baseDayNumber = today_epoch-today_weekday-7*7;
-  date.setTime(state.baseDayNumber*MS_IN_DAY);
-
-  setMonthDisplay(focus.date);
-  const focusMonth = focus.date.getMonth();
-  iterateOverDays((day) => {
-      day.children[0].textContent = date.getDate();
-      day._dayNum = Math.floor(date.getTime() / MS_IN_DAY);
-      if (date.getMonth() == focusMonth) {
-        day.classList.add('focused-month');
-      }
-      date.setDate(date.getDate() + 1);
+  b2.addEventListener('click' ,()=>{ 
+    elms.view[viewId.INFORMATION].replaceChildren(tmpls[scopeId.EVENT]);
+    elms.bodyContainer.replaceChild(elms.view[viewId.INFORMATION], elms.bodyContainer.children[1]);
+    zones[zonesId.VIEWTYPE].selection = viewId.INFORMATION;
+    if (zones[zonesId.DATATYPE].selection === scopeId.EVENT) {
+      resetEventInfoView();
+    }
   });
-  setMonthObserver(focus.month);
+  viewType.append(b1,b2);
+}
 
-  const weekRows = document.querySelectorAll('.week-row');
+observers.topWeek = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      focus.date.setMonth(focus.date.getMonth()-1);
+      refocusMonth();
+      setMonthObserver();
+    }
+  });
+}, {
+  root: calendarBody,
+  threshold: [1],
+  rootMargin: '-66% 0px 0px 0px'
 });
+observers.bottomWeek = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      focus.date.setMonth(focus.date.getMonth()+1);
+      refocusMonth();
+      setMonthObserver();
+    }
+  });
+}, {
+  root: calendarBody,
+  threshold: [1],
+  rootMargin: '0px 0px -66% 0px'
+});
+observers.calendarScrolling = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      if (state.isUpdating) return;
+      state.isUpdating = true;
+      elms.todayFrame.classList.remove('today');
+      const SHIFTING_BY = 5;
+      let shiftingBy = SHIFTING_BY;
+      if (entry.target === elms.markerBlocks[0]) {
+        shiftingBy = -SHIFTING_BY;
+      }
+      console.log('we are hitting');
+      const week = elms.calendarContent.querySelectorAll('.week-row')[0];
+      elms.calendarBody.classList.replace('scroll-smooth', 'scroll-auto');
+      elms.calendarBody.scrollTop -= shiftingBy*week.offsetHeight;
+      elms.calendarBody.classList.replace('scroll-auto', 'scroll-smooth');
+      requestAnimationFrame(() => {
+        state.baseDayNumber += shiftingBy*7;
+        let date = new Date();
+        const today = Math.floor(date.getTime()/MS_IN_DAY);
+        const offset = today - state.baseDayNumber;
+
+        date.setTime(state.baseDayNumber*MS_IN_DAY);
+        const focusMonth = focus.date.getMonth();
+        iterateOverDays((day) => {
+          day.children[0].textContent = date.getDate();
+          day._dayNum = Math.floor(date.getTime() / MS_IN_DAY);
+          date.setDate(date.getDate() + 1);
+        });
+        refocusMonth();
+        setMonthObserver();
+        setTimeout(() => {
+          state.isUpdating = false;
+        }, 100);
+      });
+    }
+  });
+}, {
+  root: calendarBody,
+});
+observers.calendarScrolling.observe(elms.markerBlocks[0]);
+observers.calendarScrolling.observe(elms.markerBlocks[1]);
+
+let date = new Date();
+focus.date = new Date();
+const today_epoch = Math.floor(date.getTime() / MS_IN_DAY);
+const today_weekday = (date.getDay()+6)%7;
+elms.todayFrame = elms.calendarContent.children[8].children[today_weekday];
+elms.todayFrame.classList.add('today');
+
+state.baseDayNumber = today_epoch-today_weekday-7*7;
+date.setTime(state.baseDayNumber*MS_IN_DAY);
+
+setMonthDisplay(focus.date);
+const focusMonth = focus.date.getMonth();
+iterateOverDays((day) => {
+  day.children[0].textContent = date.getDate();
+  day._dayNum = Math.floor(date.getTime() / MS_IN_DAY);
+  if (date.getMonth() == focusMonth) {
+    day.classList.add('focused-month');
+  }
+  date.setDate(date.getDate() + 1);
+});
+setMonthObserver(focus.month);
+
+const weekRows = document.querySelectorAll('.week-row');
 
 document.addEventListener('click', (event) => {
   if (event.target.id === 'new-event-button' || event.target.id === 'info-event-button') {
-  // we fucking can't do that in click function because after this button
-  // handling function we get immidiately a click event and that is fucking
-  // retarded because this handleClickForOptionMenu function closes the menu
-  // and we don't get the menu
+    // we fucking can't do that in click function because after this button
+    // handling function we get immidiately a click event and that is fucking
+    // retarded because this handleClickForOptionMenu function closes the menu
+    // and we don't get the menu
     document.addEventListener('click', handleClickForOptionMenu);
   }
 });

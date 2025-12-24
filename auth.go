@@ -15,54 +15,34 @@ import (
   "os"
 )
 
-type AuthSystem struct {
-	privateKey    *rsa.PrivateKey
-	publicKey  []byte
-	keyGeneratedAt time.Time
-	mutex         sync.RWMutex
-	tokens        map[[32]byte]TokenData
-	tokensMutex   sync.RWMutex
-}
-
-type TokenData struct {
-	Username  int32
-	CreatedAt time.Time
-	ExpiresAt time.Time
-}
-
-var authSys AuthSystem
-
-func (a *AuthSystem) generateKeys() error {
-	a.mutex.Lock()
-	defer a.mutex.Unlock()
+func (s *ApplicationState) generateKeys() error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return err
 	}
-	a.privateKey = privateKey
-	a.keyGeneratedAt = time.Now()
-	a.publicKey, err = x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
-	if err != nil {
-		return err
-	}
-	return nil
+	s.privateKey = privateKey
+	s.keyGeneratedAt = time.Now()
+	s.publicKey, err = x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
+	return err
 }
 
-func (a *AuthSystem) getPublicKey() []byte {
-	a.mutex.RLock()
-	defer a.mutex.RUnlock()
-  retval := make([]byte, len(a.publicKey))
-  copy(retval, a.publicKey)
+func (s *ApplicationState) getPublicKey() []byte {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+  retval := make([]byte, 32)
+  copy(retval, s.publicKey)
 	return retval
 }
 
-func (a *AuthSystem) decrypt(ciphertext []byte) ([]byte, error) {
-	a.mutex.RLock()
-	defer a.mutex.RUnlock()
-	return rsa.DecryptOAEP(sha256.New(), rand.Reader, a.privateKey, ciphertext, nil)
+func (s *ApplicationState) decrypt(data []byte) ([]byte, error) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	return rsa.DecryptOAEP(sha256.New(), rand.Reader, s.privateKey, data, nil)
 }
 
-func (a *AuthSystem) generateToken() ([32]byte, error) {
+func (s *ApplicationState) generateToken() ([32]byte, error) {
   const maxRetries = 10
 
   for i := 0; i < maxRetries; i++ {
@@ -73,13 +53,14 @@ func (a *AuthSystem) generateToken() ([32]byte, error) {
 
     token := [32]byte(tokenBytes)
 
-    a.tokensMutex.Lock()
-    _, exists := a.tokens[token]
+    s.tokensMutex.Lock()
+    _, exists := s.tokens[token]
     if !exists {
-      a.tokensMutex.Unlock() // hey! we need to store it directly. I cannot believe how ai is bad at locking
-      return token, nil
+      s.tokens = append(s.tokens, [32]byte(tokenBytes))
+      s.tokensMutex.Unlock()
+      return s.token, nil
     }
-    a.tokensMutex.Unlock()
+    s.tokensMutex.Unlock()
   }
 
   return [32]byte{}, fmt.Errorf("failed to generate unique token after %d attempts", maxRetries)
@@ -125,6 +106,10 @@ func (a *AuthSystem) cleanupExpiredTokens() {
 	}
 }
 
+func initAuth() {
+  authSys.tokens = make(map[[32]byte]TokenData)
+}
+
 func startKeyRotation() {
   if err := authSys.generateKeys(); err != nil {
     log.Printf("Failed to iniate auth keys: %v\n", err)
@@ -167,6 +152,7 @@ func handlePublicKey(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleLogin(w http.ResponseWriter, r *http.Request) {
+  fmt.Println("Handeling login")
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -232,6 +218,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
       }
 
       appHtml, err := composeApp()
+      fmt.Println("Application length: ", len(appHtml))
       if err != nil {
         log.Printf("failed to compose App");
       }

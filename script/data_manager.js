@@ -123,14 +123,13 @@ export class DataManager {
   }
 
   read(reader) {
-    const version = "bin_state.v0.0.3"; 
+    const version = "bin_admin_state.v0.0.0"; 
     const format = reader.readString();
     
     if (version != format) {
       throw new Error(`reading format: \`${format}\`. Supporting format: \`${version}\``);
     }
 
-    this.eventNames = reader.readStringArray();
     this.eventStaff = reader.readArrayOfInt32Arrays();
     this.eventVenues = reader.readArrayOfInt32Arrays();
     this.eventPersonalNumMap = reader.readArrayOfInt32Arrays();

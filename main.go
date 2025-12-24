@@ -50,38 +50,55 @@ const (
   PRIVILAGE_LEVEL_USER
 )
 
+
 type ApplicationState struct {
-  UserIDs []int32
-  UserPasswords [][32]byte
-  UserNames []string
-  UserMails []string
-  UserPhones []int32
-  UserCompetences [][]int32
-  UserDutyStation []int32
-  UserDutyPrivilageLevel []int32 // if it is >= 0, than that shows it as a chief of 
-                                 // the Duty Station. If it is a constant
+  UsersIDs []int32
+  UsersPasswords [][32]byte
+  UsersNames []string
+  UsersMails []string
+  UsersPhones []int32
+  UsersCompetences [][]int32
+  UsersDutyStation []int32
+  UsersDutyPrivilageLevel []int32 // if it is >= 0, than that shows it as a chief of the Duty Station. If it is a constant
+  UsersFreeList []int32
 
-  EventNames []string
-  EventStaff [][]int32
-  EventVenues [][]int32
-  EventPresonalNumMap [][]int32
-  EventStaffDiplReq []int32
-  EventAttendeeDiplReq []int32
-  EventDuration []int32
-  EventFreeList []int32
+  EventsNames []string
+  EventsVenues [][]int32
+  EventsRoles [][]int32
+  EventsPresonalNumMap [][][]int32
+  EventsRolesRequirements [][][2]int32
+  EventsDuration []int32
+  EventsFreeList []int32
 
-  StaffNames []string
-  StaffFreeList []int32
+  VenuesNames []string
+  VenuesFreeList []int32
 
-  VenueNames []string
-  VenueFreeList []int32
+  CompetencesNames []string
+  CompetencesFreeList []int32
 
-  DutyStationNames []string
+  RolesNames []string
+  RolesFreeList []int32
 
-  StaffsDiplomesNames []string 
-  AttendeesDiplomesNames []string
-  ComptencesNames []string
+  OccurencesVenues []int32
+  OccurencesDates [][][2]int32
+  OccurencesParticipants [][]int32
+  OccurencesParticipantsRoles [][]int32
+  OccurencesFreeList []int32
+
+  TokensValues [][32]byte
+  TokensUsers [][32]byte
+  TokensTimes [][2]time.Time
+  TokensChannel []chan byte[]
+  TokensFreeList []int32 // we need to recalculate everything once free list reaches a certain size (like 128 entries)
+
+  privateKey *rsa.ProvateKey
+  publicKey [32]byte
+  keyGeneratedAt time.Time
+
+  mutex sync.RWMutex
+  stateFence uint64
 }
+
 var state ApplicationState
 
 func readApplicationState(r io.Reader) (ApplicationState, error) {
@@ -345,8 +362,9 @@ func main() {
   }
 
   // launching auth
-  startKeyRotation();
-  startTokenCleanup();
+  initAuth()
+  startKeyRotation()
+  startTokenCleanup()
 
   defer func() {
     log.Println("Running cleanup...")
@@ -397,6 +415,7 @@ func main() {
   http.HandleFunc("/api/side-menu", handleSideMenu) // @nocheckin: we should have a single point for data manipulation
   http.HandleFunc("/data", handleData)
   http.HandleFunc("/api/public-key", handlePublicKey)
+  http.HandleFunc("/api/login", handleLogin)
 
   srv := &http.Server{
     Addr:    ":443",
@@ -458,11 +477,12 @@ func generateMonthData() MonthData {
 }
 
 func handleData(w http.ResponseWriter, r *http.Request) {
-  if r.Method != http.MethodGet {
-    http.Error(w, "Method not allowed. Only GET is supported.", http.StatusMethodNotAllowed)
+  if r.Method != http.MethodPost {
+    http.Error(w, "Method not allowed. Only POST is supported.", http.StatusMethodNotAllowed)
     return
   }
 
+  token := readHash(r) 
   if err := writeApplicationState(w, state); err != nil {
     http.Error(w, "Error writing application state", http.StatusInternalServerError)
     log.Fatalf("Error writing application state: %v", err)

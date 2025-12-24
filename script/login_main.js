@@ -108,11 +108,13 @@ connectButton.addEventListener('click', async () => {
 
     passwordInput.value = '';
 
-    const script = document.createElement('script');
-    script.src = "/main.js";
-    script.type = "module";
-
-    document.head.appendChild(script)
+    import('./main.js')
+    .then((module) => {
+        module.initApp(token);
+    })
+    .catch((err) => {
+        console.error("Failed to load main.js:", err);
+    });const script = document.createElement('script');
   } catch (error) {
     alert('Login failed: ' + error.message);
   } finally {
