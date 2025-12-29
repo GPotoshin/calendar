@@ -1,26 +1,31 @@
 package main
 
-func storageIndex[K, V comparable](m map[K]V, freeList []int) int {
-	if len(freeList) > 0 {
-		return freeList[len(freeList)-1]
+func newId[K, V comparable](m map[K]V, freeId *[]int32) int32 {
+	if len(*freeId) > 0 {
+    id := (*freeId)[len(*freeId)-1]
+    *freeId = (*freeId)[:len(*freeId)-1]
+    return id
+	} else {
+		return int32(len(m))
+	}
+}
+
+func storageIndex[K, V comparable](m map[K]V, freeList *[]int) int {
+	if len(*freeList) > 0 {
+    idx := (*freeList)[len(*freeList)-1]
+		*freeList = (*freeList)[:len(*freeList)-1]
+    return idx
 	} else {
 		return len(m)
 	}
 }
 
-func storeValue[T any](array *[]T, freeList []int, value T) {
-	if len(freeList) > 0 {
-		index := freeList[len(freeList)-1]
-		(*array)[index] = value
+func storeValue[T any](array *[]T, idx int, value T) {
+	if idx >= 0 && idx < len(*array) {
+		(*array)[idx] = value
 	} else {
 		*array = append(*array, value)
 	}
-}
-
-func popFreeList(freeList *[]int) {
-	if len(*freeList) > 0 {
-		*freeList = (*freeList)[:len(*freeList)-1]
-  }
 }
 
 func deleteValue[K comparable](m map[K]int, freeList *[]int, id K) {

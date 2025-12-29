@@ -34,17 +34,38 @@ func serveFile(fileName string, headers []HeaderPair) http.HandlerFunc {
 }
 
 const (
-  EVENT_NAMES_ID int32 = iota
-  EVENT_STAFF_ID
-	EVENT_VENUES_ID
-	EVENT_PERSONAL_NUM_MAP_ID
-	EVENT_STAFF_DIPL_REQ_ID
-	EVENT_ATTENDEE_DIPL_REQ_ID
-	EVENT_DURATION_ID
-	STAFF_NAMES_ID
-	VENUE_NAMES_ID
-	STAFFS_DIPLOMES_NAMES_ID
-	ATTENDEES_DIPLOMES_NAMES_ID
+	USERS_ID_MAP_ID int32 = iota
+	USERS_NAME_ID
+	USERS_SURNAME_ID
+	USERS_MAIL_ID
+	USERS_PHONE_ID
+	USERS_COMPETENCES_ID
+	USERS_DUTY_STATION_ID
+	USERS_PRIVILEGE_LEVEL_ID
+
+	EVENTS_ID_MAP_ID
+	EVENTS_NAME_ID
+	EVENTS_VENUE_ID
+	EVENTS_ROLE_ID
+	EVENTS_ROLES_REQUIREMENT_ID
+	EVENTS_PERSONAL_NUM_MAP_ID
+	EVENTS_DURATION_ID
+
+	VENUES_ID_MAP_ID
+	VENUES_NAME_ID
+
+	COMPETENCES_ID_MAP_ID
+	COMPETENCES_NAME_ID
+
+	ROLES_ID_MAP_ID
+	ROLES_NAME_ID
+
+	OCCURRENCES_ID_MAP_ID
+	OCCURRENCES_VENUE_ID
+	OCCURRENCES_DATES_ID
+	OCCURRENCES_PARTICIPANT_ID
+	OCCURRENCES_PARTICIPANTS_ROLE_ID
+
 	STATE_FIELD_COUNT
 )
 
@@ -73,18 +94,22 @@ type ApplicationState struct {
   EventsRolesRequirement [][][]int32
   EventsPresonalNumMap [][][]int32
   EventsDuration []int32
+  EventsFreeId []int32
   EventsFreeList []int
 
   VenuesId map[int32]int // id -> idx
   VenuesName []string
+  VenuesFreeId []int32
   VenuesFreeList []int
 
   CompetencesId map[int32]int // id -> idx
   CompetencesName []string
+  CompetencesFreeId []int32
   CompetencesFreeList []int
 
   RolesId map[int32]int // id -> idx
   RolesName []string
+  RolesFreeId []int32
   RolesFreeList []int
 
   OccerencesId map[int32]int // id -> idx
@@ -92,6 +117,7 @@ type ApplicationState struct {
   OccurencesDates [][][2]int32 // idea is that every event can happen in intervals and we store the borders of those intervals
   OccurencesParticipant [][]int32
   OccurencesParticipantsRole [][]int32
+  OccurencesFreeId []int32
   OccurencesFreeList []int
 
   ConnectionsToken map[[32]byte]int // id -> idx
@@ -112,7 +138,7 @@ var state ApplicationState
 
 func readApplicationState(r io.Reader) (ApplicationState, error) {
   var state ApplicationState
-  version := "bin_state.v0.0.6"
+  version := "bin_state.v0.0.7"
   format, err := readString(r)
   if err != nil {
     return state, fmt.Errorf("Can't verify file format: %w", err)
@@ -170,12 +196,18 @@ func readApplicationState(r io.Reader) (ApplicationState, error) {
   if state.EventsDuration, err = readInt32Array(r); err != nil {
     return state, fmt.Errorf("failed to read EventsDuration: %w", err)
   }
+  if state.EventsFreeId, err = readInt32Array(r); err != nil {
+    return state, fmt.Errorf("failed to read EventsFreeId: %w", err)
+  }
 
   if state.VenuesId, err = readMapInt32Int(r); err != nil {
     return state, fmt.Errorf("failed to read VenuesId: %w", err)
   }
   if state.VenuesName, err = readStringArray(r); err != nil {
     return state, fmt.Errorf("failed to read VenuesName: %w", err)
+  }
+  if state.VenuesFreeId, err = readInt32Array(r); err != nil {
+    return state, fmt.Errorf("failed to read VenuesFreeId: %w", err)
   }
 
   if state.CompetencesId, err = readMapInt32Int(r); err != nil {
@@ -184,12 +216,18 @@ func readApplicationState(r io.Reader) (ApplicationState, error) {
   if state.CompetencesName, err = readStringArray(r); err != nil {
     return state, fmt.Errorf("failed to read CompetencesName: %w", err)
   }
+  if state.CompetencesFreeId, err = readInt32Array(r); err != nil {
+    return state, fmt.Errorf("failed to read CompetencesFreeId: %w", err)
+  }
 
   if state.RolesId, err = readMapInt32Int(r); err != nil {
     return state, fmt.Errorf("failed to read RolesId: %w", err)
   }
   if state.RolesName, err = readStringArray(r); err != nil {
     return state, fmt.Errorf("failed to read RolesName: %w", err)
+  }
+  if state.RolesFreeId, err = readInt32Array(r); err != nil {
+    return state, fmt.Errorf("failed to read RolesFreeId: %w", err)
   }
 
   if state.OccerencesId, err = readMapInt32Int(r); err != nil {
@@ -207,12 +245,15 @@ func readApplicationState(r io.Reader) (ApplicationState, error) {
   if state.OccurencesParticipantsRole, err = readArrayOfInt32Arrays(r); err != nil {
     return state, fmt.Errorf("failed to read OccurencesParticipantsRole: %w", err)
   }
+  if state.OccurencesFreeId, err = readInt32Array(r); err != nil {
+    return state, fmt.Errorf("failed to read OccurencesFreeId: %w", err)
+  }
 
   return state, nil
 }
 
 func writeApplicationState(w io.Writer, state ApplicationState) error {
-  version := "bin_state.v0.0.6"
+  version := "bin_state.v0.0.7"
   if err := writeString(w, version); err != nil {
     return fmt.Errorf("Failed to store data [file format]: %v\n", err)
   }
@@ -268,6 +309,9 @@ func writeApplicationState(w io.Writer, state ApplicationState) error {
   if err := writeInt32Array(w, state.EventsDuration); err != nil {
     return fmt.Errorf("failed to write EventsDuration: %w", err)
   }
+  if err := writeInt32Array(w, state.EventsFreeId); err != nil {
+    return fmt.Errorf("failed to write EventsFreeId: %w", err)
+  }
 
   // Write Venues data
   if err := writeMapInt32Int(w, state.VenuesId); err != nil {
@@ -275,6 +319,9 @@ func writeApplicationState(w io.Writer, state ApplicationState) error {
   }
   if err := writeStringArray(w, state.VenuesName); err != nil {
     return fmt.Errorf("failed to write VenuesName: %w", err)
+  }
+  if err := writeInt32Array(w, state.VenuesFreeId); err != nil {
+    return fmt.Errorf("failed to write VenuesFreeId: %w", err)
   }
 
   // Write Competences data
@@ -284,6 +331,9 @@ func writeApplicationState(w io.Writer, state ApplicationState) error {
   if err := writeStringArray(w, state.CompetencesName); err != nil {
     return fmt.Errorf("failed to write CompetencesName: %w", err)
   }
+  if err := writeInt32Array(w, state.CompetencesFreeId); err != nil {
+    return fmt.Errorf("failed to write CompetencesFreeId: %w", err)
+  }
 
   // Write Roles data
   if err := writeMapInt32Int(w, state.RolesId); err != nil {
@@ -291,6 +341,9 @@ func writeApplicationState(w io.Writer, state ApplicationState) error {
   }
   if err := writeStringArray(w, state.RolesName); err != nil {
     return fmt.Errorf("failed to write RolesName: %w", err)
+  }
+  if err := writeInt32Array(w, state.RolesFreeId); err != nil {
+    return fmt.Errorf("failed to write RolesFreeId: %w", err)
   }
 
   // Write Occurrences data
@@ -308,6 +361,9 @@ func writeApplicationState(w io.Writer, state ApplicationState) error {
   }
   if err := writeArrayOfInt32Arrays(w, state.OccurencesParticipantsRole); err != nil {
     return fmt.Errorf("failed to write OccurencesParticipantsRole: %w", err)
+  }
+  if err := writeInt32Array(w, state.OccurencesFreeId); err != nil {
+    return fmt.Errorf("failed to write OccurencesFreeId: %w", err)
   }
 
   return nil
@@ -644,23 +700,51 @@ func handleSideMenu(w http.ResponseWriter, r *http.Request) {
 
 
 const (
-  STORE int32 = iota
+  CREATE int32 = iota
   REQUEST
   DELETE
   UPDATE
 ) 
 
+func handleMapInt32Int(
+  r io.Reader,
+  w http.ResponseWriter,
+  mode int32,
+  m map[int32]int,
+  names *[]string,
+  freeId *[]int32,
+  freeList *[]int,
+) {
+  switch mode {
+  case CREATE:
+    // input
+    str, err := readString(r)
+    if err != nil {
+      log.Print(err)
+      http.Error(w, err.Error(), http.StatusBadRequest)
+      return
+    }
+
+    // modifiction
+    id := newId(m, freeId)
+    idx := storageIndex(m, freeList)
+    m[id] = idx
+    storeValue(names, idx, str)
+
+    //output
+    writeInt32(w, id)
+  case REQUEST:
+  case DELETE:
+  case UPDATE:
+  default:
+    http.Error(w, "incorrect mode", http.StatusBadRequest)
+    return
+  }
+
+}
+
 // func handleArrayOfStrings(r io.Reader, w http.ResponseWriter, mode int32, data *[]string, freelist *[]int32) {
 //   switch mode {
-//   case STORE:
-//     str, err := readString(r)
-//     if err != nil {
-//       log.Print(err)
-//       http.Error(w, err.Error(), http.StatusBadRequest)
-//       return
-//     }
-//     _ = storeValue(data, freelist, str)
-//
 //   case REQUEST:
 //   case DELETE:
 //   case UPDATE:
@@ -669,57 +753,86 @@ const (
 //     return
 //   }
 // }
-//
-// func handleApi(w http.ResponseWriter, r *http.Request) {
-//   if r.Method != http.MethodPost {
-//     http.Error(w, "Method not allowed. Only POST is supported.", http.StatusMethodNotAllowed)
-//     return
-//   }
-//   api_version, err := readString(r.Body)
-//   if err != nil {
-//     log.Print(err)
-//     http.Error(w, err.Error(), http.StatusBadRequest)
-//     return
-//   }
-//   if api_version != "bin_api.v0.0.0" {
-//     http.Error(w, "incorrect api version", http.StatusBadRequest)
-//     return
-//   }
-//
-//   mode, err := readInt32(r.Body)
-//   if err != nil {
-//     log.Print(err)
-//     http.Error(w, err.Error(), http.StatusBadRequest)
-//     return
-//   }
-//
-//   field_id, err := readInt32(r.Body)
-//   if err != nil {
-//     log.Print(err)
-//     http.Error(w, err.Error(), http.StatusBadRequest)
-//     return
-//   }
-//
-//   if field_id < 0 || field_id >= STATE_FIELD_COUNT {
-//     http.Error(w, "incorrect field id", http.StatusBadRequest)
-//     return
-//   }
-//
-//   switch field_id {
-//   case EVENT_NAMES_ID:
-//     handleArrayOfStrings(r.Body, w, mode, &state.EventNames, &state.EventFreeList)
-//   case EVENT_STAFF_ID:
-//   case EVENT_VENUES_ID:
-//   case EVENT_PERSONAL_NUM_MAP_ID:
-//   case EVENT_STAFF_DIPL_REQ_ID:
-//   case EVENT_ATTENDEE_DIPL_REQ_ID:
-//   case EVENT_DURATION_ID:
-//   case STAFF_NAMES_ID:
-//   case VENUE_NAMES_ID:
-//   case STAFFS_DIPLOMES_NAMES_ID:
-//   case ATTENDEES_DIPLOMES_NAMES_ID:
-//   default:
-//     http.Error(w, "incorrect field id", http.StatusBadRequest)
-//     return
-//   }
-// }
+
+func handleApi(w http.ResponseWriter, r *http.Request) {
+  if r.Method != http.MethodPost {
+    http.Error(w, "Method not allowed. Only POST is supported.", http.StatusMethodNotAllowed)
+    return
+  }
+  api_version, err := readString(r.Body)
+  if err != nil {
+    log.Print(err)
+    http.Error(w, err.Error(), http.StatusBadRequest)
+    return
+  }
+  if api_version != "bin_api.v0.0.0" {
+    http.Error(w, "incorrect api version", http.StatusBadRequest)
+    return
+  }
+
+  mode, err := readInt32(r.Body)
+  if err != nil {
+    log.Print(err)
+    http.Error(w, err.Error(), http.StatusBadRequest)
+    return
+  }
+
+  field_id, err := readInt32(r.Body)
+  if err != nil {
+    log.Print(err)
+    http.Error(w, err.Error(), http.StatusBadRequest)
+    return
+  }
+
+  if field_id < 0 || field_id >= STATE_FIELD_COUNT {
+    http.Error(w, "incorrect field id", http.StatusBadRequest)
+    return
+  }
+
+  switch field_id {
+  case USERS_ID_MAP_ID:
+  case USERS_NAME_ID:
+  case USERS_SURNAME_ID:
+  case USERS_MAIL_ID:
+  case USERS_PHONE_ID:
+  case USERS_COMPETENCES_ID:
+  case USERS_DUTY_STATION_ID:
+  case USERS_PRIVILEGE_LEVEL_ID:
+
+  case EVENTS_ID_MAP_ID:
+    handleMapInt32Int(
+      r.Body,
+      w,
+      mode,
+      state.EventsId,
+      &state.EventsName,
+      &state.EventsFreeId,
+      &state.EventsFreeList,
+    )
+  case EVENTS_NAME_ID:
+    // handleArrayOfStrings(r.Body, w, mode, &state.EventsName, &state.EventsFreeList)
+  case EVENTS_VENUE_ID:
+  case EVENTS_ROLE_ID:
+  case EVENTS_ROLES_REQUIREMENT_ID:
+  case EVENTS_PERSONAL_NUM_MAP_ID:
+  case EVENTS_DURATION_ID:
+
+  case VENUES_ID_MAP_ID:
+  case VENUES_NAME_ID:
+
+  case COMPETENCES_ID_MAP_ID:
+  case COMPETENCES_NAME_ID:
+
+  case ROLES_ID_MAP_ID:
+  case ROLES_NAME_ID:
+
+  case OCCURRENCES_ID_MAP_ID:
+  case OCCURRENCES_VENUE_ID:
+  case OCCURRENCES_DATES_ID:
+  case OCCURRENCES_PARTICIPANT_ID:
+  case OCCURRENCES_PARTICIPANTS_ROLE_ID:
+  default:
+    http.Error(w, "incorrect field id", http.StatusBadRequest)
+    return
+  }
+}

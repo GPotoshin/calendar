@@ -1,7 +1,8 @@
 import { callbacks } from './global_state.js';
 
 let state = {
-  parent_target: null,
+  delete_target: null,
+  extend_target: null,
   target: null,
 };
 
@@ -9,16 +10,12 @@ function handleClickForContextMenu() {
   let menu = elms.rightClickMenu;
   menu.classList.replace('disp-flex', 'disp-none');
   document.removeEventListener('click', handleClickForContextMenu);
-  if (callbacks.showInfo.obj && callbacks.showInfo.func) {
-    callbacks.showInfo.obj.removeEventListener('click', callbacks.showInfo.func);
-  }
-  callbacks.showInfo = { func: null, obj: null };
   for (const child of menu.children) {
     child.classList.replace('disp-block', 'disp-none');
   }
 }
 
-function postString(url, str) {
+function postString(url, str) { // @nocheckin
   let writer = new BufferWriter();
   writer.writeString(str);
   fetch(url, {
@@ -37,7 +34,7 @@ function postString(url, str) {
     });
 }
 
-function handleAddToList(target, placeholder, url, storage) {
+function handleAddToList(target, placeholder, url, storage) { // @nocheckin
   const button = document.createElement('button');
   const input = document.createElement('input');
   input.type = 'text';
@@ -64,14 +61,6 @@ function handleAddToList(target, placeholder, url, storage) {
     }
   });
 }
-
-document.getElementById('new-member-button').addEventListener('click', function() {
-  handleAddToList(elms.nameList, 'Nouveau Agent', '/store/agent', data.staffNames);
-});
-
-document.getElementById('new-venue-button').addEventListener('click', function() {
-  handleAddToList(elms.venueList, 'Nouveau Lieu', '/store/venue', data.venueNames);
-});
 
 document.getElementById('edit-button').addEventListener('click', function() {
   let b = state.target;
@@ -173,6 +162,7 @@ document.getElementById('create-button').addEventListener('click', () => {
   target.appendChild(button);
   input.focus();
 
+  // should we add blur event also?
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -191,83 +181,30 @@ document.getElementById('toggle-button').addEventListener('click', () => {
   state.target.classList.toggle('clicked');
 });
 
-document.getElementById('new-event-button').addEventListener('click', 
-  function() {
-    let menu = elms.sideMenu;
-    let new_button = document.createElement('button');
-    new_button.classList.add('event-button');
-    new_button.textContent = "Nouvel Événement";
-    menu.appendChild(new_button);
-
-    const rect = new_button.getBoundingClientRect();
-    menu = document.getElementById('create-option-menu');
-    menu.classList.replace('disp-none', 'disp-flex');
-    menu.style.setProperty('--menu-left', rect.right + 'px');
-    menu.style.setProperty('--menu-top', rect.top + 'px');
-
-    let input = menu.querySelectorAll('input')[0];
-    input.focus();
-
-    state.focusedElement = new_button; // @nocheckin
-    callbacks.handleTyping.func = function(event) {
-      if (event.target.value === "") {
-        new_button.textContent = "Nouvel Événement";
-      } else {
-        new_button.textContent = event.target.value;
-      }
-    };
-
-    input.addEventListener('input', callbacks.handleTyping.func);
-    callbacks.handleTyping.obj = input;
-  });
-
 document.addEventListener('contextmenu', function(e) {
   const menu = elms.rightClickMenu;
-  let show = true;
+  let show = false;
   let target = null;
-  if (elms.sideMenu.contains(e.target)) {
-    document.getElementById('new-event-button').classList.replace('disp-none', 'disp-block');
-  } else if (elms.nameList.contains(e.target)) {
-    document.getElementById('new-member-button').classList.replace('disp-none', 'disp-block');
-  } else if (elms.venueList.contains(e.target)) {
-    document.getElementById('new-venue-button').classList.replace('disp-none', 'disp-block');
-  } else if (e.target.classList.contains('editable')) {
-    document.getElementById('edit-button').classList.replace('disp-none', 'disp-block');
-    state.target = e.target;
-  } else if (target = e.target.closest('.deletable')) { 
+
+  state.target = e.target;
+  if (state.delete_target = e.target.closest('.deletable')) { 
     document.getElementById('delete-button').classList.replace('disp-none', 'disp-block');
-    state.target = target;
-  } else {
-    show = false;
+    show = true;
   }
 
   if (e.target.classList.contains('editable')) {
     document.getElementById('edit-button').classList.replace('disp-none', 'disp-block');
-    state.target = e.target;
     show = true;
   }
 
   if (e.target.classList.contains('togglable')) {
     document.getElementById('toggle-button').classList.replace('disp-none', 'disp-block');
-    state.target = e.target;
     show = true;
   }
 
-  if (state.parent_target = e.target.closest('.extendable')) {
+  if (state.extend_target = e.target.closest('.extendable')) {
     document.getElementById('create-button').classList.replace('disp-none', 'disp-block');
-    state.target = e.target;
     show = true;
-  }
-
-  for (const button of elms.sideMenu.children) { // @nocheckin, ??
-    if (button.contains(e.target)) {
-      show = true;
-      let infoButton = document.getElementById('info-event-button');
-      infoButton.classList.replace('disp-none', 'disp-block');
-      callbacks.showInfo = { func: showInfo(button), obj: infoButton };
-      infoButton.addEventListener('click', callbacks.showInfo.func);
-      break;
-    }
   }
 
   if (show) {

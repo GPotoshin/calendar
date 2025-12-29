@@ -40,15 +40,12 @@ export function initApp() {
 let elms = {
   calendarBody: null,
   calendarContent: null,
-  createOptionMenu: null,
   markerBlocks: null,
   monthDisplay: null,
-  nameList: null,
   rightClickMenu: null,
   sideMenu: document.createElement('div'),
   bodyContainer: null,
   sideMenuContainer: null,
-  venueList: null,
   todayFrame: null,
   dataListContainer: null,
 
@@ -100,7 +97,7 @@ function createStaffTable() {
     <div class="h-container with-width">
     </div>
 
-    <div class="m-box v-container with-width">
+    <div class="m-box v-container with-width">main
     <div id="event-staff-number-map" class="v-container scrollable-box disp-flex grow scroll-smooth bordered">
     </div>
     </div>
@@ -316,6 +313,25 @@ function resetEventInfoView() { // @working
   let lContainer = document.createElement('div');
   zones[0].eList = bContainer.children;
   lContainer.id = 'button-container';
+  lContainer.className = 'v-container grow';
+  elms.scope[scopeId.EVENT].className = 'extendable v-container grow';
+  elms.scope[scopeId.STAFF].className = 'extendable v-container grow';
+  elms.scope[scopeId.VENUE].className = 'extendable v-container grow';
+  let localCreateButton = () => {
+    let b = document.createElement('button');
+    b.className = 'event-button dynamic_bg';
+    b.addEventListener('click', function (){
+      handleClickOnListButton(b, zonesId.STAFFLIST);
+    });
+    return b;
+  }
+  elms.scope[scopeId.EVENT]._createButton = localCreateButton;
+  elms.scope[scopeId.STAFF]._createButton = localCreateButton;
+  elms.scope[scopeId.VENUE]._createButton = localCreateButton;
+
+  elms.scope[scopeId.EVENT]._btnPlaceholder = 'Nouvel Événement';
+  elms.scope[scopeId.STAFF]._btnPlaceholder = 'Nouveau Membre du Personnel';
+  elms.scope[scopeId.VENUE]._btnPlaceholder = 'Nouveau Lieu';
 
   hContainer.append(bContainer);
   elms.dataListContainer = lContainer;
@@ -470,12 +486,9 @@ elms.bodyContainer = document.getElementById('body-container');
 elms.markerBlocks = document.getElementsByClassName('block-marker');
 elms.calendarBody = document.getElementById('calendar-body');
 elms.calendarContent = document.getElementById('calendar-content');
-elms.createOptionMenu = document.getElementById('create-option-menu');
 elms.monthDisplay = document.getElementById('month-display');
-elms.nameList = document.getElementById('name-list');
 elms.rightClickMenu = document.getElementById('right-click-menu');
 elms.sideMenuContainer = document.getElementById('side-menu-container');
-elms.venueList = document.getElementById('venue-list');
 elms.view[viewId.CALENDER] = document.getElementsByClassName('view-content')[0];
 
 zones[1].eList = document.getElementById("view-type").children;
@@ -505,8 +518,6 @@ calendarBody.addEventListener('mousemove', handleMouseMove);
         bin => {
           const r = new BufferReader(bin);
           data.read(r)
-          setUiList(elms.nameList, data.usersName);
-          setUiList(elms.venueList, data.venuesName);
           for (let i = 0; i < data.eventsName.length; i++) { // @nocheckin: factor out
             const name = data.eventsName[i];
             let button = document.createElement('button');
@@ -669,26 +680,6 @@ setMonthObserver(focus.month);
 
 const weekRows = document.querySelectorAll('.week-row');
 
-document.addEventListener('click', (event) => {
-  if (event.target.id === 'new-event-button' || event.target.id === 'info-event-button') {
-    // we fucking can't do that in click function because after this button
-    // handling function we get immidiately a click event and that is fucking
-    // retarded because this handleClickForOptionMenu function closes the menu
-    // and we don't get the menu
-    document.addEventListener('click', handleClickForOptionMenu);
-  }
-});
-
-function showInfo(element) {
-  return function() {
-    const rect = element.getBoundingClientRect();
-    let menu = document.getElementById('create-option-menu');
-    menu.classList.replace('disp-none', 'disp-flex');
-    menu.style.setProperty('--menu-left', rect.right + 'px');
-    menu.style.setProperty('--menu-top', rect.top + 'px');
-  }
-}
-
 function switchToCalendarView() {
   elms.bodyContainer.replaceChild(elms.view[viewId.CALENDER], elms.bodyContainer.children[1]);
 }
@@ -708,67 +699,6 @@ document.getElementById('side-menu-button').addEventListener('click',
     state.sideMenuIsOpen ^= true;
   }
 );
-
-function handleClickForOptionMenu(event) {
-  let menu = elms.createOptionMenu;
-  if (!menu.contains(event.target) && !elms.rightClickMenu.contains(event.target)) {
-    menu.classList.replace('disp-flex', 'disp-none');
-
-    document.removeEventListener('click', handleClickForOptionMenu);
-    let input = menu.querySelectorAll('input')[0];
-    callbacks.handleTyping.obj.removeEventListener('input', callbacks.handleTyping.func); // @nocheckin: we have an error here
-    callbacks.handleTyping = { func: null, obj: null };
-    let value = input.value;
-
-    if (value !== "") {
-      const staffIds = [];
-      const nameList = elms.nameList;
-      for (const name of nameList.children) {
-        if (name.classList.contains('clicked')) {
-          name.classList.remove('clicked');
-          staffIds.push(parseInt(name._idx));
-        }
-      }
-
-      const venueIds = [];
-      const venueList = elms.venueList;
-      for (const venue of venueList.children) {
-        if (venue.classList.contains('clicked')) {
-          venue.classList.remove('clicked');
-          venueIds.push(parseInt(venue._idx));
-        }
-      }
-
-      const writer = new BufferWriter();
-      writer.writeString(input.value);
-      writer.writeInt32Array(staffIds);
-      writer.writeInt32Array(venueIds);
-
-      fetch("store/event", {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/octet-stream',
-        },
-        body: writer.getBuffer(),
-      })
-        .then(resp => {
-          if (!resp.ok) {
-            throw new Error(`HTTP error! status: ${resp.status}`);
-          }})
-        .catch(e => {
-          console.error(`Error: ${e}`);
-        });
-    } else {
-      let menu = document.getElementById('side-menu');
-      if (state.focusedElement) {
-        menu.removeChild(state.focusedElement);
-        state.focusedElement = null;
-      }
-    }
-
-    input.value = "";
-  }
-};
 
 function handleClickOnListButton(b, zn) {
   const z = zones[zn];

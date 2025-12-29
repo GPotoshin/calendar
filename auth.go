@@ -199,11 +199,11 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
     state.mutex.Lock()
     _, exists := state.ConnectionsToken[token]
     if !exists {
-      state.ConnectionsToken[token] = storageIndex(state.ConnectionsToken, state.ConnectionsFreeList)
-      storeValue(&state.ConnectionsUser, state.ConnectionsFreeList, userId)
-      storeValue(&state.ConnectionsTime, state.ConnectionsFreeList, [2]time.Time{now, now.Add(time.Hour)})
-      storeValue(&state.ConnectionsChannel, state.ConnectionsFreeList, make(chan []byte))
-      popFreeList(&state.ConnectionsFreeList)
+      idx := storageIndex(state.ConnectionsToken, &state.ConnectionsFreeList)
+      state.ConnectionsToken[token] = idx
+      storeValue(&state.ConnectionsUser, idx, userId)
+      storeValue(&state.ConnectionsTime, idx, [2]time.Time{now, now.Add(time.Hour)})
+      storeValue(&state.ConnectionsChannel, idx, make(chan []byte))
 
       state.mutex.Unlock()
       goto _token_generation_success
