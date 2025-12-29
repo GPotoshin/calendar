@@ -563,6 +563,7 @@ func main() {
     "context_menu.js",
     "global_state.js",
     "api.js",
+    "side_menu.js",
   }
   jsHeaders := []HeaderPair{{Key: "Content-Type", Value: "text/javascript"}}
   for _, file := range jsFiles {
@@ -726,6 +727,7 @@ func handleMapInt32Int(
     }
     // input
     str, err := readString(r)
+    log.Printf("the input is '%s'\n", str)
     if err != nil {
       log.Print(err)
       http.Error(w, err.Error(), http.StatusBadRequest)
@@ -773,6 +775,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     return
   }
   if api_version != "bin_api.v0.0.0" {
+    log.Println("API version is incorrect. We are getting ", api_version)
     http.Error(w, "incorrect api version", http.StatusBadRequest)
     return
   }

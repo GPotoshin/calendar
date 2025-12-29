@@ -9,20 +9,26 @@ import * as Api from './api.js';
 
 import { palette } from './color.js';
 import { BufferReader, BufferWriter } from './io.js';
-import { DataManager } from './data_manager.js';
+import * as DM from './data_manager.js';
 import { numInput } from './num_input.js';
 import * as SearchDisplay from './search_display.js';
 import {} from './context_menu.js'; // we need it
-import { callbacks } from './global_state.js';
+import {
+  callbacks,
+  elms,
+  zonesId,
+  viewId,
+  scopeId,
+  zones,
+  data,
+} from './global_state.js';
 import { token } from './login_main.js'
+import {} from './side_menu.js'
 
 const MS_IN_DAY = 86400000;
 
-const data = new DataManager();
-window.data = data;
 
 let state = {
-  sideMenuIsOpen: false,
   viewSelection: 0,
   datasetSelection: 0,
   eventsSelection: -1,
@@ -39,50 +45,6 @@ export function initApp() {
   state.token = token;
 }
 
-let elms = {
-  calendarBody: null,
-  calendarContent: null,
-  markerBlocks: null,
-  monthDisplay: null,
-  rightClickMenu: null,
-  sideMenu: document.createElement('div'),
-  bodyContainer: null,
-  sideMenuContainer: null,
-  todayFrame: null,
-  dataListContainer: null,
-
-  view: [null, null],
-  scope: [document.createElement('div'), document.createElement('div'), document.createElement('div')],
-}
-window.elms = elms;
-
-const zonesId = {
-  DATATYPE: 0,
-  VIEWTYPE: 1,
-  EVENTLIST: 2,
-  STAFFLIST: 3,
-  VENUELIST: 4,
-};
-
-const viewId = {
-  CALENDER: 0,
-  INFORMATION: 1,
-};
-
-const scopeId = {
-  EVENT: 0,
-  STAFF: 1,
-  VENUE: 2,
-};
-
-// eList is the list of buttons, that way we have a direct access to it
-let zones = [
-  { selection: 0, eList: null },
-  { selection: 0, eList: null },
-  { selection: -1, eList: elms.scope[scopeId.EVENT].children },
-  { selection: -1, eList: elms.scope[scopeId.STAFF].children },
-  { selection: -1, eList: elms.scope[scopeId.VENUE].children },
-];
 
 let tmpls = [ document.createElement('div'), null, null, null ];
 
@@ -99,7 +61,7 @@ function createStaffTable() {
     <div class="h-container with-width">
     </div>
 
-    <div class="m-box v-container with-width">main
+    <div class="m-box v-container with-width">
     <div id="event-staff-number-map" class="v-container scrollable-box disp-flex grow scroll-smooth bordered">
     </div>
     </div>
@@ -214,7 +176,7 @@ function resetEventInfoView() { // @working
       };
       if (dataIsSet) {
         line.classList.add('deletable');
-        let dataArray = data.eventPersonalNumMap[zones[zonesId.EVENTLIST].selection];
+        let dataArray = data.eventsPersonalNumMap[zones[zonesId.EVENTLIST].selection];
         line._dIdx = dataArray.length/3;
         for (let j = 0; j < btns.length; j++) {
           btns[j]._dIdx = dataArray.length;
@@ -252,10 +214,10 @@ function resetEventInfoView() { // @working
 
   const _eventId = zones[zonesId.EVENTLIST].selection;
 
-  let dataArray = data.eventPersonalNumMap[_eventId];
+  let dataArray = data.eventsPersonalNumMap[_eventId];
   if (dataArray === undefined) {
     dataArray = [];
-    data.eventPersonalNumMap[_eventId] = [];
+    data.eventsPersonalNumMap[_eventId] = [];
   }
   for (let i = 0; i < dataArray.length;) {
     let line = createTemplateLine();
@@ -270,9 +232,9 @@ function resetEventInfoView() { // @working
   }
   addEmptyLine(list);
 
-  let duration = data.eventDuration[_eventId];
+  let duration = data.eventsDuration[_eventId];
   if (duration === undefined) {
-    data.eventDuration[_eventId] = -1;
+    data.eventsDuration[_eventId] = -1;
     duration = -1;
   }
 
@@ -289,11 +251,11 @@ function resetEventInfoView() { // @working
       numInput.elm.replaceWith(b);
       const _eventId = zones[zonesId.EVENTLIST].selection;
       if (numInput.elm.value === '') {
-        data.eventDuration[_eventId] = -1;
+        data.eventsDuration[_eventId] = -1;
         return;
       }
       b.textContent = numInput.elm.value;
-      data.eventDuration[_eventId] = Number(numInput.elm.value);
+      data.eventsDuration[_eventId] = Number(numInput.elm.value);
       b.classList.add('editable');
       b.removeEventListener('click', localCallback);
     }
@@ -304,107 +266,6 @@ function resetEventInfoView() { // @working
   }
 }
 
-{
-  elms.sideMenu.classList.add('v-container');
-  elms.sideMenu.id = 'side-menu';
-  let hContainer = document.createElement('div');
-  hContainer.className = 'header-container';
-  let bContainer = document.createElement('div');
-  bContainer.className = 'button-container';
-  bContainer.id = 'data-type';
-  let lContainer = document.createElement('div');
-  zones[0].eList = bContainer.children;
-  lContainer.id = 'button-container';
-  lContainer.className = 'v-container grow';
-  elms.scope[scopeId.EVENT].className = 'extendable v-container grow';
-  elms.scope[scopeId.STAFF].className = 'extendable v-container grow';
-  elms.scope[scopeId.VENUE].className = 'extendable v-container grow';
-  let localCreateButton = () => {
-    let b = document.createElement('button');
-    b.className = 'event-button dynamic_bg';
-    b.addEventListener('click', function (){
-      handleClickOnListButton(b, zonesId.STAFFLIST);
-    });
-    return b;
-  }
-
-  function storeFunctionMaker(stateField, map, arr, freeList) {
-    return (name) => {
-      let w = new BufferWriter();
-      Api.writeHeader(w, token, Api.Op.CREATE, Api.StateField.EVENTS_ID_MAP_ID);
-      Api.writeCreateMapEntry(w, name);
-      fetch("/api", {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/octet-stream',
-        },
-        body: writer.getBuffer(),
-      })
-      .then(resp => {
-        if (!resp.ok) {
-          throw new Error(`HTTP error! status: ${resp.status}`);
-        }
-        resp.arrayBuffer()
-        .then(
-          bin => {
-            let r = new BufferReader(bin);
-            let id = r.readInt32();
-            let idx = storageIndex(map, freeList);
-            map[id] = idx;
-            array[idx] = name;
-          });
-      })
-      .catch(e => {
-        console.error("Could not store ", name);
-      });
-    };
-  }
-
-  elms.scope[scopeId.EVENT]._createButton = localCreateButton;
-  elms.scope[scopeId.STAFF]._createButton = localCreateButton;
-  elms.scope[scopeId.VENUE]._createButton = localCreateButton;
-
-  elms.scope[scopeId.EVENT]._btnPlaceholder = 'Nouvel Événement';
-  elms.scope[scopeId.STAFF]._btnPlaceholder = 'Nouveau Membre du Personnel';
-  elms.scope[scopeId.VENUE]._btnPlaceholder = 'Nouveau Lieu';
-
-  elms.scope[scopeId.EVENT]._store =
-    storeFunctionMaker(
-      Api.StateField.EVENTS_ID_MAP_ID,
-      data.eventsId,
-      data.eventsName,
-      data.eventsFreeList,
-    );
-
-  hContainer.append(bContainer);
-  elms.dataListContainer = lContainer;
-
-  let b1 = document.createElement('button');
-  b1.addEventListener('click', () => {
-    elms.dataListContainer.replaceChildren(elms.scope[scopeId.EVENT]); 
-    handleClickOnViewButton(b1, zonesId.DATATYPE);
-  });
-  b1.textContent = 'Événements';
-  b1._bIdx = 0;
-  let b2 = document.createElement('button');
-  b2.addEventListener('click', () => {
-    elms.dataListContainer.replaceChildren(elms.scope[scopeId.STAFF]);
-    handleClickOnViewButton(b2, zonesId.DATATYPE);
-  });
-  b2.textContent = 'Personnel';
-  b2._bIdx = 1;
-  let b3 = document.createElement('button');
-  b3.addEventListener('click', () => {
-    elms.dataListContainer.replaceChildren(elms.scope[scopeId.VENUE]);
-    handleClickOnViewButton(b3, zonesId.DATATYPE);
-  });
-  b3.textContent = 'Lieux';
-  b3._bIdx = 2;
-  bContainer.append(b1, b2, b3);
-
-  elms.sideMenu.replaceChildren(hContainer, elms.dataListContainer);
-  elms.dataListContainer.appendChild(elms.scope[scopeId.EVENT]);
-}
 
 {
   elms.view[viewId.INFORMATION] = document.createElement('div');
@@ -531,7 +392,6 @@ elms.calendarBody = document.getElementById('calendar-body');
 elms.calendarContent = document.getElementById('calendar-content');
 elms.monthDisplay = document.getElementById('month-display');
 elms.rightClickMenu = document.getElementById('right-click-menu');
-elms.sideMenuContainer = document.getElementById('side-menu-container');
 elms.view[viewId.CALENDER] = document.getElementsByClassName('view-content')[0];
 
 zones[1].eList = document.getElementById("view-type").children;
@@ -731,17 +591,6 @@ function switchToInformationView() {
   elms.bodyContainer.replaceChild(elms.view[viewId.INFORMATION], elms.bodyContainer.children[1]);
 }
 
-document.getElementById('side-menu-button').addEventListener('click', 
-  function(button) {
-    let sideMenuContainer = elms.sideMenuContainer;
-    if (state.sideMenuIsOpen) {
-      sideMenuContainer.removeChild(elms.sideMenu);
-    } else {
-      sideMenuContainer.appendChild(elms.sideMenu);
-    }
-    state.sideMenuIsOpen ^= true;
-  }
-);
 
 function handleClickOnListButton(b, zn) {
   const z = zones[zn];
@@ -754,10 +603,5 @@ function handleClickOnListButton(b, zn) {
   if (z.selection >= 0) {
     z.eList[z.selection].style.setProperty('--bg-color', 'transparent');
   }
-  z.selection = b._bIdx;
-}
-
-function handleClickOnViewButton(b, zn) {
-  const z = zones[zn];
   z.selection = b._bIdx;
 }

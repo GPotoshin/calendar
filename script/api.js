@@ -5,7 +5,7 @@ export const Op = Object.freeze({
     UPDATE:  3
 });
 
-const StateField = Object.freeze({
+export const StateField = Object.freeze({
     USERS_ID_MAP_ID: 0,
     USERS_NAME_ID: 1,
     USERS_SURNAME_ID: 2,
@@ -42,7 +42,7 @@ const StateField = Object.freeze({
 });
 
 export function writeHeader(w, token, op, stateField) {
-  w.writeString("bin_api.v.0.0.0");
+  w.writeString("bin_api.v0.0.0");
   w.writeHash(token);
   w.writeInt32(op);
   w.writeInt32(stateField);

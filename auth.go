@@ -75,7 +75,6 @@ func (s *ApplicationState) cleanupExpiredTokens() {
       s.ConnectionsFreeList = s.ConnectionsFreeList[:0]
 		}
 	}
-
 }
 
 func (s *ApplicationState) startKeyRotation() {

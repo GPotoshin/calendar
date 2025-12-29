@@ -1,4 +1,4 @@
-function storageIndex(map, freeList) {
+export function storageIndex(map, freeList) {
   if (freeList.length > 0) {
     return freeList.pop();
   } else {
@@ -6,7 +6,7 @@ function storageIndex(map, freeList) {
   }
 }
 
-function storeValue(array, idx, value) {
+export function storeValue(array, idx, value) {
   if (idx >= 0 && idx < array.length) {
     array[idx] = value;
   } else {
@@ -14,7 +14,7 @@ function storeValue(array, idx, value) {
   }
 }
 
-function deleteValue(map, freeList, id) {
+export function deleteValue(map, freeList, id) {
   const idx = map.get(id);
   if (idx !== undefined) {
     freeList.push(idx);
@@ -22,7 +22,7 @@ function deleteValue(map, freeList, id) {
   }
 }
 
-function rebaseMap(map, freeList) {
+export function rebaseMap(map, freeList) {
   for (let [key, idx] of map.entries()) {
     let count = 0;
     while (count < freeList.length && freeList[count] < idx) {
@@ -32,7 +32,7 @@ function rebaseMap(map, freeList) {
   }
 }
 
-function shrinkArray(a, freeList) {
+export function shrinkArray(a, freeList) {
   for (let i = 0; i < freeList.length; i++) {
     let limit;
     if (i === freeList.length-1) {
@@ -49,7 +49,7 @@ function shrinkArray(a, freeList) {
   a.length = a.length - freeList.length;
 }
 
-function deleteOccurrences(array, value) {
+export function deleteOccurrences(array, value) {
   for (let i = 0; i < array.length; i++) {
     array[i] = array[i].filter(arrayValue => arrayValue !== value);
   }

@@ -169,8 +169,7 @@ document.getElementById('create-button').addEventListener('click', () => {
       const value = input.value;
       input.remove();
       button.textContent = value;
-      target._storage.push(value);
-      // postString(url, value);
+      target._store(value);
     } else if (e.key === 'Escape') {
       button.remove();
     }
