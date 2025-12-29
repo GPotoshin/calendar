@@ -123,3 +123,24 @@ bContainer.append(b1, b2, b3);
 
 elms.sideMenu.replaceChildren(hContainer, elms.dataListContainer);
 elms.dataListContainer.appendChild(elms.scope[scopeId.EVENT]);
+
+export function composeList(m, names, scope_id, zone_id) {
+  let i = 0;
+  for (const [id, idx] of m) {
+    const name = names[idx];
+    let button = document.createElement('button');
+    button.className = 'event-button dynamic_bg deletable editable';
+    button.addEventListener('click', function (){
+      handleClickOnListButton(button, zone_id);
+      if (zones[zone_id].selection >= 0 &&
+        zones[zonesId.VIEWTYPE].selection === viewId.INFORMATION) {
+        resetEventInfoView();
+      }
+    });
+    elms.scope[scope_id].appendChild(button);
+    button.textContent = name;
+    button._bIdx = i;
+    button._dIdx = idx;
+    i++;
+  }
+}

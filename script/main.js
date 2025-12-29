@@ -23,7 +23,7 @@ import {
   data,
 } from './global_state.js';
 import { token } from './login_main.js'
-import {} from './side_menu.js'
+import { composeList } from './side_menu.js'
 
 const MS_IN_DAY = 86400000;
 
@@ -421,46 +421,9 @@ calendarBody.addEventListener('mousemove', handleMouseMove);
         bin => {
           const r = new BufferReader(bin);
           data.read(r)
-          for (let i = 0; i < data.eventsName.length; i++) { // @nocheckin: factor out
-            const name = data.eventsName[i];
-            let button = document.createElement('button');
-            button.className = 'event-button dynamic_bg';
-            button.addEventListener('click', function (){
-              handleClickOnListButton(button, zonesId.EVENTLIST);
-              if (zones[zonesId.EVENTLIST].selection >= 0 &&
-                zones[zonesId.VIEWTYPE].selection === viewId.INFORMATION) {
-                resetEventInfoView();
-              }
-            });
-            elms.scope[scopeId.EVENT].appendChild(button);
-            button.textContent = name;
-            button._bIdx = i;
-            button._dIdx = i;
-          }
-          for (let i = 0; i < data.usersName.length; i++) {
-            const name = data.usersName[i];
-            let button = document.createElement('button');
-            button.className = 'event-button dynamic_bg';
-            button.addEventListener('click', function (){
-              handleClickOnListButton(button, zonesId.STAFFLIST);
-            });
-            elms.scope[scopeId.STAFF].appendChild(button);
-            button.textContent = name;
-            button._bIdx = i;
-            button._dIdx = i;
-          }
-          for (let i = 0; i < data.venuesName.length; i++) {
-            const name = data.venuesName[i];
-            let button = document.createElement('button');
-            button.className = 'event-button dynamic_bg';
-            button.addEventListener('click', function (){
-
-            });
-            elms.scope[scopeId.VENUE].appendChild(button);
-            button.textContent = name;
-            button._bIdx = i;
-            button._dIdx = i;
-          }
+          composeList(data.eventsId, data.eventsName, scopeId.EVENT, zonesId.EVENTLIST);
+          composeList(data.usersId, data.usersName, scopeId.STAFF, zonesId.STAFFLIST);
+          composeList(data.venuesId, data.venueName, scopeId.VENUE, zonesId.VENUELIST);
         });
     })
     .catch(e => {

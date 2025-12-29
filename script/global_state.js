@@ -1,8 +1,5 @@
 import * as DM from './data_manager.js';
 
-let state = {
-  sideMenuIsOpen: false,
-};
 
 export let elms = {
   calendarBody: null,
@@ -17,7 +14,11 @@ export let elms = {
   dataListContainer: null,
 
   view: [null, null],
-  scope: [document.createElement('div'), document.createElement('div'), document.createElement('div')],
+  scope: [
+    document.createElement('div'),
+    document.createElement('div'),
+    document.createElement('div'),
+  ],
 }
 
 export let callbacks = {
