@@ -562,6 +562,7 @@ func main() {
     "scrollable_calendar.js",
     "context_menu.js",
     "global_state.js",
+    "api.js",
   }
   jsHeaders := []HeaderPair{{Key: "Content-Type", Value: "text/javascript"}}
   for _, file := range jsFiles {
@@ -575,6 +576,7 @@ func main() {
   http.HandleFunc("/api/public-key", handlePublicKey)
   http.HandleFunc("/api/login", handleLogin)
   http.HandleFunc("/data", handleData)
+  http.HandleFunc("/api", handleApi)
 
   srv := &http.Server{
     Addr:    ":443",
@@ -710,6 +712,7 @@ func handleMapInt32Int(
   r io.Reader,
   w http.ResponseWriter,
   mode int32,
+  privilege_level int32,
   m map[int32]int,
   names *[]string,
   freeId *[]int32,
@@ -717,6 +720,10 @@ func handleMapInt32Int(
 ) {
   switch mode {
   case CREATE:
+    // check
+    if privilege_level != PRIVILEGE_LEVEL_ADMIN {
+      return
+    }
     // input
     str, err := readString(r)
     if err != nil {
@@ -770,22 +777,45 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     return
   }
 
+  token, err := readHash(r.Body)
+  if err != nil {
+    log.Println("can't read token")
+    http.Error(w, "incorrect api", http.StatusBadRequest)
+    return
+  }
+  
+  c_idx, exists := state.ConnectionsToken[token]
+  if !exists {
+    log.Println("token does not exists")
+    http.Error(w, "incorrect api", http.StatusBadRequest)
+    return
+  }
+
+  u_id := state.ConnectionsUser[c_idx]
+  u_idx, exists := state.UsersId[u_id]
+  if !exists {
+    log.Println("we have an unexisting u_id within ConnectinosUser")
+    http.Error(w, "internal error", http.StatusInternalServerError)
+  }
+  p_level := state.UsersPrivilegeLevel[u_idx]
+
   mode, err := readInt32(r.Body)
   if err != nil {
-    log.Print(err)
-    http.Error(w, err.Error(), http.StatusBadRequest)
+    log.Println("can't read mode", err)
+    http.Error(w, "incorrect api", http.StatusBadRequest)
     return
   }
 
   field_id, err := readInt32(r.Body)
   if err != nil {
-    log.Print(err)
-    http.Error(w, err.Error(), http.StatusBadRequest)
+    log.Println("can't read field_id", err)
+    http.Error(w, "incorrect api", http.StatusBadRequest)
     return
   }
 
   if field_id < 0 || field_id >= STATE_FIELD_COUNT {
-    http.Error(w, "incorrect field id", http.StatusBadRequest)
+    log.Println("incorrect field_id in api")
+    http.Error(w, "incorrect api", http.StatusBadRequest)
     return
   }
 
@@ -804,6 +834,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       r.Body,
       w,
       mode,
+      p_level,
       state.EventsId,
       &state.EventsName,
       &state.EventsFreeId,

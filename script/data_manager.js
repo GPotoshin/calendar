@@ -1,43 +1,61 @@
-function storeValue(array, freeList, value) {
+function storageIndex(map, freeList) {
   if (freeList.length > 0) {
-    const index = freeList.pop();
-    array[index] = value;
-    return index;
+    return freeList.pop();
+  } else {
+    return map.size;
+  }
+}
+
+function storeValue(array, idx, value) {
+  if (idx >= 0 && idx < array.length) {
+    array[idx] = value;
   } else {
     array.push(value);
-    return array.length - 1;
   }
 }
 
-function deleteValue(array, freeList, index) {
-  if (array[index] === null) {
-    return;
-  }
-  array[index] = null;
-  freeList.push(index);
-}
-
-function deleteOccurences(array, value) {
-  for (let i = 0; i < array.length; i++) {
-    array[i] = array[i].filter(
-      arrayValue => arrayValue !== value
-    );
+function deleteValue(map, freeList, id) {
+  const idx = map.get(id);
+  if (idx !== undefined) {
+    freeList.push(idx);
+    map.delete(id);
   }
 }
 
-function getAll(array) {
-  const retval = [];
-  for (let i = 0; i < array.length; i++) {
-    if (array[i] !== null) {
-      retval.push({idx: i, val: array[i]});
+function rebaseMap(map, freeList) {
+  for (let [key, idx] of map.entries()) {
+    let count = 0;
+    while (count < freeList.length && freeList[count] < idx) {
+      count++;
+    }
+    map.set(key, idx - count);
+  }
+}
+
+function shrinkArray(a, freeList) {
+  for (let i = 0; i < freeList.length; i++) {
+    let limit;
+    if (i === freeList.length-1) {
+      limit = a.length-1-i;
+    } else {
+      limit = freeList[i+1]-1-i;
+    }
+
+    for (let j = freeList[i]-i; j < limit; j++) {
+      a[j] = a[j+1+i];
     }
   }
-  return retval;
+
+  a.length = a.length - freeList.length;
 }
 
+function deleteOccurrences(array, value) {
+  for (let i = 0; i < array.length; i++) {
+    array[i] = array[i].filter(arrayValue => arrayValue !== value);
+  }
+}
 export class DataManager {
   constructor() {
-    // Users Data
     this.usersId = new Map();
     this.usersName = [];
     this.usersSurname = [];
@@ -46,8 +64,8 @@ export class DataManager {
     this.usersCompetences = [];
     this.usersDutyStation = [];
     this.usersPrivilageLevel = [];
+    this.usersFreeList = [];
 
-    // Events Data
     this.eventsId = new Map();
     this.eventsName = [];
     this.eventsVenue = [];
@@ -55,21 +73,26 @@ export class DataManager {
     this.eventsRolesRequirement = [];
     this.eventsPersonalNumMap = [];
     this.eventsDuration = [];
+    this.eventsFreeList = [];
 
     this.venuesId = new Map();
     this.venuesName = [];
+    this.venuesFreeList = [];
 
     this.competencesId = new Map();
     this.competencesName = [];
+    this.competencesFreeList = [];
 
     this.rolesId = new Map();
     this.rolesName = [];
+    this.rolesFreeList = [];
 
     this.occurrencesId = new Map();
     this.occurrencesVenue = [];
     this.occurrencesDates = [];
     this.occurrencesParticipant = [];
     this.occurrencesParticipantsRole = [];
+    this.occurrencesFreeList = [];
   }
 
   read(reader) {

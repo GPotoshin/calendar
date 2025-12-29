@@ -5,12 +5,14 @@ import {
   handleMouseUp,
 } from './scrollable_calendar.js';
 
+import * as Api from './api.js';
+
 import { palette } from './color.js';
 import { BufferReader, BufferWriter } from './io.js';
 import { DataManager } from './data_manager.js';
 import { numInput } from './num_input.js';
 import * as SearchDisplay from './search_display.js';
-import {} from './context_menu.js';
+import {} from './context_menu.js'; // we need it
 import { callbacks } from './global_state.js';
 import { token } from './login_main.js'
 
@@ -325,6 +327,39 @@ function resetEventInfoView() { // @working
     });
     return b;
   }
+
+  function storeFunctionMaker(stateField, map, arr, freeList) {
+    return (name) => {
+      let w = new BufferWriter();
+      Api.writeHeader(w, token, Api.Op.CREATE, Api.StateField.EVENTS_ID_MAP_ID);
+      Api.writeCreateMapEntry(w, name);
+      fetch("/api", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/octet-stream',
+        },
+        body: writer.getBuffer(),
+      })
+      .then(resp => {
+        if (!resp.ok) {
+          throw new Error(`HTTP error! status: ${resp.status}`);
+        }
+        resp.arrayBuffer()
+        .then(
+          bin => {
+            let r = new BufferReader(bin);
+            let id = r.readInt32();
+            let idx = storageIndex(map, freeList);
+            map[id] = idx;
+            array[idx] = name;
+          });
+      })
+      .catch(e => {
+        console.error("Could not store ", name);
+      });
+    };
+  }
+
   elms.scope[scopeId.EVENT]._createButton = localCreateButton;
   elms.scope[scopeId.STAFF]._createButton = localCreateButton;
   elms.scope[scopeId.VENUE]._createButton = localCreateButton;
@@ -332,6 +367,14 @@ function resetEventInfoView() { // @working
   elms.scope[scopeId.EVENT]._btnPlaceholder = 'Nouvel Événement';
   elms.scope[scopeId.STAFF]._btnPlaceholder = 'Nouveau Membre du Personnel';
   elms.scope[scopeId.VENUE]._btnPlaceholder = 'Nouveau Lieu';
+
+  elms.scope[scopeId.EVENT]._store =
+    storeFunctionMaker(
+      Api.StateField.EVENTS_ID_MAP_ID,
+      data.eventsId,
+      data.eventsName,
+      data.eventsFreeList,
+    );
 
   hContainer.append(bContainer);
   elms.dataListContainer = lContainer;

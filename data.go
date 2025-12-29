@@ -28,9 +28,22 @@ func storeValue[T any](array *[]T, idx int, value T) {
 	}
 }
 
-func deleteValue[K comparable](m map[K]int, freeList *[]int, id K) {
-	*freeList = append(*freeList, m[id])
-  delete(m, id)
+func deleteToken(m map[[32]byte]int, freeList *[]int, token [32]byte) {
+  idx, exists := m[token]
+  if exists {
+    *freeList = append(*freeList, idx)
+    delete(m, token)
+  }
+}
+
+func deleteValue(m map[int32]int, freeId *[]int32, freeList *[]int, id int32) {
+  idx, exists := m[id]
+  if exists {
+    *freeId = append(*freeId, id)
+    *freeList = append(*freeList, idx)
+    
+    delete(m, id)
+  }
 }
 
 func rebaseMap[K comparable](m map[K]int, freeList []int) {

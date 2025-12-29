@@ -7,6 +7,11 @@ run `go build && ./calendar` and open `http://localhost:8080`
 ## Bugs
 + when we switch views we lose scrolling position
 
+## Working On
++ we are moving to the new storage api. We need to make _store() callback on
+end of writing. It should be a single line add.
++ we should have all systems to create the same _store() thing
+
 ## TODO
 + settings for calendar
 + show settings for events

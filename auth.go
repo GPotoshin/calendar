@@ -68,7 +68,7 @@ func (s *ApplicationState) cleanupExpiredTokens() {
 	now := time.Now()
 	for token, idx := range s.ConnectionsToken {
 		if now.After(s.ConnectionsTime[idx][1]) {
-      deleteValue(s.ConnectionsToken, &s.ConnectionsFreeList, token)
+      deleteToken(s.ConnectionsToken, &s.ConnectionsFreeList, token)
       shrinkArray(&s.ConnectionsUser, s.ConnectionsFreeList)
       shrinkArray(&s.ConnectionsTime, s.ConnectionsFreeList)
       shrinkArray(&s.ConnectionsChannel, s.ConnectionsFreeList)
