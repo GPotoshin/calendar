@@ -21,23 +21,34 @@ export class BufferReader {
     }
     const hash = new Uint8Array(this.view.buffer.slice(this.offset, this.offset + length));
     this.offset += length;
-    
+
     return hash;
   }
 
   readBytes() {
     const length = this.readInt32();
     if (length < 0) {
-        throw new Error(`Invalid byte array length: ${length}`);
+      throw new Error(`Invalid byte array length: ${length}`);
     }
     if (this.offset + length > this.view.byteLength) {
-        throw new Error(`Buffer overrun reading Bytes of length ${length}`);
+      throw new Error(`Buffer overrun reading Bytes of length ${length}`);
     }
 
     const bytes = new Uint8Array(this.view.buffer.slice(this.offset, this.offset + length));
     this.offset += length;
     return bytes;
-}
+  }
+
+  readMapInt32Int() {
+    const size = this.readInt32();
+    const map = new Map();
+    for (let i = 0; i < size; i++) {
+      const key = this.readInt32();
+      const value = this.readInt32();
+      map.set(key, value);
+    }
+    return map;
+  }
 
   readString() {
     const length = this.readInt32();
@@ -77,6 +88,22 @@ export class BufferReader {
 
   readArrayOfInt32Arrays() {
     return this.readArray(this.readInt32Array);
+  }
+
+  readArrayOfArrayOfInt32Arrays() {
+    return this.readArray(this.readArrayOfInt32Arrays);
+  }
+
+  readInt32Pair() {
+    return [this.readInt32(), this.readInt32()];
+  }
+
+  readInt32PairArray() {
+    return this.readArray(this.readInt32Pair);
+  }
+
+  readArrayOfInt32PairArrays() {
+    return this.readArray(this.readInt32PairArray);
   }
 }
 

@@ -19,6 +19,11 @@ run `go build && ./calendar` and open `http://localhost:8080`
 + Think about gc and memory managemenet 
 + Minimise object creation and try to reuse them
 + We have slope in DataManager, clean it up
++ Rewriting of read and write interface in go
++ A Year old data is stored, but is not send. We need a cache like structure,
+    that separatly tracks when was the last time a particular bit of data
+    was accessed. And if it is old enough, we store it in a separate file and
+    touch this data only on requests.
 
 ## Browsers quirks
 + if you have >20 weeks, than calendar body stops getting the correct scaling

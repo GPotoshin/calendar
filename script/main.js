@@ -12,6 +12,7 @@ import { numInput } from './num_input.js';
 import * as SearchDisplay from './search_display.js';
 import {} from './context_menu.js';
 import { callbacks } from './global_state.js';
+import { token } from './login_main.js'
 
 const MS_IN_DAY = 86400000;
 
@@ -31,8 +32,9 @@ let state = {
   token: null,
 };
 
-export function initApp(t) {
-  state.token = t;
+export function initApp() {
+  document.body.className = "";
+  state.token = token;
 }
 
 let elms = {
@@ -140,9 +142,8 @@ function createCompetencesTable() {
   const container = table.querySelector('.js-set');
 
   // const baseWidth = 125; 
-  let fields = ['Participant', 'Formatuer', 'Responsable Pedagogique', 'Assistant'];
-  for (let name of fields) {
-    container.append(SearchDisplay.create(name, data.staffsRoles, 'Nouvelle Compétence'));
+  for (let name of data.rolesName) {
+    container.append(SearchDisplay.create(name, data.rolesName, 'Nouvelle Compétence'));
   }
 
   return table;
@@ -165,7 +166,7 @@ function createFooterOptions() {
     </div>
   `;
   tmpls[scopeId.EVENT].children[0].append(
-    SearchDisplay.create('Personel', data.staffsRoles, 'Nouveau Rôle'),
+    SearchDisplay.create('Personel', data.rolesName, 'Nouveau Rôle'),
     createStaffTable(),
     createCompetencesTable(),
     createFooterOptions(),
@@ -504,10 +505,10 @@ calendarBody.addEventListener('mousemove', handleMouseMove);
         bin => {
           const r = new BufferReader(bin);
           data.read(r)
-          setUiList(elms.nameList, data.staffNames);
-          setUiList(elms.venueList, data.venueNames);
-          for (let i = 0; i < data.eventNames.length; i++) { // @nocheckin: factor out
-            const name = data.eventNames[i];
+          setUiList(elms.nameList, data.usersName);
+          setUiList(elms.venueList, data.venuesName);
+          for (let i = 0; i < data.eventsName.length; i++) { // @nocheckin: factor out
+            const name = data.eventsName[i];
             let button = document.createElement('button');
             button.className = 'event-button dynamic_bg';
             button.addEventListener('click', function (){
@@ -522,8 +523,8 @@ calendarBody.addEventListener('mousemove', handleMouseMove);
             button._bIdx = i;
             button._dIdx = i;
           }
-          for (let i = 0; i < data.staffNames.length; i++) {
-            const name = data.staffNames[i];
+          for (let i = 0; i < data.usersName.length; i++) {
+            const name = data.usersName[i];
             let button = document.createElement('button');
             button.className = 'event-button dynamic_bg';
             button.addEventListener('click', function (){
@@ -534,8 +535,8 @@ calendarBody.addEventListener('mousemove', handleMouseMove);
             button._bIdx = i;
             button._dIdx = i;
           }
-          for (let i = 0; i < data.venueNames.length; i++) {
-            const name = data.venueNames[i];
+          for (let i = 0; i < data.venuesName.length; i++) {
+            const name = data.venuesName[i];
             let button = document.createElement('button');
             button.className = 'event-button dynamic_bg';
             button.addEventListener('click', function (){

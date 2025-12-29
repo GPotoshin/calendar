@@ -8,6 +8,7 @@ idInput.addEventListener('input', () => {
 });
 
 let publicKey = null;
+export let token = null;
 
 async function encryptCredentials(buf) {
   const encryptedBuffer = await crypto.subtle.encrypt(
@@ -26,7 +27,6 @@ async function encryptCredentials(buf) {
 
 (async function initializeAuth() {
   try {
-    console.log('Fetching public key...');
     const response = await fetch('/api/public-key');
     if (!response.ok) throw new Error('Network response was not ok');
     const buffer = await response.arrayBuffer();
@@ -43,7 +43,6 @@ async function encryptCredentials(buf) {
       true,
       ["encrypt"]
     );
-    console.log('Public key received');
   } catch (error) {
     console.error('Failed to fetch public key:', error);
     alert('Failed to initialize authentication. Please refresh the page.');
@@ -102,7 +101,7 @@ connectButton.addEventListener('click', async () => {
     const bin = await resp.arrayBuffer();
     const r = new BufferReader(bin);
 
-    let token = r.readHash();
+    token = r.readHash();
     let html = r.readString();
     document.body.innerHTML = html;
 
@@ -110,7 +109,7 @@ connectButton.addEventListener('click', async () => {
 
     import('./main.js')
     .then((module) => {
-        module.initApp(token);
+        module.initApp(); // where is the token?
     })
     .catch((err) => {
         console.error("Failed to load main.js:", err);

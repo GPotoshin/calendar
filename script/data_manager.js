@@ -37,109 +37,79 @@ function getAll(array) {
 
 export class DataManager {
   constructor() {
-    this.eventNames = [];
-    this.eventStaff = [];
-    this.eventVenues = [];
-    this.eventPersonalNumMap = [];
-    this.eventStaffDiplReq = [];
-    this.eventAttendeeDiplReq = [];
-    this.eventDuration = [];
-    this.eventFreeList = [];
-    this.eventStaffRoles = [];
+    // Users Data
+    this.usersId = new Map();
+    this.usersName = [];
+    this.usersSurname = [];
+    this.usersMail = [];
+    this.usersPhone = [];
+    this.usersCompetences = [];
+    this.usersDutyStation = [];
+    this.usersPrivilageLevel = [];
 
-    this.staffNames = [];
-    this.staffFreeList = [];
-    this.venueNames = [];
-    this.venueFreeList = [];
+    // Events Data
+    this.eventsId = new Map();
+    this.eventsName = [];
+    this.eventsVenue = [];
+    this.eventsRole = [];
+    this.eventsRolesRequirement = [];
+    this.eventsPersonalNumMap = [];
+    this.eventsDuration = [];
 
-    this.staffsDiplomesNames = [];
-    this.attendeesDiplomesNames = [];
+    this.venuesId = new Map();
+    this.venuesName = [];
 
-    this.staffsRoles = [];
-  }
+    this.competencesId = new Map();
+    this.competencesName = [];
 
-  storeEvent(name, staffIndices = [], venueIndices = []) {
-    const idx = storeValue(this.eventNames, this.eventFreeList, name);
-    this.eventStaff[idx] = staffIndices;
-    this.eventVenues[idx] = venueIndices;
-    return idx;
-  }
+    this.rolesId = new Map();
+    this.rolesName = [];
 
-  deleteEvent(idx) {
-    deleteValue(this.eventNames, this.eventFreeList, idx);
-    this.eventStaff[idx] = null;
-    this.eventVenues[idx] = null;
-  }
-
-  storeStaff(name) {
-    return storeValue(this.staffNames, this.staffFreeList, name);
-  }
-
-  deleteStaff(idx) {
-    deleteValue(this.staffNames, this.staffFreeList, idx);
-    deleteOccurences(this.eventStaff, idx);
-  }
-
-  storeVenue(name) {
-    return storeValue(this.venueNames, this.venueFreeList, name);
-  }
-
-  deleteVenue(idx) {
-    deleteValue(this.venueNames, this.venueFreeList, idx);
-    deleteOccurences(this.eventVenues, idx);
-  }
-
-  getEvent(idx) {
-    return {
-      idx: idx,
-      name: this.eventNames[idx],
-      staff: this.eventStaff[idx] || [],
-      venues: this.eventVenues[idx] || [],
-    };
-  }
-
-  addStaffToEvent(eventIndex, staffIndex) {
-    if (!this.eventStaff[eventIndex].includes(staffIndex)) {
-      this.eventStaff[eventIndex].push(staffIndex);
-    }
-  }
-
-  removeStaffFromEvent(eventIndex, staffIndex) {
-    this.eventStaff[eventIndex] = this.eventStaff[eventIndex].filter(
-      idx => idx !== staffIndex
-    );
-  }
-
-  addVenueToEvent(eventIndex, venueIndex) {
-    if (!this.eventVenues[eventIndex].includes(venueIndex)) {
-      this.eventVenues[eventIndex].push(venueIndex);
-    }
-  }
-
-  removeVenueFromEvent(eventIndex, venueIndex) {
-    this.eventVenues[eventIndex] = this.eventVenues[eventIndex].filter(
-      idx => idx !== venueIndex
-    );
+    this.occurrencesId = new Map();
+    this.occurrencesVenue = [];
+    this.occurrencesDates = [];
+    this.occurrencesParticipant = [];
+    this.occurrencesParticipantsRole = [];
   }
 
   read(reader) {
-    const version = "bin_admin_state.v0.0.0"; 
-    const format = reader.readString();
+    const expectedVersion = "admin_data.v0.0.1";
+    const actualVersion = reader.readString();
     
-    if (version != format) {
-      throw new Error(`reading format: \`${format}\`. Supporting format: \`${version}\``);
+    if (expectedVersion !== actualVersion) {
+      throw new Error(`Format mismatch. Found: ${actualVersion}, Expected: ${expectedVersion}`);
     }
 
-    this.eventStaff = reader.readArrayOfInt32Arrays();
-    this.eventVenues = reader.readArrayOfInt32Arrays();
-    this.eventPersonalNumMap = reader.readArrayOfInt32Arrays();
-    this.eventStaffDiplReq = reader.readInt32Array();
-    this.eventAttendeeDiplReq = reader.readInt32Array();
-    this.eventDuration = reader.readInt32Array();
-    this.staffNames = reader.readStringArray();
-    this.venueNames = reader.readStringArray();
-    this.staffsDiplomesNames = reader.readStringArray();
-    this.attendeesDiplomesNames = reader.readStringArray();
+    this.usersId = reader.readMapInt32Int();
+    this.usersName = reader.readStringArray();
+    this.usersSurname = reader.readStringArray();
+    this.usersMail = reader.readStringArray();
+    this.usersPhone = reader.readInt32Array();
+    this.usersCompetences = reader.readArrayOfInt32Arrays();
+    this.usersDutyStation = reader.readInt32Array();
+    this.usersPrivilageLevel = reader.readInt32Array();
+
+    this.eventsId = reader.readMapInt32Int();
+    this.eventsName = reader.readStringArray();
+    this.eventsVenue = reader.readArrayOfInt32Arrays();
+    this.eventsRole = reader.readArrayOfInt32Arrays();
+    this.eventsRolesRequirement = reader.readArrayOfArrayOfInt32Arrays();
+    this.eventsPersonalNumMap = reader.readArrayOfArrayOfInt32Arrays();
+    this.eventsDuration = reader.readInt32Array();
+
+    this.venuesId = reader.readMapInt32Int();
+    this.venuesName = reader.readStringArray();
+
+    this.competencesId = reader.readMapInt32Int();
+    this.competencesName = reader.readStringArray();
+
+    this.rolesId = reader.readMapInt32Int();
+    this.rolesName = reader.readStringArray();
+
+    this.occurrencesId = reader.readMapInt32Int();
+    this.occurrencesVenue = reader.readInt32Array();
+    this.occurrencesDates = reader.readArrayOfInt32PairArrays(); 
+    this.occurrencesParticipant = reader.readArrayOfInt32Arrays();
+    this.occurrencesParticipantsRole = reader.readArrayOfInt32Arrays();
   }
 }
-

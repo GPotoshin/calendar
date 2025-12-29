@@ -9,11 +9,14 @@ import (
 	"log"
   "fmt"
 	"net/http"
-	"sync"
 	"time"
   "bytes"
   "os"
 )
+
+func (s *ApplicationState) initAuth() {
+  s.ConnectionsToken = make(map[[32]byte]int)
+}
 
 func (s *ApplicationState) generateKeys() error {
 	s.mutex.Lock()
@@ -24,14 +27,14 @@ func (s *ApplicationState) generateKeys() error {
 	}
 	s.privateKey = privateKey
 	s.keyGeneratedAt = time.Now()
-	s.publicKey, err = x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
+  s.publicKey, err = x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
 	return err
 }
 
 func (s *ApplicationState) getPublicKey() []byte {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
-  retval := make([]byte, 32)
+  retval := make([]byte, len(s.publicKey))
   copy(retval, s.publicKey)
 	return retval
 }
@@ -42,40 +45,41 @@ func (s *ApplicationState) decrypt(data []byte) ([]byte, error) {
 	return rsa.DecryptOAEP(sha256.New(), rand.Reader, s.privateKey, data, nil)
 }
 
-func (a *AuthSystem) validateToken(token [32]byte) (int32, bool) {
-	a.tokensMutex.RLock()
-	defer a.tokensMutex.RUnlock()
+func (s *ApplicationState) validateToken(token [32]byte) (int32, bool) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
 
-	idx, exists := a.tokens[token]
+	idx, exists := s.ConnectionsToken[token]
 	if !exists || idx < 0 {
 		return -1, false
 	}
 
-	if time.Now().After(data.ExpiresAt) {
+	if time.Now().After(s.ConnectionsTime[idx][1]) {
 		return -1, false
 	}
 
-	return data.Username, true
+	return s.ConnectionsUser[idx], true
 }
 
-func (a *AuthSystem) cleanupExpiredTokens() {
-	a.tokensMutex.Lock()
-	defer a.tokensMutex.Unlock()
+func (s *ApplicationState) cleanupExpiredTokens() {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
 	now := time.Now()
-	for token, data := range a.tokens {
-		if now.After(data.ExpiresAt) {
-			delete(a.tokens, token)
+	for token, idx := range s.ConnectionsToken {
+		if now.After(s.ConnectionsTime[idx][1]) {
+      deleteValue(s.ConnectionsToken, &s.ConnectionsFreeList, token)
+      shrinkArray(&s.ConnectionsUser, s.ConnectionsFreeList)
+      shrinkArray(&s.ConnectionsTime, s.ConnectionsFreeList)
+      shrinkArray(&s.ConnectionsChannel, s.ConnectionsFreeList)
+      s.ConnectionsFreeList = s.ConnectionsFreeList[:0]
 		}
 	}
+
 }
 
-func initAuth() {
-  authSys.tokens = make(map[[32]byte]TokenData)
-}
-
-func startKeyRotation() {
-  if err := authSys.generateKeys(); err != nil {
+func (s *ApplicationState) startKeyRotation() {
+  if err := s.generateKeys(); err != nil {
     log.Printf("Failed to iniate auth keys: %v\n", err)
     os.Exit(1)
   }
@@ -83,20 +87,20 @@ func startKeyRotation() {
 	go func() {
 		for range ticker.C {
 			log.Println("Rotating RSA keys...")
-			if err := authSys.generateKeys(); err != nil {
+			if err := s.generateKeys(); err != nil {
 				log.Printf("Failed to rotate keys: %v\n", err)
-			} else {
+			} else { // we need to send new key to open connections
 				log.Println("Keys rotated successfully")
 			}
 		}
 	}()
 }
 
-func startTokenCleanup() {
+func (s *ApplicationState) startTokenCleanup() {
 	ticker := time.NewTicker(1 * time.Hour)
 	go func() {
 		for range ticker.C {
-			authSys.cleanupExpiredTokens()
+			s.cleanupExpiredTokens()
 		}
 	}()
 }
@@ -107,7 +111,7 @@ func handlePublicKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pubKey := authSys.getPublicKey()
+	pubKey := state.getPublicKey()
 	if err := writeBytes(w, pubKey); err != nil {
 		log.Printf("Failed to write public key: %v\n", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -122,6 +126,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+  log.Println("reading payload size")
 	encryptedSize, err := readInt32(r.Body)
 	if err != nil {
 		log.Printf("Failed to read encrypted data size: %v\n", err)
@@ -129,12 +134,14 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+  log.Println("checking payload size")
 	if encryptedSize < 0 || encryptedSize > 1024*1024 {
 		log.Printf("Invalid encrypted data size: %d\n", encryptedSize)
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
 
+  log.Println("reading encrypted data")
 	encryptedData := make([]byte, encryptedSize)
 	if _, err := io.ReadFull(r.Body, encryptedData); err != nil {
 		log.Printf("Failed to read encrypted data: %v\n", err)
@@ -142,81 +149,86 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	decryptedData, err := authSys.decrypt(encryptedData)
+  log.Println("Decrypting the data")
+	decryptedData, err := state.decrypt(encryptedData)
 	if err != nil {
 		log.Printf("Failed to decrypt data: %v\n", err)
-		if err := writeInt32(w, 0); err != nil {
-			log.Printf("Failed to write failure response: %v\n", err)
-		}
+		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
 
   reader := bytes.NewReader(decryptedData)
 
-	userid, err := readInt32(reader)
+  log.Println("reading user id")
+	userId, err := readInt32(reader)
 	if err != nil {
 		log.Printf("Failed to parse username: %v\n", err)
 		return
 	}
 
+  log.Println("reading password")
 	password, err := readHash(reader)
 	if err != nil {
 		log.Printf("Failed to parse password: %v\n", err)
 		return
 	}
 
-  for i := 0; i < len(state.UserIDs); i++ {
-		if userId == state.UserIDs[i] && password == state.UserPasswords[i] {
-      token, err := authSys.generateToken()
-
-      const maxRetries = 10
-
-      for i := 0; i < maxRetries; i++ {
-        tokenBytes := make([]byte, 32)
-        if _, err := rand.Read(tokenBytes); err != nil {
-          return [32]byte{}, fmt.Errorf("entropy source error: %w", err)
-        }
-
-        token := [32]byte(tokenBytes)
-
-        s.tokensMutex.Lock()
-        _, exists := s.Tokens[token]
-        if !exists {
-          s.ConnectionTokens[token] = storageIndex(s.ConnectionUsers, s.ConnectionFreeList);
-          storeValue(s.ConnectionUser, s.ConnectionFreeList);
-
-          s.tokensMutex.Unlock()
-          return s.token, nil
-        }
-        s.tokensMutex.Unlock()
-      }
-
-      if err != nil {
-        log.Printf("Failed to generate token: %v\n", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-      }
-
-      authSys.storeToken(token, username)
-
-      if err := writeHash(w, token); err != nil {
-        log.Printf("Failed to write token: %v\n", err)
-        return
-      }
-
-      appHtml, err := composeApp()
-      fmt.Println("Application length: ", len(appHtml))
-      if err != nil {
-        log.Printf("failed to compose App");
-      }
-      if err := writeBytes(w, appHtml); err != nil {
-        log.Printf("Failed to write App: %v\n", err)
-        return
-      }
-      log.Printf("User %s logged in successfully\n", username)
-      return
-    }
+  log.Println("checking for user id")
+  idx, exists := state.UsersId[userId]
+  if (!exists) { 
+    http.Error(w, "Incorrect Login or Password", http.StatusBadRequest)
+    return
+  }
+  log.Println("checking for password");
+  if (state.UsersPassword[idx] != password) {
+    http.Error(w, "Incorrect Login or Password", http.StatusBadRequest)
+    return
   }
 
-  http.Error(w, "Internal server error", http.StatusUnauthorized)
+  log.Println("generating token")
+  var token [32]byte
+  for i := 0; i < 10; i++ {
+    if _, err := rand.Read(token[:]); err != nil {
+      log.Printf("entropy source error: %w", err)
+      http.Error(w, "Entropy source error", http.StatusInternalServerError)
+      return
+    }
+
+    now := time.Now()
+
+    state.mutex.Lock()
+    _, exists := state.ConnectionsToken[token]
+    if !exists {
+      state.ConnectionsToken[token] = storageIndex(state.ConnectionsToken, state.ConnectionsFreeList)
+      storeValue(&state.ConnectionsUser, state.ConnectionsFreeList, userId)
+      storeValue(&state.ConnectionsTime, state.ConnectionsFreeList, [2]time.Time{now, now.Add(time.Hour)})
+      storeValue(&state.ConnectionsChannel, state.ConnectionsFreeList, make(chan []byte))
+      popFreeList(&state.ConnectionsFreeList)
+
+      state.mutex.Unlock()
+      goto _token_generation_success
+    }
+    state.mutex.Unlock()
+  }
+
+  log.Printf("Failed to generate token: %v\n", err)
+  http.Error(w, "Failed to generate token", http.StatusInternalServerError)
+  return
+
+  _token_generation_success:
+  if err := writeHash(w, token); err != nil {
+    log.Printf("Failed to write token: %v\n", err)
+    return
+  }
+
+  appHtml, err := composeApp()
+  if err != nil {
+    log.Printf("failed to compose App");
+  }
+  if err := writeBytes(w, appHtml); err != nil {
+    log.Printf("Failed to write App: %v\n", err)
+    return
+  }
+  log.Printf("User %s logged in successfully\n", userId)
+  return
 }
