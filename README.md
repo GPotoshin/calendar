@@ -6,6 +6,9 @@ run `go build && ./calendar` and open `http://localhost:8080`
 
 ## Bugs
 + when we switch views we lose scrolling position
++ when we clean up tokens on the second turn I guess, we read from a wrong index
++ when we right click for the second time we don't clear the old options. A
+solution may be to make button disappear on right click.
 
 ## Working On
 + we are moving to the new storage api. We need to make _store() callback on

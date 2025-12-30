@@ -146,6 +146,10 @@ button {
   color: var(--violet-color);
 }
 
+.color-grey {
+  color: var(--grey-color);
+}
+
 .disp-none {
   display: none;  
 }

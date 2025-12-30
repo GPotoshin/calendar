@@ -103,8 +103,9 @@ function createCompetencesTable() {
   const container = table.querySelector('.js-set');
 
   // const baseWidth = 125; 
+    container.append(SearchDisplay.create('Participant', , 'Nouvelle Compétence'));
   for (let name of data.rolesName) {
-    container.append(SearchDisplay.create(name, data.rolesName, 'Nouvelle Compétence'));
+    container.append(SearchDisplay.create(name, data.rolesName, 'Nouvelle Compétence'));// @nocheckin
   }
 
   return table;

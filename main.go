@@ -734,17 +734,6 @@ func handleMapInt32Int(
   }
 }
 
-// func handleArrayOfStrings(r io.Reader, w http.ResponseWriter, mode int32, data *[]string, freelist *[]int32) {
-//   switch mode {
-//   case REQUEST:
-//   case DELETE:
-//   case UPDATE:
-//   default:
-//     http.Error(w, "incorrect mode", http.StatusBadRequest)
-//     return
-//   }
-// }
-
 func handleApi(w http.ResponseWriter, r *http.Request) {
   if r.Method != http.MethodPost {
     http.Error(w, "Method not allowed. Only POST is supported.", http.StatusMethodNotAllowed)

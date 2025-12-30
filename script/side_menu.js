@@ -145,6 +145,7 @@ export function composeList(m, names, scope_id, zone_id) {
     span.textContent = name;
     button.appendChild(span);
     span = document.createElement('span');
+    span.classList = "color-grey";
     span.textContent = '#'+id;
     button.appendChild(span);
     

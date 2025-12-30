@@ -1,4 +1,4 @@
-import { callbacks } from './global_state.js';
+import { callbacks, elms } from './global_state.js';
 
 let state = {
   delete_target: null,
