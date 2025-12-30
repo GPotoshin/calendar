@@ -1,4 +1,5 @@
-import { elms, zones, zonesId, scopeId, data } from './global_state.js';
+import { elms, zones, viewId, zonesId, scopeId, data } from './global_state.js';
+import { palette } from './color.js';
 import * as DM from './data_manager.js';
 import * as Api from './api.js';
 
@@ -38,14 +39,6 @@ lContainer.className = 'v-container grow';
 elms.scope[scopeId.EVENT].className = 'extendable v-container grow';
 elms.scope[scopeId.STAFF].className = 'extendable v-container grow';
 elms.scope[scopeId.VENUE].className = 'extendable v-container grow';
-let localCreateButton = () => {
-  let b = document.createElement('button');
-  b.className = 'event-button dynamic_bg';
-  b.addEventListener('click', function (){
-    handleClickOnListButton(b, zonesId.STAFFLIST);
-  });
-  return b;
-}
 
 function storeFunctionMaker(stateField, map, arr, freeList) {
   return (name) => {
@@ -79,9 +72,9 @@ function storeFunctionMaker(stateField, map, arr, freeList) {
   };
 }
 
-elms.scope[scopeId.EVENT]._createButton = localCreateButton;
-elms.scope[scopeId.STAFF]._createButton = localCreateButton;
-elms.scope[scopeId.VENUE]._createButton = localCreateButton;
+elms.scope[scopeId.EVENT]._createButton = createListButton(zonesId.EVENTLIST);
+elms.scope[scopeId.STAFF]._createButton = createListButton(zonesId.STAFFLIST);
+elms.scope[scopeId.VENUE]._createButton = createListButton(zonesId.VENUELIST);
 
 elms.scope[scopeId.EVENT]._btnPlaceholder = 'Nouvel Événement';
 elms.scope[scopeId.STAFF]._btnPlaceholder = 'Nouveau Membre du Personnel';
@@ -124,12 +117,10 @@ bContainer.append(b1, b2, b3);
 elms.sideMenu.replaceChildren(hContainer, elms.dataListContainer);
 elms.dataListContainer.appendChild(elms.scope[scopeId.EVENT]);
 
-export function composeList(m, names, scope_id, zone_id) {
-  let i = 0;
-  for (const [id, idx] of m) {
-    const name = names[idx];
+function createListButton(zone_id) {
+  return () => {
     let button = document.createElement('button');
-    button.className = 'event-button dynamic_bg deletable editable';
+    button.className = 'side-menu-list-button dynamic_bg deletable editable';
     button.addEventListener('click', function (){
       handleClickOnListButton(button, zone_id);
       if (zones[zone_id].selection >= 0 &&
@@ -137,10 +128,40 @@ export function composeList(m, names, scope_id, zone_id) {
         resetEventInfoView();
       }
     });
+    return button;
+  }
+}
+
+export function composeList(m, names, scope_id, zone_id) {
+  let i = 0;
+  for (const [id, idx] of m) {
+    const name = names[idx];
+    let button = createListButton(zone_id)();
     elms.scope[scope_id].appendChild(button);
-    button.textContent = name;
     button._bIdx = i;
     button._dIdx = idx;
+
+    let span = document.createElement('span');
+    span.textContent = name;
+    button.appendChild(span);
+    span = document.createElement('span');
+    span.textContent = '#'+id;
+    button.appendChild(span);
+    
     i++;
   }
+}
+
+function handleClickOnListButton(b, zn) {
+  const z = zones[zn];
+  if (z.selection == b._bIdx) {
+    b.style.setProperty('--bg-color', 'transparent');
+    z.selection = -1;
+    return;
+  }
+  b.style.setProperty('--bg-color', palette.blue);
+  if (z.selection >= 0) {
+    z.eList[z.selection].style.setProperty('--bg-color', 'transparent');
+  }
+  z.selection = b._bIdx;
 }

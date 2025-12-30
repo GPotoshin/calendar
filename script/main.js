@@ -553,18 +553,3 @@ function switchToCalendarView() {
 function switchToInformationView() {
   elms.bodyContainer.replaceChild(elms.view[viewId.INFORMATION], elms.bodyContainer.children[1]);
 }
-
-
-function handleClickOnListButton(b, zn) {
-  const z = zones[zn];
-  if (z.selection == b._bIdx) {
-    b.style.setProperty('--bg-color', 'transparent');
-    z.selection = -1;
-    return;
-  }
-  b.style.setProperty('--bg-color', palette.blue);
-  if (z.selection >= 0) {
-    z.eList[z.selection].style.setProperty('--bg-color', 'transparent');
-  }
-  z.selection = b._bIdx;
-}

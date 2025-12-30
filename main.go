@@ -573,7 +573,6 @@ func main() {
   http.HandleFunc("/general_style.css", serveFile("general_style.css", []HeaderPair{{Key: "Content-Type", Value: "text/css"}}))
   http.HandleFunc("/custom_style.css", serveFile("custom_style.css", []HeaderPair{{Key: "Content-Type", Value: "text/css"}}))
   http.HandleFunc("/", serveFile("login_index.html", []HeaderPair{}))
-  http.HandleFunc("/api/side-menu", handleSideMenu) // @nocheckin: we should have a single point for data manipulation
   http.HandleFunc("/api/public-key", handlePublicKey)
   http.HandleFunc("/api/login", handleLogin)
   http.HandleFunc("/data", handleData)
@@ -686,22 +685,6 @@ func composeApp() ([]byte, error) {
   return buf.Bytes(), err
 }
 
-func handleSideMenu(w http.ResponseWriter, r *http.Request) {
-  t := template.New("side-menu.html")
-  t, err := t.ParseFiles("side-menu.html")
-
-  if err != nil {
-    http.Error(w, "Error parsing template", http.StatusInternalServerError)
-    return
-  }
-
-  err = t.ExecuteTemplate(w, "side-menu", state)
-  if err != nil {
-    http.Error(w, "Error executing template", http.StatusInternalServerError)
-  }
-}
-
-
 const (
   CREATE int32 = iota
   REQUEST
@@ -749,7 +732,6 @@ func handleMapInt32Int(
     http.Error(w, "incorrect mode", http.StatusBadRequest)
     return
   }
-
 }
 
 // func handleArrayOfStrings(r io.Reader, w http.ResponseWriter, mode int32, data *[]string, freelist *[]int32) {
