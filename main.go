@@ -550,7 +550,6 @@ func main() {
 
   jsFiles := []string{
     "login.js",
-    "main.js",
     "color.js",
     "utils.js",
     "io.js",
@@ -563,6 +562,9 @@ func main() {
     "api.js",
     "side_menu.js",
     "event_info.js",
+    "entry_point_admin.js",
+    "entry_point_user.js",
+    "entry_point_chef.js",
   }
   jsHeaders := []HeaderPair{{Key: "Content-Type", Value: "text/javascript"}}
   for _, file := range jsFiles {

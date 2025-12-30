@@ -222,6 +222,15 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
     return
   }
 
+  state.mutex.Lock()
+  privilege := state.UsersPrivilegeLevel[idx]
+  state.mutex.Unlock()
+
+  if err := writeInt32(w, privilege); err != nil {
+    log.Printf("Failed to write prvilegeLevel: %v\n", err)
+    return
+  }
+
   t, err := template.ParseFiles("index.html", "month.html")
   if err != nil {
     log.Printf("failed to parse index.html and month.html: %v\n", err);

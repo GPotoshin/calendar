@@ -102,18 +102,30 @@ connectButton.addEventListener('click', async () => {
     const r = new BufferReader(bin);
 
     token = r.readHash();
+    // all transactions are tokenised. Fucking browser with a full security
+    // policy leaves me no choice. But we run the check from the loaded script
+    // and anyway all transations are tokenised
+    let privilege = r.readInt32();  
+    let entrypoint = '';
+    if (privilege == -2) {
+      entrypoint = './entry_point_admin.js';
+    } else if (privilege == -1) {
+      entrypoint = './entry_point_user.js';
+    } else if (privilege >= 0) {
+      entrypoint = './entry_point_chef.js';
+    }
+
     let html = r.readString();
+    passwordInput.value = '';
     document.body.innerHTML = html;
     document.body.className = "";
 
-    passwordInput.value = '';
-
-    import('./main.js')
+    import(entrypoint)
     .then((module) => {
       module.initApp();
     })
     .catch((err) => {
-      console.error("Failed to load main.js:", err);
+      console.error("Failed to load entrypoint:", err);
     });
   } catch (error) {
     alert('Login failed: ' + error.message);
