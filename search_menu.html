@@ -1,0 +1,12 @@
+{{ define "SearchMenu" }}
+<div class="m-box v-container align-items-center">
+  <h4 class="js-set txt-center">{{.}}</h4>
+  <div class="h-container with-width" style="--width: 200px;">
+    <div class="searching-field h-container disp-flex grow"><div class="arrow">&gt;</div><input class="searching-input" type="text" placeholder="Trouver"></div>
+  </div>
+  <div class="h-container with-width grow" style="--width: 200px;">
+    <div class="js-set text-box v-container scrollable-box scroll bordered grow half-wide extendable">
+    </div>
+  </div>
+</div>
+{{end}}

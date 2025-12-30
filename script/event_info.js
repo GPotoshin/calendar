@@ -1,3 +1,6 @@
+import { tmpls, scopeId } from './global_state.js';
+import * as SearchDisplay from './search_display.js';
+
 
 function createStaffTable() {
   let table = document.createElement('div');
@@ -54,7 +57,7 @@ function createCompetencesTable() {
   const container = table.querySelector('.js-set');
 
   // const baseWidth = 125; 
-    container.append(SearchDisplay.create('Participant', , 'Nouvelle Compétence'));
+  container.append(SearchDisplay.create('Participant', 'Nouvelle Compétence'));
   for (let name of data.rolesName) {
     container.append(SearchDisplay.create(name, data.rolesName, 'Nouvelle Compétence'));// @nocheckin
   }
@@ -73,7 +76,7 @@ function createFooterOptions() {
   return footer;
 }
 
-export function renderTemplate() = {
+export function loadTemplate() {
   tmpls[scopeId.EVENT].innerHTML = `
     <div class="v-container">
     </div>
@@ -93,7 +96,7 @@ function createTemplateLine() {
   return line;
 }
 
-function update() { // @working
+export function update() { // @working
   // scoped functions
   const tmplHTML = `
     <div class="disp-flex grow half-wide justify-content-center bottom-right-border">

@@ -110,11 +110,11 @@ connectButton.addEventListener('click', async () => {
 
     import('./main.js')
     .then((module) => {
-        module.initApp();
+      module.initApp();
     })
     .catch((err) => {
-        console.error("Failed to load main.js:", err);
-    });const script = document.createElement('script');
+      console.error("Failed to load main.js:", err);
+    });
   } catch (error) {
     alert('Login failed: ' + error.message);
   } finally {

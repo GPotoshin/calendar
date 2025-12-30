@@ -6,13 +6,12 @@ import {
 } from './scrollable_calendar.js';
 
 import * as Api from './api.js';
-import * as EventInfo from './api.js';
+import * as EventInfo from './event_info.js';
 
 import { palette } from './color.js';
 import { BufferReader, BufferWriter } from './io.js';
 import * as DM from './data_manager.js';
 import { numInput } from './num_input.js';
-import * as SearchDisplay from './search_display.js';
 import {} from './context_menu.js'; // we need it
 import {
   callbacks,
@@ -43,9 +42,9 @@ let state = {
 };
 
 export function initApp() {
-  document.body.className = "";
   state.token = token;
 }
+ EventInfo.loadTemplate();
 
 {
   elms.view[viewId.INFORMATION] = document.createElement('div');

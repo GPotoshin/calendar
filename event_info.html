@@ -1,0 +1,30 @@
+<div class="v-container">
+  {{template "SearchMenu" .Personal}}
+
+  <div class="v-container align-items-center">
+    <h3 class="txt-center">Nomber de</h3>
+
+    <div class="h-container with-width">
+    </div>
+
+    <div class="m-box v-container with-width">
+      <div id="event-staff-number-map" class="v-container scrollable-box disp-flex grow scroll-smooth bordered">
+      </div>
+    </div>
+  </div>
+
+  <div class="v-container align-items-center">
+    <div class="v-container align-items-center">
+      <h3 class="txt-center">Competences de</h3>
+
+      <div class="js-set h-container align-items-center">
+        {{template "SearchMenu" .Participant}}
+      </div>
+    </div>
+  </div>
+  <div class="h-container">
+    <div class="row-selection">
+      Durée: <button id="event-duration" class="hover std-min no-padding txt-center tiny-button">&nbsp;</button>d
+    </div>
+  </div>
+</div>

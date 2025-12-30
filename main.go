@@ -564,6 +564,7 @@ func main() {
     "global_state.js",
     "api.js",
     "side_menu.js",
+    "event_info.js",
   }
   jsHeaders := []HeaderPair{{Key: "Content-Type", Value: "text/javascript"}}
   for _, file := range jsFiles {
