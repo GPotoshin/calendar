@@ -72,6 +72,14 @@ func shrinkArray[K comparable](a *[]K, freeList []int) {
   *a = (*a)[:len(*a)-len(freeList)]
 }
 
+func getById[K, T comparable](id K, m map[K]int, a []T) (T, bool) {
+  var retval T
+  idx, exists := m[id]
+  if exists {
+    retval = a[idx] 
+  }
+  return retval, exists
+}
 
 func deleteOccurrences(array *[][]int32, value int32) {
 	for i := range *array {

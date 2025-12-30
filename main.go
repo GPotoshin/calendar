@@ -5,7 +5,6 @@ import (
   "sync"
   "context"
   "fmt"
-  "html/template"
   "net/http"
   "log"
   "time"
@@ -15,7 +14,6 @@ import (
   "io"
   "bufio"
   "strings"
-  "bytes"
   // "crypto/sha256"
 )
 
@@ -574,7 +572,6 @@ func main() {
   http.HandleFunc("/general_style.css", serveFile("general_style.css", []HeaderPair{{Key: "Content-Type", Value: "text/css"}}))
   http.HandleFunc("/custom_style.css", serveFile("custom_style.css", []HeaderPair{{Key: "Content-Type", Value: "text/css"}}))
   http.HandleFunc("/", serveFile("login.html", []HeaderPair{}))
-  http.HandleFunc("/html/event-info", handleEventInfo)
   http.HandleFunc("/api/public-key", handlePublicKey)
   http.HandleFunc("/api/login", handleLogin)
   http.HandleFunc("/data", handleData)
@@ -609,32 +606,6 @@ func main() {
   log.Println("Server Exiting")
 }
 
-func handleEventInfo(w http.ResponseWriter, r *http.Request) {
-  if r.Method != http.MethodGet {
-    http.Error(w, "Method not allowed. Only GET is supported.", http.StatusMethodNotAllowed)
-    return
-  }
-  t, err := template.ParseFiles("event_info.html", "search_menu.html")
-  if err != nil {
-    log.Println("can't parse event_info.html and search.html")
-    http.Error(w, "Can't parse event_info.html and search.html", http.StatusInternalServerError)
-    return
-  }
-
-  type EventInfoData struct {
-    Personel string
-    Participant string
-  }
-
-  data := EventInfoData{Personel: "Personel", Participant: "Participant"}
-  err = t.Execute(w, data)
-  if err != nil {
-    http.Error(w, "Can't execute event_info.html and search.html", http.StatusInternalServerError)
-    log.Println("Cannot execute event_info.html and search.html templates")
-  }
-}
-
-
 func handleData(w http.ResponseWriter, r *http.Request) {
   if r.Method != http.MethodPost {
     http.Error(w, "Method not allowed. Only POST is supported.", http.StatusMethodNotAllowed)
@@ -668,28 +639,6 @@ func handleData(w http.ResponseWriter, r *http.Request) {
   }
 
   w.Header().Set("Content-Type", "application/octet-stream")
-}
-
-func composeApp() ([]byte, error) {
-  t, err := template.ParseFiles("index.html", "month.html")
-  if err != nil {
-    return nil, err
-  }
-
-  type DayData struct {}
-  type WeekData struct { Days [7]DayData }
-  type BlockData struct { Weeks []WeekData }
-  type MonthData struct { Blocks [3]BlockData }
-  var block_sizes = []int{2, 16, 2}
-  var data MonthData
-  data.Blocks[0] = BlockData{Weeks: make([]WeekData, block_sizes[0])}
-  data.Blocks[1] = BlockData{Weeks: make([]WeekData, block_sizes[1])}
-  data.Blocks[2] = BlockData{Weeks: make([]WeekData, block_sizes[2])}
-
-  var buf bytes.Buffer
-  err = t.Execute(&buf, data)
-
-  return buf.Bytes(), err
 }
 
 const (

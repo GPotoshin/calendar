@@ -90,3 +90,16 @@ export function create(name, btnPlaceholder) {
   return menu;
 }
 
+export function dynamise(menu, btnPlaceholder = '') {
+  const objList = menu.querySelectorAll('.js-set');
+  const searchInput = menu.querySelector('.searching-input');
+  const container = objList[1];
+  menu.children[1].style.setProperty('--width', '200px');
+  menu.children[2].style.setProperty('--width', '200px');
+  objList[1]._createButton = createButton;
+  if (btnPlaceholder != '') {
+    objList[1]._btnPlaceholder = btnPlaceholder;
+  }
+
+  searchInput.addEventListener('input', () => { updateList(searchInput, container); });
+}

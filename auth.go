@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+  "html/template"
 	"io"
 	"log"
   "fmt"
@@ -68,11 +69,13 @@ func (s *ApplicationState) cleanupExpiredTokens() {
 	now := time.Now()
 	for token, idx := range s.ConnectionsToken {
 		if now.After(s.ConnectionsTime[idx][1]) {
+      state.mutex.Lock()
       deleteToken(s.ConnectionsToken, &s.ConnectionsFreeList, token)
       shrinkArray(&s.ConnectionsUser, s.ConnectionsFreeList)
       shrinkArray(&s.ConnectionsTime, s.ConnectionsFreeList)
       shrinkArray(&s.ConnectionsChannel, s.ConnectionsFreeList)
       s.ConnectionsFreeList = s.ConnectionsFreeList[:0]
+      state.mutex.Unlock()
 		}
 	}
 }
@@ -158,33 +161,32 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 
   reader := bytes.NewReader(decryptedData)
 
-  log.Println("reading user id")
 	userId, err := readInt32(reader)
 	if err != nil {
 		log.Printf("Failed to parse username: %v\n", err)
 		return
 	}
 
-  log.Println("reading password")
 	password, err := readHash(reader)
 	if err != nil {
 		log.Printf("Failed to parse password: %v\n", err)
 		return
 	}
 
-  log.Println("checking for user id")
+  state.mutex.Lock()
   idx, exists := state.UsersId[userId]
   if (!exists) { 
+    state.mutex.Unlock()
     http.Error(w, "Incorrect Login or Password", http.StatusBadRequest)
     return
   }
-  log.Println("checking for password");
   if (state.UsersPassword[idx] != password) {
+    state.mutex.Unlock()
     http.Error(w, "Incorrect Login or Password", http.StatusBadRequest)
     return
   }
+  state.mutex.Unlock()
 
-  log.Println("generating token")
   var token [32]byte
   for i := 0; i < 10; i++ {
     if _, err := rand.Read(token[:]); err != nil {
@@ -220,11 +222,27 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
     return
   }
 
-  appHtml, err := composeApp()
+  t, err := template.ParseFiles("index.html", "month.html")
   if err != nil {
-    log.Printf("failed to compose App");
+    log.Printf("failed to parse index.html and month.html: %v\n", err);
   }
-  if err := writeBytes(w, appHtml); err != nil {
+
+  type DayData struct {}
+  type WeekData struct { Days [7]DayData }
+  type BlockData struct { Weeks []WeekData }
+  type MonthData struct { Blocks [3]BlockData }
+  var block_sizes = []int{2, 16, 2}
+  var data MonthData
+  data.Blocks[0] = BlockData{Weeks: make([]WeekData, block_sizes[0])}
+  data.Blocks[1] = BlockData{Weeks: make([]WeekData, block_sizes[1])}
+  data.Blocks[2] = BlockData{Weeks: make([]WeekData, block_sizes[2])}
+  var buf bytes.Buffer
+  err = t.Execute(&buf, data)
+
+  if err != nil {
+    log.Printf("failed to compose App: %v\n", err);
+  }
+  if err := writeBytes(w, buf.Bytes()); err != nil {
     log.Printf("Failed to write App: %v\n", err)
     return
   }
