@@ -33,26 +33,26 @@ function fuzzyMatch(pattern, text) {
   return score;
 }
 
-function updateList(input, list, DOMmap, container) {
+function updateList(input, container) {
   const query = input.value;
   if (!query) {
     container.innerHTML = '';
-    for (const n of list) {
-      container.append(DOMmap.get(n));
+    for (const b of container._btnList) {
+      container.append(b);
     }
     return;
   }
   const scored = [];
-  for (const n of list) {
-    const score = fuzzyMatch(query, n);
+  for (const b of container._btnList) {
+    const score = fuzzyMatch(query, b.textContent);
     if (score !== null) {
-      scored.push({ name: n, score: score });
+      scored.push({ btn: b, score: score });
     }
   }
   scored.sort((a, b) => b.score - a.score);
   container.innerHTML = '';
   for (const item of scored) {
-    container.append(itemElements.get(item.name));
+    container.append(item.btn);
   }
 }
 
@@ -63,9 +63,8 @@ function createButton(name = '') {
   return b;
 }
 
-export function create(name, idxList, names, btnPlaceholder) {
+export function create(name, btnPlaceholder) {
   let menu = document.createElement('div');
-  let itemElements = new Map();
 
   menu.className = 'm-box v-container align-items-center';
   menu.innerHTML = `
@@ -87,13 +86,7 @@ export function create(name, idxList, names, btnPlaceholder) {
   objList[1]._createButton = createButton;
   objList[1]._btnPlaceholder = btnPlaceholder;
 
-  for (const idx of idxList) {
-    const btn = createButton(names[idx]);
-    itemElements.set(names[idx], btn);
-    container.append(btn);
-  }
-  
-  searchInput.addEventListener('input', () => { updateList(searchInput, list, itemElements, container); });
+  searchInput.addEventListener('input', () => { updateList(searchInput, container); });
   return menu;
 }
 

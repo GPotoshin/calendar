@@ -551,7 +551,7 @@ func main() {
   http.HandleFunc("/regular.ttf", serveFile("fonts/SourceSansPro-Regular.ttf", []HeaderPair{{Key: "Content-Type", Value: "font/ttf"}}))
 
   jsFiles := []string{
-    "login_main.js",
+    "login.js",
     "main.js",
     "color.js",
     "utils.js",
@@ -572,7 +572,7 @@ func main() {
 
   http.HandleFunc("/general_style.css", serveFile("general_style.css", []HeaderPair{{Key: "Content-Type", Value: "text/css"}}))
   http.HandleFunc("/custom_style.css", serveFile("custom_style.css", []HeaderPair{{Key: "Content-Type", Value: "text/css"}}))
-  http.HandleFunc("/", serveFile("login_index.html", []HeaderPair{}))
+  http.HandleFunc("/", serveFile("login.html", []HeaderPair{}))
   http.HandleFunc("/api/public-key", handlePublicKey)
   http.HandleFunc("/api/login", handleLogin)
   http.HandleFunc("/data", handleData)

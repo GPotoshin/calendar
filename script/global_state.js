@@ -1,5 +1,6 @@
 import * as DM from './data_manager.js';
 
+export let tmpls = [ document.createElement('div'), null, null, null ];
 
 export let elms = {
   calendarBody: null,

@@ -2,6 +2,7 @@ import { elms, zones, viewId, zonesId, scopeId, data } from './global_state.js';
 import { palette } from './color.js';
 import * as DM from './data_manager.js';
 import * as Api from './api.js';
+import * as EventInfo from './event_info.js';
 
 function handleClickOnViewButton(b, zn) {
   const z = zones[zn];
@@ -125,7 +126,7 @@ function createListButton(zone_id) {
       handleClickOnListButton(button, zone_id);
       if (zones[zone_id].selection >= 0 &&
         zones[zonesId.VIEWTYPE].selection === viewId.INFORMATION) {
-        resetEventInfoView();
+        EventInfo.update();
       }
     });
     return button;

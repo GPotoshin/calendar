@@ -104,12 +104,13 @@ connectButton.addEventListener('click', async () => {
     token = r.readHash();
     let html = r.readString();
     document.body.innerHTML = html;
+    document.body.className = "";
 
     passwordInput.value = '';
 
     import('./main.js')
     .then((module) => {
-        module.initApp(); // where is the token?
+        module.initApp();
     })
     .catch((err) => {
         console.error("Failed to load main.js:", err);
