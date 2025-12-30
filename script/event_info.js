@@ -77,16 +77,21 @@ function createFooterOptions() {
 }
 
 export function loadTemplate() {
-  tmpls[scopeId.EVENT].innerHTML = `
-    <div class="v-container">
-    </div>
-  `;
-  tmpls[scopeId.EVENT].children[0].append(
-    SearchDisplay.create('Personel', 'Nouveau Rôle'),
-    createStaffTable(),
-    createCompetencesTable(),
-    createFooterOptions(),
-  );
+  fetch('html/event_info')
+  .then(resp => {
+    if (!resp.ok) {
+      throw new Error('cannot fetch "html/event_info.html"');
+    }
+    resp.text()
+    .then(txt => {
+      console.log(txt);
+      const fragment = document.createRange().createContextualFragment(txt);
+      tmpls[scopeId.EVENT].append(fragment);
+    })
+  })
+  .catch(err => {
+    console.error("Could not load event_info", err);
+  });
 }
 
 function createTemplateLine() {
