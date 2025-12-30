@@ -73,13 +73,122 @@ function storeFunctionMaker(stateField, map, arr, freeList) {
   };
 }
 
-elms.scope[scopeId.EVENT]._createButton = createListButton(zonesId.EVENTLIST);
-elms.scope[scopeId.STAFF]._createButton = createListButton(zonesId.STAFFLIST);
-elms.scope[scopeId.VENUE]._createButton = createListButton(zonesId.VENUELIST);
+function createListButtonWithInput(zone_id, btnPlaceholder, target) {
+  return () => {
+    let b = document.createElement('button');
+    b.className = 'side-menu-list-button dynamic_bg deletable editable';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = btnPlaceholder;
+    target.appendChild(b);
+    b.appendChild(input);
+    input.focus();
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const value = input.value;
+        input.remove();
+        b.textContent = value;
+        target._store(value);
+        b.addEventListener('click', function (){
+          handleClickOnListButton(b, zone_id);
+          if (zones[zone_id].selection >= 0 &&
+            zones[zonesId.VIEWTYPE].selection === viewId.INFORMATION) {
+            EventInfo.update();
+          }
+        });
+      } else if (e.key === 'Escape') {
+        b.remove();
+      }
+    });
+  };
+}
 
-elms.scope[scopeId.EVENT]._btnPlaceholder = 'Nouvel Événement';
-elms.scope[scopeId.STAFF]._btnPlaceholder = 'Nouveau Membre du Personnel';
-elms.scope[scopeId.VENUE]._btnPlaceholder = 'Nouveau Lieu';
+function createUserButtonWithInput() {
+  const target = elms.scope[scopeId.STAFF];
+  let b = document.createElement('button');
+  b.className = 'side-menu-list-button dynamic_bg deletable editable';
+  const inputName = document.createElement('input');
+  inputName.type = 'text';
+  inputName.placeholder = 'Prenom';
+  const inputSurname = document.createElement('input');
+  inputSurname.type = 'text';
+  inputSurname.placeholder = 'Nom';
+  const inputMatricule = document.createElement('input');
+  inputMatricule.type = 'text';
+  inputMatricule.placeholder = 'Matricule';
+  inputMatricule.addEventListener('input', () => {
+    inputMatricule.value = inputMatricule.value.replace(/\D/g, '');
+  });
+  function save() {
+    let left = document.createElement('span');
+    left.textContent = inputName.value+' '+inputSurname.value;
+    let right = document.createElement('span');
+    right.classList = 'color-grey';
+    right.textContent = '#'+inputMatricule.value;
+    b.replaceChildren(left, right);
+
+    inputName.remove();
+    inputSurname.remove();
+    inputMatricule.remove();
+    target._store(value);
+    b.addEventListener('click', function (){
+      handleClickOnListButton(b, zonesId.STAFFLIST);
+      if (zones[zoneId.STAFFLIST].selection >= 0 &&
+        zones[zonesId.VIEWTYPE].selection === viewId.INFORMATION) {
+        EventInfo.update();
+      }
+    });
+  }
+
+  inputName.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      if (inputName.value !== '' &&
+          inputSurname.value !== '' &&
+          inputMatricule.value !== '') {
+        e.preventDefault();
+        save();
+      }
+      inputSurname.focus();
+    } else if (e.key === 'Escape') {
+      b.remove();
+    }
+  });
+  inputSurname.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      if (inputName.value !== '' &&
+          inputSurname.value !== '' &&
+          inputMatricule.value !== '') {
+        e.preventDefault();
+        save();
+      }
+      inputMatricule.focus();
+    } else if (e.key === 'Escape') {
+      b.remove();
+    }
+  });
+  inputMatricule.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      if (inputName.value !== '' &&
+          inputSurname.value !== '' &&
+          inputMatricule.value !== '') {
+        e.preventDefault();
+        save();
+      }
+    } else if (e.key === 'Escape') {
+      b.remove();
+    }
+  });
+  target.appendChild(b);
+  b.appendChild(inputName);
+  b.appendChild(inputSurname);
+  b.appendChild(inputMatricule);
+  inputName.focus();
+}
+
+elms.scope[scopeId.EVENT]._create = createListButtonWithInput(zonesId.EVENTLIST, 'Nouvel Événement', elms.scope[scopeId.EVENT]);
+elms.scope[scopeId.STAFF]._create = createUserButtonWithInput;
+elms.scope[scopeId.VENUE]._create = createListButtonWithInput(zonesId.VENUELIST, 'Nouveau Lieu', elms.scope[scopeId.VENUE]);
 
 elms.scope[scopeId.EVENT]._store =
   storeFunctionMaker(
@@ -92,6 +201,7 @@ elms.scope[scopeId.EVENT]._store =
 hContainer.append(bContainer);
 elms.dataListContainer = lContainer;
 
+// this should be factored out
 let b1 = document.createElement('button');
 b1.addEventListener('click', () => {
   elms.dataListContainer.replaceChildren(elms.scope[scopeId.EVENT]); 

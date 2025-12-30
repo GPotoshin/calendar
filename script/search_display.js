@@ -63,6 +63,30 @@ function createButton(name = '') {
   return b;
 }
 
+function createButtonWithInput(btnPlaceHolder, target) {
+  return () => {
+    let b = document.createElement('button');
+    b.className = 'hover snap-start togglable';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = btnPlaceholder;
+    target.appendChild(b);
+    b.appendChild(input);
+    input.focus();
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const value = input.value;
+        input.remove();
+        b.textContent = value;
+        target._store(value);
+      } else if (e.key === 'Escape') {
+        b.remove();
+      }
+    });
+  };
+}
+
 export function create(name, btnPlaceholder) {
   let menu = document.createElement('div');
 
@@ -83,8 +107,7 @@ export function create(name, btnPlaceholder) {
   const container = objList[1];
   menu.children[1].style.setProperty('--width', '200px');
   menu.children[2].style.setProperty('--width', '200px');
-  objList[1]._createButton = createButton;
-  objList[1]._btnPlaceholder = btnPlaceholder;
+  objList[1]._create = createButtonWithInput(btnPlaceholder, objList[1]);
 
   searchInput.addEventListener('input', () => { updateList(searchInput, container); });
   return menu;

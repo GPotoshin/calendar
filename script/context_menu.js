@@ -107,7 +107,7 @@ document.getElementById('edit-button').addEventListener('click', function() {
       const _eventId = zones[zonesId.EVENTLIST].selection;
       if (numInput.elm.value === '') {
         b.textContent = '\u00A0';
-        data.eventPersonalNumMap[_eventId][b._dIdx] = -1;
+        data.eventPersonalNumMap[_eventId][b._dIdx] = -1;conte
         function localCallback() {
           b.replaceWith(numInput.elm);
           numInput.elm.focus();
@@ -153,27 +153,7 @@ document.getElementById('delete-button').addEventListener('click', function() {
 });
 
 document.getElementById('create-button').addEventListener('click', () => {
-  const target = state.target;
-  const button = target._createButton();
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.placeholder = target._btnPlaceholder;
-  button.appendChild(input);
-  target.appendChild(button);
-  input.focus();
-
-  // should we add blur event also?
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const value = input.value;
-      input.remove();
-      button.textContent = value;
-      target._store(value);
-    } else if (e.key === 'Escape') {
-      button.remove();
-    }
-  });
+  state.target._create();
 });
 
 document.getElementById('toggle-button').addEventListener('click', () => {

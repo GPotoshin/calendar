@@ -16,6 +16,7 @@ end of writing. It should be a single line add.
 + we should have all systems to create the same _store() thing
 
 ## TODO
++ CDU for left side menu
 + settings for calendar
 + show settings for events
     * rework that as a list

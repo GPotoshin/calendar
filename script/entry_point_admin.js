@@ -28,7 +28,6 @@ import { composeList } from './side_menu.js'
 
 const MS_IN_DAY = 86400000;
 
-
 let state = {
   viewSelection: 0,
   datasetSelection: 0,
