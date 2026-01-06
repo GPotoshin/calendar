@@ -39,7 +39,9 @@ func deleteToken(m map[[32]byte]int, freeList *[]int, token [32]byte) {
 func deleteValue(m map[int32]int, freeId *[]int32, freeList *[]int, id int32) {
   idx, exists := m[id]
   if exists {
-    *freeId = append(*freeId, id)
+    if freeId != nil {
+      *freeId = append(*freeId, id)
+    }
     *freeList = append(*freeList, idx)
     
     delete(m, id)

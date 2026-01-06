@@ -1,4 +1,7 @@
 import { callbacks, elms } from './global_state.js';
+import { BufferWriter } from './io.js';
+import { buttonType } from './global_state.js';
+import * as Api from './api.js';
 
 let state = {
   delete_target: null,
@@ -136,20 +139,40 @@ document.getElementById('edit-button').addEventListener('click', function() {
 });
 
 document.getElementById('delete-button').addEventListener('click', function() {
-  state.target.remove();
-  let idx = state.target._dIdx*3;
-  let dataarr = data.eventPersonalNumMap[zones[zonesId.EVENTLIST].selection];
-  let list = document.getElementById('event-staff-number-map');
-  let btns = list.querySelectorAll('button');
-  for (let i = idx+3; i<dataarr.length; i += 3) {
-    btns[i-3]._dIdx -= 3;
-    btns[i-2]._dIdx -= 3;
-    btns[i-1]._dIdx -= 3;
-    dataarr[i-3] = dataarr[i];
-    dataarr[i-2] = dataarr[i+1];
-    dataarr[i-1] = dataarr[i+2];
+  const id = state.target._dataId;
+  if (id == undefined) {
+    throw new Error('undefined delete target data id');
   }
-  dataarr.length -= 3;
+  let w = new BufferWriter();
+  switch (state.target._type) {
+    case buttonType.SIDE_MENU_STAFF:
+      Api.writeHeader(w, Api.Op.DELETE, Api.StateField.USERS_ID_MAP_ID);
+      w.writeInt32(Number(state.target._dataId));
+
+    default:
+    throw new Error('incorrect delete target type');
+  }
+  Api.request(w)
+  .then(resp => {
+    if (!resp.ok) {
+      throw new Error(`HTTP error! status: ${resp.status}`);
+    }
+  })
+  .catch(e => {
+    console.error("Could not delete ", e);
+    return;
+  });
+  // we are deleting localy if we succeed to delete on the server
+  switch (state.target._type) {
+    case buttonType.SIDE_MENU_STAFF:
+      deleteValue(data.usersId, data.usersFreeList, id);
+      for (let list of data.OccurencesParticipant) {
+        deleteOccurences(id, list);
+      }
+    default:
+    throw new Error('incorrect delete target type');
+  }
+  state.target.remove();
 });
 
 document.getElementById('create-button').addEventListener('click', () => {

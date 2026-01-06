@@ -1,3 +1,5 @@
+import { token } from './login.js';
+
 export const Op = Object.freeze({
     CREATE:  0,
     REQUEST: 1,
@@ -41,7 +43,7 @@ export const StateField = Object.freeze({
     STATE_FIELD_COUNT: 26
 });
 
-export function writeHeader(w, token, op, stateField) {
+export function writeHeader(w, op, stateField) {
   w.writeString("bin_api.v0.0.0");
   w.writeHash(token);
   w.writeInt32(op);
@@ -49,5 +51,21 @@ export function writeHeader(w, token, op, stateField) {
 }
 
 export function writeCreateMapEntry(w, name) {
-  w.writeString(name)
+  w.writeString(name);
+}
+
+export function writeCreateUserMapEntry(w, name, surname, mat) {
+  w.writeString(name);
+  w.writeString(surname);
+  w.writeInt32(mat);
+}
+
+export function request(w) {
+  return fetch('/api', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/octet-stream',
+    },
+    body: w.getBuffer(),
+  });
 }

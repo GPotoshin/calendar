@@ -23,8 +23,8 @@ import {
   data,
   tmpls,
 } from './global_state.js';
-import { token } from './login.js'
-import { composeList } from './side_menu.js'
+import { token } from './login.js';
+import { composeList, composeUsersList } from './side_menu.js';
 
 const MS_IN_DAY = 86400000;
 
@@ -37,13 +37,9 @@ let state = {
   focusedElement: null,
   baseDayNumber: 0,
   isUpdating: false,
-  token: null,
 };
 
-export function initApp() {
-  state.token = token;
-}
- EventInfo.loadTemplate();
+EventInfo.loadTemplate();
 
 {
   elms.view[viewId.INFORMATION] = document.createElement('div');
@@ -200,7 +196,7 @@ calendarBody.addEventListener('mousemove', handleMouseMove);
           const r = new BufferReader(bin);
           data.read(r)
           composeList(data.eventsId, data.eventsName, scopeId.EVENT, zonesId.EVENTLIST);
-          composeList(data.usersId, data.usersName, scopeId.STAFF, zonesId.STAFFLIST);
+          composeUsersList();
           composeList(data.venuesId, data.venueName, scopeId.VENUE, zonesId.VENUELIST);
         });
     })

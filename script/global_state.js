@@ -26,6 +26,10 @@ export let callbacks = {
   handleTyping: {func: null, obj: null},
 }
 
+export const buttonType = {
+  SIDE_MENU_STAFF: 0,
+};
+
 export const zonesId = {
   DATATYPE: 0,
   VIEWTYPE: 1,

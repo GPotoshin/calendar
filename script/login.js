@@ -121,9 +121,6 @@ connectButton.addEventListener('click', async () => {
     document.body.className = "";
 
     import(entrypoint)
-    .then((module) => {
-      module.initApp();
-    })
     .catch((err) => {
       console.error("Failed to load entrypoint:", err);
     });

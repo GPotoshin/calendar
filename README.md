@@ -16,6 +16,7 @@ end of writing. It should be a single line add.
 + we should have all systems to create the same _store() thing
 
 ## TODO
++ we should have a custom error window
 + CDU for left side menu
 + settings for calendar
 + show settings for events
@@ -37,3 +38,10 @@ end of writing. It should be a single line add.
 ## Browsers quirks
 + if you have >20 weeks, than calendar body stops getting the correct scaling
 for some reason
+
+## Architechture
++ Client side should fail if it sends a wrong data to server. Because in the
+correctly written state it sends only correct data. And if it does not the bug
+should be fixed and we do not need a backrout.
++ We are sending changes over a custom bytecode API.
++ On creation we have a bulky function that sets all callbacks

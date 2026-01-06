@@ -684,15 +684,19 @@ func handleMapInt32Int(
     //output
     writeInt32(w, id)
   case REQUEST:
+    http.Error(w, "we do not support that", http.StatusBadRequest)
   case DELETE:
+    http.Error(w, "we do not support that", http.StatusBadRequest)
   case UPDATE:
+    http.Error(w, "we do not support that", http.StatusBadRequest)
   default:
     http.Error(w, "incorrect mode", http.StatusBadRequest)
-    return
   }
 }
 
 func handleApi(w http.ResponseWriter, r *http.Request) {
+  state.mutex.Lock()
+  defer state.mutex.Unlock()
   if r.Method != http.MethodPost {
     http.Error(w, "Method not allowed. Only POST is supported.", http.StatusMethodNotAllowed)
     return
@@ -753,13 +757,100 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
 
   switch field_id {
   case USERS_ID_MAP_ID:
+    if p_level != PRIVILEGE_LEVEL_ADMIN {
+      log.Println("unpriviliged user tried accessing priviliged api")
+      http.Error(w, "incorrect privilige level", http.StatusBadRequest)
+      return
+    }
+    switch mode {
+      case CREATE:
+        name, err := readString(r.Body)
+        if err != nil {
+          log.Println("can't read name ", err)
+          http.Error(w, "incorrect api", http.StatusBadRequest)
+          return
+        }
+
+        surname, err := readString(r.Body)
+        if err != nil {
+          log.Println("can't read surname ", err)
+          http.Error(w, "incorrect api", http.StatusBadRequest)
+          return
+        }
+        
+        mat, err := readInt32(r.Body)
+        if err != nil {
+          log.Println("can't read matricule ", err)
+          http.Error(w, "incorrect api", http.StatusBadRequest)
+          return
+        }
+
+        _, exists := state.UsersId[mat]
+        if exists {
+          log.Println("collision in matricule storage")
+          http.Error(w, "matricule already exists", http.StatusBadRequest)
+          return
+        }
+
+        idx := storageIndex(state.UsersId, &state.UsersFreeList)
+        state.UsersId[mat] = idx
+        storeValue(&state.UsersName, idx, name)
+        storeValue(&state.UsersSurname, idx, surname)
+        
+      case UPDATE:
+        http.Error(w, "we do not support that", http.StatusBadRequest)
+        return
+      case REQUEST:
+        http.Error(w, "we do not support that", http.StatusBadRequest)
+        return
+      case DELETE:
+        mat, err := readInt32(r.Body)
+        if err != nil {
+          log.Println("can't read matricule ", err)
+          http.Error(w, "incorrect api", http.StatusBadRequest)
+          return
+        }
+
+        _, exists := state.UsersId[mat]
+        if exists {
+          log.Println("collision in matricule storage")
+          http.Error(w, "matricule already exists", http.StatusBadRequest)
+          return
+        }
+        deleteValue(state.UsersId, nil, &state.UsersFreeList, mat)
+        deleteOccurrences(&state.OccurencesParticipant, mat)
+        for token, idx := range state.ConnectionsToken {
+          if state.ConnectionsUser[idx] == mat {
+            deleteToken(state.ConnectionsToken, &state.ConnectionsFreeList, token)
+          }
+        }
+
+      default:
+        http.Error(w, "we do not support that", http.StatusBadRequest)
+        return 
+    }
+
   case USERS_NAME_ID:
+    http.Error(w, "we do not support that", http.StatusBadRequest)
+    return
   case USERS_SURNAME_ID:
+    http.Error(w, "we do not support that", http.StatusBadRequest)
+    return
   case USERS_MAIL_ID:
+    http.Error(w, "we do not support that", http.StatusBadRequest)
+    return
   case USERS_PHONE_ID:
+    http.Error(w, "we do not support that", http.StatusBadRequest)
+    return
   case USERS_COMPETENCES_ID:
+    http.Error(w, "we do not support that", http.StatusBadRequest)
+    return
   case USERS_DUTY_STATION_ID:
+    http.Error(w, "we do not support that", http.StatusBadRequest)
+    return
   case USERS_PRIVILEGE_LEVEL_ID:
+    http.Error(w, "we do not support that", http.StatusBadRequest)
+    return
 
   case EVENTS_ID_MAP_ID:
     handleMapInt32Int(
@@ -774,26 +865,60 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     )
   case EVENTS_NAME_ID:
     // handleArrayOfStrings(r.Body, w, mode, &state.EventsName, &state.EventsFreeList)
+    http.Error(w, "we do not support that", http.StatusBadRequest)
+    return
   case EVENTS_VENUE_ID:
+    http.Error(w, "we do not support that", http.StatusBadRequest)
+    return
   case EVENTS_ROLE_ID:
+    http.Error(w, "we do not support that", http.StatusBadRequest)
+    return
   case EVENTS_ROLES_REQUIREMENT_ID:
+    http.Error(w, "we do not support that", http.StatusBadRequest)
+    return
   case EVENTS_PERSONAL_NUM_MAP_ID:
+    http.Error(w, "we do not support that", http.StatusBadRequest)
+    return
   case EVENTS_DURATION_ID:
+    http.Error(w, "we do not support that", http.StatusBadRequest)
+    return
 
   case VENUES_ID_MAP_ID:
+    http.Error(w, "we do not support that", http.StatusBadRequest)
+    return
   case VENUES_NAME_ID:
+    http.Error(w, "we do not support that", http.StatusBadRequest)
+    return
 
   case COMPETENCES_ID_MAP_ID:
+    http.Error(w, "we do not support that", http.StatusBadRequest)
+    return
   case COMPETENCES_NAME_ID:
+    http.Error(w, "we do not support that", http.StatusBadRequest)
+    return
 
   case ROLES_ID_MAP_ID:
+    http.Error(w, "we do not support that", http.StatusBadRequest)
+    return
   case ROLES_NAME_ID:
+    http.Error(w, "we do not support that", http.StatusBadRequest)
+    return
 
   case OCCURRENCES_ID_MAP_ID:
+    http.Error(w, "we do not support that", http.StatusBadRequest)
+    return
   case OCCURRENCES_VENUE_ID:
+    http.Error(w, "we do not support that", http.StatusBadRequest)
+    return
   case OCCURRENCES_DATES_ID:
+    http.Error(w, "we do not support that", http.StatusBadRequest)
+    return
   case OCCURRENCES_PARTICIPANT_ID:
+    http.Error(w, "we do not support that", http.StatusBadRequest)
+    return
   case OCCURRENCES_PARTICIPANTS_ROLE_ID:
+    http.Error(w, "we do not support that", http.StatusBadRequest)
+    return
   default:
     http.Error(w, "incorrect field id", http.StatusBadRequest)
     return

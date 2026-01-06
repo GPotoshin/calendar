@@ -1,12 +1,13 @@
-import { elms, zones, viewId, zonesId, scopeId, data } from './global_state.js';
+import { elms, zones, viewId, zonesId, scopeId, buttonType, data } from './global_state.js';
 import { palette } from './color.js';
 import * as DM from './data_manager.js';
 import * as Api from './api.js';
 import * as EventInfo from './event_info.js';
+import { BufferWriter } from './io.js';
 
 function handleClickOnViewButton(b, zn) {
   const z = zones[zn];
-  z.selection = b._bIdx;
+  z.selection = b._dataId;
 }
 
 let state = {
@@ -44,32 +45,25 @@ elms.scope[scopeId.VENUE].className = 'extendable v-container grow';
 function storeFunctionMaker(stateField, map, arr, freeList) {
   return (name) => {
     let w = new BufferWriter();
-    Api.writeHeader(w, token, Api.Op.CREATE, Api.StateField.EVENTS_ID_MAP_ID);
-    Api.writeCreateMapEntry(w, name);
-    fetch("/api", {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/octet-stream',
-      },
-      body: w.getBuffer(),
-    })
-      .then(resp => {
-        if (!resp.ok) {
-          throw new Error(`HTTP error! status: ${resp.status}`);
-        }
-        resp.arrayBuffer()
-          .then(
-            bin => {
-              let r = new BufferReader(bin);
-              let id = r.readInt32();
-              let idx = DM.storageIndex(map, freeList);
-              map[id] = idx;
-              arr[idx] = name;
-            });
-      })
-      .catch(e => {
-        console.error("Could not store ", name);
+    Api.writeHeader(w, Api.Op.CREATE, Api.StateField.EVENTS_ID_MAP_ID);
+   Api.writeCreateMapEntry(w, name);
+    Api.request(w)
+    .then(resp => {
+      if (!resp.ok) {
+        throw new Error(`HTTP error! status: ${resp.status}`);
+      }
+      resp.arrayBuffer()
+      .then(bin => {
+        let r = new BufferReader(bin);
+        let id = r.readInt32();
+        let idx = DM.storageIndex(map, freeList);
+        map[id] = idx;
+        arr[idx] = name;
       });
+    })
+    .catch(e => {
+      console.error("Could not store ", name, e);
+    });
   };
 }
 
@@ -117,27 +111,54 @@ function createUserButtonWithInput() {
   const inputMatricule = document.createElement('input');
   inputMatricule.type = 'text';
   inputMatricule.placeholder = 'Matricule';
+  inputMatricule.classList = 'dynamic_bg';
+  inputMatricule.style.setProperty('--bg-color', 'transparent');
   inputMatricule.addEventListener('input', () => {
     inputMatricule.value = inputMatricule.value.replace(/\D/g, '');
   });
+
   function save() {
+    const name = inputName.value;
+    const surname = inputSurname.value;
+    const matricule = Number(inputMatricule.value);
+
+    if (data.usersId.has(Number(matricule))) {
+      inputMatricule.style.setProperty('--bg-color', palette.red);
+      return;
+    }
+
     let left = document.createElement('span');
-    left.textContent = inputName.value+' '+inputSurname.value;
+    left.textContent = name+' '+surname;
     let right = document.createElement('span');
     right.classList = 'color-grey';
-    right.textContent = '#'+inputMatricule.value;
+    right.textContent = '#'+matricule;
     b.replaceChildren(left, right);
+
+    let w = new BufferWriter();
+    Api.writeHeader(w, Api.Op.CREATE, Api.StateField.USERS_ID_MAP_ID);
+    Api.writeCreateUserMapEntry(w, name, surname, matricule); 
 
     inputName.remove();
     inputSurname.remove();
     inputMatricule.remove();
-    target._store(value);
     b.addEventListener('click', function (){
       handleClickOnListButton(b, zonesId.STAFFLIST);
       if (zones[zoneId.STAFFLIST].selection >= 0 &&
         zones[zonesId.VIEWTYPE].selection === viewId.INFORMATION) {
         EventInfo.update();
       }
+    });
+
+    Api.request(w)
+    .then(resp => {
+      if (!resp.ok) {
+        throw new Error(`HTTP error! status: ${resp.status}`);
+        b.remove();
+        return;
+      }
+    })
+    .catch( e => {
+      console.error("Could not store ", name, e);
     });
   }
 
@@ -208,21 +229,21 @@ b1.addEventListener('click', () => {
   handleClickOnViewButton(b1, zonesId.DATATYPE);
 });
 b1.textContent = 'Événements';
-b1._bIdx = 0;
+b1._dataId = 0;
 let b2 = document.createElement('button');
 b2.addEventListener('click', () => {
   elms.dataListContainer.replaceChildren(elms.scope[scopeId.STAFF]);
   handleClickOnViewButton(b2, zonesId.DATATYPE);
 });
 b2.textContent = 'Personnel';
-b2._bIdx = 1;
+b2._dataId = 1;
 let b3 = document.createElement('button');
 b3.addEventListener('click', () => {
   elms.dataListContainer.replaceChildren(elms.scope[scopeId.VENUE]);
   handleClickOnViewButton(b3, zonesId.DATATYPE);
 });
 b3.textContent = 'Lieux';
-b3._bIdx = 2;
+b3._dataId = 2;
 bContainer.append(b1, b2, b3);
 
 elms.sideMenu.replaceChildren(hContainer, elms.dataListContainer);
@@ -244,13 +265,11 @@ function createListButton(zone_id) {
 }
 
 export function composeList(m, names, scope_id, zone_id) {
-  let i = 0;
   for (const [id, idx] of m) {
     const name = names[idx];
     let button = createListButton(zone_id)();
     elms.scope[scope_id].appendChild(button);
-    button._bIdx = i;
-    button._dIdx = idx;
+    button._dataId = id;
 
     let span = document.createElement('span');
     span.textContent = name;
@@ -259,14 +278,32 @@ export function composeList(m, names, scope_id, zone_id) {
     span.classList = "color-grey";
     span.textContent = '#'+id;
     button.appendChild(span);
+  }
+}
+
+export function composeUsersList() {
+  for (const [id, idx] of data.usersId) {
+    const name = data.usersName[idx];
+    const surname = data.usersSurname[idx];
+    let button = createListButton(zonesId.STAFFLIST)();
+    elms.scope[scopeId.STAFF].appendChild(button);
+    button._dataId = id;
+    button._type = buttonType.SIDE_MENU_STAFF; 
+
+    let span = document.createElement('span');
+    span.textContent = name+' '+surname;
+    button.appendChild(span);
+    span = document.createElement('span');
+    span.classList = "color-grey";
+    span.textContent = '#'+id;
+    button.appendChild(span);
     
-    i++;
   }
 }
 
 function handleClickOnListButton(b, zn) {
   const z = zones[zn];
-  if (z.selection == b._bIdx) {
+  if (z.selection == b._dataId) {
     b.style.setProperty('--bg-color', 'transparent');
     z.selection = -1;
     return;
@@ -275,5 +312,5 @@ function handleClickOnListButton(b, zn) {
   if (z.selection >= 0) {
     z.eList[z.selection].style.setProperty('--bg-color', 'transparent');
   }
-  z.selection = b._bIdx;
+  z.selection = b._dataId;
 }
