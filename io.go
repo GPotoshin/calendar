@@ -4,7 +4,6 @@ import(
   "io"
   "encoding/binary"
   "fmt"
-  "log"
 )
 
 func writeInt32(w io.Writer, val int32) error {
@@ -32,7 +31,6 @@ func writeHash(w io.Writer, val [32]byte) error {
 }
 
 func writeString(w io.Writer, s string) error {
-  log.Println("writing string ", s) 
   l := int32(len(s))
   if err := writeInt32(w, l); err != nil {
     return err

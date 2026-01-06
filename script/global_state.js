@@ -26,8 +26,10 @@ export let callbacks = {
   handleTyping: {func: null, obj: null},
 }
 
-export const buttonType = {
-  SIDE_MENU_STAFF: 0,
+export const listId = {
+  EVENT: 0,
+  STAFF: 1,
+  VENUE: 2,
 };
 
 export const zonesId = {
@@ -51,11 +53,11 @@ export const scopeId = {
 
 // eList is the list of buttons, that way we have a direct access to it
 export let zones = [
-  { selection: 0, eList: null },
-  { selection: 0, eList: null },
-  { selection: -1, eList: elms.scope[scopeId.EVENT].children },
-  { selection: -1, eList: elms.scope[scopeId.STAFF].children },
-  { selection: -1, eList: elms.scope[scopeId.VENUE].children },
+  { selection: null, eList: null },
+  { selection: null, eList: null },
+  { selection: null, eList: elms.scope[scopeId.EVENT].children },
+  { selection: null, eList: elms.scope[scopeId.STAFF].children },
+  { selection: null, eList: elms.scope[scopeId.VENUE].children },
 ];
 
 export const data = new DM.DataManager();

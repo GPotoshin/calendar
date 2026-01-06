@@ -209,20 +209,22 @@ calendarBody.addEventListener('mousemove', handleMouseMove);
   let viewType = document.getElementById('view-type');
   let b1 = document.createElement('button');
   b1.textContent = 'Calendrier';
+  b1._dataId = viewId.CALENDAR;
   b1.addEventListener('click' ,()=>{
-    zones[zonesId.VIEWTYPE].selection = viewId.CALENDAR;
+    zones[zonesId.VIEWTYPE].selection = b1;
     elms.bodyContainer.replaceChild(elms.view[viewId.CALENDER], elms.bodyContainer.children[1]);
   });
   let b2 = document.createElement('button');
   b2.textContent = 'Information';
+  b2._dataId = viewId.INFORMATION;
 
   b2.addEventListener('click' ,()=>{ 
-    elms.view[viewId.INFORMATION].replaceChildren(tmpls[scopeId.EVENT]);
     elms.bodyContainer.replaceChild(elms.view[viewId.INFORMATION], elms.bodyContainer.children[1]);
-    zones[zonesId.VIEWTYPE].selection = viewId.INFORMATION;
-    if (zones[zonesId.DATATYPE].selection === scopeId.EVENT) {
+    zones[zonesId.VIEWTYPE].selection = b2;
+    if (zones[zonesId.DATATYPE].selection._dataId === scopeId.EVENT) {
       EventInfo.update();
     }
+    elms.view[viewId.INFORMATION].replaceChildren(tmpls[scopeId.EVENT]);
   });
   viewType.append(b1,b2);
 }

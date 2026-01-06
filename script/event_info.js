@@ -131,7 +131,7 @@ export function update() { // @working
       };
       if (dataIsSet) {
         line.classList.add('deletable');
-        let dataArray = data.eventsPersonalNumMap[zones[zonesId.EVENTLIST].selection];
+        let dataArray = data.eventsPersonalNumMap[zones[zonesId.EVENTLIST].selection._dataId];
         line._dIdx = dataArray.length/3;
         for (let j = 0; j < btns.length; j++) {
           btns[j]._dIdx = dataArray.length;
@@ -160,14 +160,14 @@ export function update() { // @working
 
   // actual function code
   const zone = zones[zonesId.EVENTLIST];
-  if (zone.selection == -1) { // we need to show general setting
+  if (zone.selection == null) { // we need to show general setting
     return;
   }
-  const event_id = zone.eList[zone.selection]._dIdx;
+  const event_id = zone.selection._dataId;
   let list = document.getElementById('event-staff-number-map');
   list.innerHTML = '';
 
-  const _eventId = zones[zonesId.EVENTLIST].selection;
+  const _eventId = zones[zonesId.EVENTLIST].selection._dataId;
 
   let dataArray = data.eventsPersonalNumMap[_eventId];
   if (dataArray === undefined) {
@@ -204,7 +204,7 @@ export function update() { // @working
     }
     function endOfWriting() {
       numInput.elm.replaceWith(b);
-      const _eventId = zones[zonesId.EVENTLIST].selection;
+      const _eventId = zones[zonesId.EVENTLIST].selection._dataId;
       if (numInput.elm.value === '') {
         data.eventsDuration[_eventId] = -1;
         return;

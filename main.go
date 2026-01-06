@@ -14,7 +14,7 @@ import (
   "io"
   "bufio"
   "strings"
-  // "crypto/sha256"
+  "crypto/sha256"
 )
 
 type HeaderPair struct {
@@ -111,12 +111,12 @@ type ApplicationState struct {
   RolesFreeList []int
 
   OccerencesId map[int32]int // id -> idx
-  OccurencesVenue []int32
-  OccurencesDates [][][2]int32 // idea is that every event can happen in intervals and we store the borders of those intervals
-  OccurencesParticipant [][]int32
-  OccurencesParticipantsRole [][]int32
-  OccurencesFreeId []int32
-  OccurencesFreeList []int
+  OccurrencesVenue []int32
+  OccurrencesDates [][][2]int32 // idea is that every event can happen in intervals and we store the borders of those intervals
+  OccurrencesParticipant [][]int32
+  OccurrencesParticipantsRole [][]int32
+  OccurrencesFreeId []int32
+  OccurrencesFreeList []int
 
   ConnectionsToken map[[32]byte]int // id -> idx
   ConnectionsUser []int32
@@ -133,6 +133,47 @@ type ApplicationState struct {
 }
 
 var state ApplicationState
+
+func rebaseStat() {
+  rebaseMap(state.UsersId, state.UsersFreeList)
+  shrinkArray(&state.UsersPassword, state.UsersFreeList)
+  shrinkArray(&state.UsersName, state.UsersFreeList)
+  shrinkArray(&state.UsersSurname, state.UsersFreeList)
+  shrinkArray(&state.UsersMail, state.UsersFreeList)
+  shrinkArray(&state.UsersPhone, state.UsersFreeList)
+  shrinkArray(&state.UsersCompetences, state.UsersFreeList)
+  shrinkArray(&state.UsersDutyStation, state.UsersFreeList)
+  shrinkArray(&state.UsersPrivilegeLevel, state.UsersFreeList)
+  state.UsersFreeList = state.UsersFreeList[:0]
+
+  rebaseMap(state.EventsId, state.EventsFreeList)
+  shrinkArray(&state.EventsName, state.EventsFreeList)
+  shrinkArray(&state.EventsVenue, state.EventsFreeList)
+  shrinkArray(&state.EventsRole, state.EventsFreeList)
+  shrinkArray(&state.EventsRolesRequirement, state.EventsFreeList)
+  shrinkArray(&state.EventsPresonalNumMap, state.EventsFreeList)
+  shrinkArray(&state.EventsDuration, state.EventsFreeList)
+  state.EventsFreeList = state.EventsFreeList[:0]
+
+  rebaseMap(state.VenuesId, state.VenuesFreeList)
+  shrinkArray(&state.VenuesName, state.VenuesFreeList)
+  state.VenuesFreeList = state.VenuesFreeList[:0]
+
+  rebaseMap(state.CompetencesId, state.CompetencesFreeList)
+  shrinkArray(&state.CompetencesName, state.CompetencesFreeList)
+  state.CompetencesFreeList = state.CompetencesFreeList[:0]
+
+  rebaseMap(state.RolesId, state.RolesFreeList)
+  shrinkArray(&state.RolesName, state.RolesFreeList)
+  state.RolesFreeList = state.RolesFreeList[:0]
+
+  rebaseMap(state.OccurrencesId, state.OccurrencesFreeList)
+  shrinkArray(&state.OccurrencesVenue, state.OccurrenceFreeList)
+  shrinkArray(&state.OccurrencesDates, state.OccurrenceFreeList)
+  shrinkArray(&state.OccurrencesParticipant, state.OccurrenceFreeList)
+  shrinkArray(&state.OccurrencesParticipantsRole, state.OccurrenceFreeList)
+  state.OccurrencesFreeList = state.OccurencesFreeList[:0]
+}
 
 func readApplicationState(r io.Reader) (ApplicationState, error) {
   var state ApplicationState
@@ -231,20 +272,20 @@ func readApplicationState(r io.Reader) (ApplicationState, error) {
   if state.OccerencesId, err = readMapInt32Int(r); err != nil {
     return state, fmt.Errorf("failed to read OccerencesId: %w", err)
   }
-  if state.OccurencesVenue, err = readInt32Array(r); err != nil {
-    return state, fmt.Errorf("failed to read OccurencesVenue: %w", err)
+  if state.OccurrencesVenue, err = readInt32Array(r); err != nil {
+    return state, fmt.Errorf("failed to read OccurrencesVenue: %w", err)
   }
-  if state.OccurencesDates, err = readArrayOfInt32PairArrays(r); err != nil {
-    return state, fmt.Errorf("failed to read OccurencesDate: %w", err)
+  if state.OccurrencesDates, err = readArrayOfInt32PairArrays(r); err != nil {
+    return state, fmt.Errorf("failed to read OccurrencesDate: %w", err)
   }
-  if state.OccurencesParticipant, err = readArrayOfInt32Arrays(r); err != nil {
-    return state, fmt.Errorf("failed to read OccurencesParticipant: %w", err)
+  if state.OccurrencesParticipant, err = readArrayOfInt32Arrays(r); err != nil {
+    return state, fmt.Errorf("failed to read OccurrencesParticipant: %w", err)
   }
-  if state.OccurencesParticipantsRole, err = readArrayOfInt32Arrays(r); err != nil {
-    return state, fmt.Errorf("failed to read OccurencesParticipantsRole: %w", err)
+  if state.OccurrencesParticipantsRole, err = readArrayOfInt32Arrays(r); err != nil {
+    return state, fmt.Errorf("failed to read OccurrencesParticipantsRole: %w", err)
   }
-  if state.OccurencesFreeId, err = readInt32Array(r); err != nil {
-    return state, fmt.Errorf("failed to read OccurencesFreeId: %w", err)
+  if state.OccurrencesFreeId, err = readInt32Array(r); err != nil {
+    return state, fmt.Errorf("failed to read OccurrencesFreeId: %w", err)
   }
 
   return state, nil
@@ -255,6 +296,17 @@ func writeApplicationState(w io.Writer, state ApplicationState) error {
   if err := writeString(w, version); err != nil {
     return fmt.Errorf("Failed to store data [file format]: %v\n", err)
   }
+
+  idx := storageIndex(state.UsersId, &state.UsersFreeList)
+  state.UsersId[0] = idx
+  storeValue(&state.UsersPassword, idx, sha256.Sum256([]byte("admin")))
+  storeValue(&state.UsersName, idx, "Admin")
+  storeValue(&state.UsersSurname, idx, "Adminovich")
+  storeValue(&state.UsersMail, idx, "admin@mail.fr")
+  storeValue(&state.UsersPhone, idx, 0)
+  storeValue(&state.UsersCompetences, idx, []int32{})
+  storeValue(&state.UsersDutyStation, idx, 0)
+  storeValue(&state.UsersPrivilegeLevel, idx, PRIVILEGE_LEVEL_ADMIN)
 
   // Write Users data
   if err := writeMapInt32Int(w, state.UsersId); err != nil {
@@ -348,20 +400,20 @@ func writeApplicationState(w io.Writer, state ApplicationState) error {
   if err := writeMapInt32Int(w, state.OccerencesId); err != nil {
     return fmt.Errorf("failed to write OccerencesId: %w", err)
   }
-  if err := writeInt32Array(w, state.OccurencesVenue); err != nil {
-    return fmt.Errorf("failed to write OccurencesVenue: %w", err)
+  if err := writeInt32Array(w, state.OccurrencesVenue); err != nil {
+    return fmt.Errorf("failed to write OccurrencesVenue: %w", err)
   }
-  if err := writeArrayOfInt32PairArrays(w, state.OccurencesDates); err != nil {
-    return fmt.Errorf("failed to write OccurencesDate: %w", err)
+  if err := writeArrayOfInt32PairArrays(w, state.OccurrencesDates); err != nil {
+    return fmt.Errorf("failed to write OccurrencesDate: %w", err)
   }
-  if err := writeArrayOfInt32Arrays(w, state.OccurencesParticipant); err != nil {
-    return fmt.Errorf("failed to write OccurencesParticipant: %w", err)
+  if err := writeArrayOfInt32Arrays(w, state.OccurrencesParticipant); err != nil {
+    return fmt.Errorf("failed to write OccurrencesParticipant: %w", err)
   }
-  if err := writeArrayOfInt32Arrays(w, state.OccurencesParticipantsRole); err != nil {
-    return fmt.Errorf("failed to write OccurencesParticipantsRole: %w", err)
+  if err := writeArrayOfInt32Arrays(w, state.OccurrencesParticipantsRole); err != nil {
+    return fmt.Errorf("failed to write OccurrencesParticipantsRole: %w", err)
   }
-  if err := writeInt32Array(w, state.OccurencesFreeId); err != nil {
-    return fmt.Errorf("failed to write OccurencesFreeId: %w", err)
+  if err := writeInt32Array(w, state.OccurrencesFreeId); err != nil {
+    return fmt.Errorf("failed to write OccurrencesFreeId: %w", err)
   }
 
   return nil
@@ -450,17 +502,17 @@ func writeAdminData(w io.Writer, state ApplicationState) error {
   if err := writeMapInt32Int(w, state.OccerencesId); err != nil {
     return fmt.Errorf("failed to write OccerencesId: %w", err)
   }
-  if err := writeInt32Array(w, state.OccurencesVenue); err != nil {
-    return fmt.Errorf("failed to write OccurencesVenue: %w", err)
+  if err := writeInt32Array(w, state.OccurrencesVenue); err != nil {
+    return fmt.Errorf("failed to write OccurrencesVenue: %w", err)
   }
-  if err := writeArrayOfInt32PairArrays(w, state.OccurencesDates); err != nil {
-    return fmt.Errorf("failed to write OccurencesDate: %w", err)
+  if err := writeArrayOfInt32PairArrays(w, state.OccurrencesDates); err != nil {
+    return fmt.Errorf("failed to write OccurrencesDate: %w", err)
   }
-  if err := writeArrayOfInt32Arrays(w, state.OccurencesParticipant); err != nil {
-    return fmt.Errorf("failed to write OccurencesParticipant: %w", err)
+  if err := writeArrayOfInt32Arrays(w, state.OccurrencesParticipant); err != nil {
+    return fmt.Errorf("failed to write OccurrencesParticipant: %w", err)
   }
-  if err := writeArrayOfInt32Arrays(w, state.OccurencesParticipantsRole); err != nil {
-    return fmt.Errorf("failed to write OccurencesParticipantsRole: %w", err)
+  if err := writeArrayOfInt32Arrays(w, state.OccurrencesParticipantsRole); err != nil {
+    return fmt.Errorf("failed to write OccurrencesParticipantsRole: %w", err)
   }
 
   return nil
@@ -518,6 +570,8 @@ func main() {
       log.Println("State is partially set because of: ", err)
     }
   }
+  
+  log.Println(state)
 
   state.initAuth()
   state.startKeyRotation()
@@ -812,13 +866,12 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         }
 
         _, exists := state.UsersId[mat]
-        if exists {
-          log.Println("collision in matricule storage")
-          http.Error(w, "matricule already exists", http.StatusBadRequest)
+        if !exists {
+          log.Println("matricule already does not exist")
           return
         }
         deleteValue(state.UsersId, nil, &state.UsersFreeList, mat)
-        deleteOccurrences(&state.OccurencesParticipant, mat)
+        deleteOccurrences(&state.OccurrencesParticipant, mat)
         for token, idx := range state.ConnectionsToken {
           if state.ConnectionsUser[idx] == mat {
             deleteToken(state.ConnectionsToken, &state.ConnectionsFreeList, token)
@@ -923,4 +976,5 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     http.Error(w, "incorrect field id", http.StatusBadRequest)
     return
   }
+  log.Println(state)
 }

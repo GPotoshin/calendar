@@ -1,7 +1,8 @@
 import { callbacks, elms } from './global_state.js';
 import { BufferWriter } from './io.js';
-import { buttonType } from './global_state.js';
+import { listId } from './global_state.js';
 import * as Api from './api.js';
+import { deleteValue, deleteOccurrences } from './data_manager.js';
 
 let state = {
   delete_target: null,
@@ -71,13 +72,13 @@ document.getElementById('edit-button').addEventListener('click', function() {
   b.replaceWith(numInput.elm);
   numInput.elm.focus();
 
-  const _eventId = zones[zonesId.EVENTLIST].selection;
+  const _eventId = zones[zonesId.EVENTLIST].selection._dataId;
   let dataArray = null;
   let idx = -1;
 
   if (b.id === 'event-duration') {
     numInput.endOfWriting = () => {
-      const _eventId = zones[zonesId.EVENTLIST].selection;
+      const _eventId = zones[zonesId.EVENTLIST].selection._dataId;
       if (numInput.elm.value === '') {
         b.textContent = '\u00A0';
         data.eventDuration[_eventId] = -1;
@@ -87,7 +88,7 @@ document.getElementById('edit-button').addEventListener('click', function() {
           numInput.endOfWriting = () => { endOfWriting() };
         }
         function endOfWriting() {
-          const _eventId = zones[zonesId.EVENTLIST].selection;
+          const _eventId = zones[zonesId.EVENTLIST].selection._dataId;
           numInput.elm.replaceWith(b);
           if (numInput.elm.value === '') {
             data.eventDuration[_eventId] = -1;
@@ -107,7 +108,7 @@ document.getElementById('edit-button').addEventListener('click', function() {
     };
   } else { // @nocheckin: we should probably set a special class on a button or somewhat like that
     numInput.endOfWriting = () => {
-      const _eventId = zones[zonesId.EVENTLIST].selection;
+      const _eventId = zones[zonesId.EVENTLIST].selection._dataId;
       if (numInput.elm.value === '') {
         b.textContent = '\u00A0';
         data.eventPersonalNumMap[_eventId][b._dIdx] = -1;conte
@@ -118,7 +119,7 @@ document.getElementById('edit-button').addEventListener('click', function() {
         }
         function endOfWriting() {
           numInput.elm.replaceWith(b);
-          const _eventId = zones[zonesId.EVENTLIST].selection;
+          const _eventId = zones[zonesId.EVENTLIST].selection._dataId;
           if (numInput.elm.value === '') {
             data.eventPersonalNumMap[_eventId][b._dIdx] = -1;
             return;
@@ -139,18 +140,19 @@ document.getElementById('edit-button').addEventListener('click', function() {
 });
 
 document.getElementById('delete-button').addEventListener('click', function() {
-  const id = state.target._dataId;
+  const id = state.delete_target._dataId;
   if (id == undefined) {
     throw new Error('undefined delete target data id');
   }
   let w = new BufferWriter();
-  switch (state.target._type) {
-    case buttonType.SIDE_MENU_STAFF:
+  switch (state.delete_target.parentElement._id) {
+    case listId.STAFF:
       Api.writeHeader(w, Api.Op.DELETE, Api.StateField.USERS_ID_MAP_ID);
       w.writeInt32(Number(state.target._dataId));
+      break;
 
     default:
-    throw new Error('incorrect delete target type');
+      throw new Error('incorrect delete target type');
   }
   Api.request(w)
   .then(resp => {
@@ -163,16 +165,16 @@ document.getElementById('delete-button').addEventListener('click', function() {
     return;
   });
   // we are deleting localy if we succeed to delete on the server
-  switch (state.target._type) {
-    case buttonType.SIDE_MENU_STAFF:
+  switch (state.delete_target.parentElement._id) {
+    case listId.STAFF:
       deleteValue(data.usersId, data.usersFreeList, id);
-      for (let list of data.OccurencesParticipant) {
-        deleteOccurences(id, list);
-      }
+      deleteOccurrences(data.occurrencesParticipant, id);
+      break;
+
     default:
     throw new Error('incorrect delete target type');
   }
-  state.target.remove();
+  state.delete_target.remove();
 });
 
 document.getElementById('create-button').addEventListener('click', () => {
