@@ -107,7 +107,7 @@ export function create(name, btnPlaceholder) {
   const container = objList[1];
   menu.children[1].style.setProperty('--width', '200px');
   menu.children[2].style.setProperty('--width', '200px');
-  objList[1]._create = createButtonWithInput(btnPlaceholder, objList[1]);
+  // objList[1]._create = createButtonWithInput(btnPlaceholder, objList[1]);
 
   searchInput.addEventListener('input', () => { updateList(searchInput, container); });
   return menu;
@@ -119,7 +119,7 @@ export function dynamise(menu, btnPlaceholder = '') {
   const container = objList[1];
   menu.children[1].style.setProperty('--width', '200px');
   menu.children[2].style.setProperty('--width', '200px');
-  objList[1]._createButton = createButton;
+  // objList[1]._create = createButton;
   if (btnPlaceholder != '') {
     objList[1]._btnPlaceholder = btnPlaceholder;
   }

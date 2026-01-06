@@ -58,7 +58,7 @@ func rebaseMap[K comparable](m map[K]int, freeList []int) {
   }
 }
 
-func shrinkArray[K comparable](a *[]K, freeList []int) {
+func shrinkArray[K any](a *[]K, freeList []int) {
   for i := 0; i < len(freeList); i++ {
     var limit int
     if i == len(freeList)-1 {

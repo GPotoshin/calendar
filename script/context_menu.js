@@ -1,8 +1,9 @@
 import { callbacks, elms } from './global_state.js';
 import { BufferWriter } from './io.js';
-import { listId } from './global_state.js';
+import { zonesId, listId, scopeId } from './global_state.js';
 import * as Api from './api.js';
 import { deleteValue, deleteOccurrences } from './data_manager.js';
+import { setUserButton, handleClickOnListButton } from './side_menu.js';
 
 let state = {
   delete_target: null,
@@ -177,8 +178,148 @@ document.getElementById('delete-button').addEventListener('click', function() {
   state.delete_target.remove();
 });
 
+function createListButtonWithInput(zone_id, btnPlaceholder, target) {
+  let b = document.createElement('button');
+  b.className = 'side-menu-list-button dynamic_bg deletable editable';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.placeholder = btnPlaceholder;
+  target.appendChild(b);
+  b.appendChild(input);
+  input.focus();
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const value = input.value;
+      input.remove();
+      b.textContent = value;
+      target._store(value);
+      b.addEventListener('click', function (){
+        handleClickOnListButton(b, zone_id);
+        if (zones[zone_id].selection._dataId >= 0 &&
+          zones[zonesId.VIEWTYPE].selection._dataId === viewId.INFORMATION) {
+          EventInfo.update();
+        }
+      });
+    } else if (e.key === 'Escape') {
+      b.remove();
+    }
+  });
+}
+
 document.getElementById('create-button').addEventListener('click', () => {
-  state.target._create();
+  switch (state.extend_target._id) {
+    case listId.EVENT:
+      createListButtonWithInput(zonesId.EVENTLIST, 'Nouvel Événement', elms.scope[scopeId.EVENT]);
+      break;
+    case listId.STAFF:
+      const target = elms.scope[scopeId.STAFF];
+      let b = document.createElement('button');
+      b.className = 'side-menu-list-button dynamic_bg deletable editable';
+      const inputName = document.createElement('input');
+      inputName.type = 'text';
+      inputName.placeholder = 'Prenom';
+      const inputSurname = document.createElement('input');
+      inputSurname.type = 'text';
+      inputSurname.placeholder = 'Nom';
+      const inputMatricule = document.createElement('input');
+      inputMatricule.type = 'text';
+      inputMatricule.placeholder = 'Matricule';
+      inputMatricule.classList = 'dynamic_bg';
+      inputMatricule.style.setProperty('--bg-color', 'transparent');
+      inputMatricule.addEventListener('input', () => {
+        inputMatricule.value = inputMatricule.value.replace(/\D/g, '');
+      });
+
+      function save() {
+        const name = inputName.value;
+        const surname = inputSurname.value;
+        const matricule = Number(inputMatricule.value);
+
+        if (data.usersId.has(Number(matricule))) {
+          inputMatricule.style.setProperty('--bg-color', palette.red);
+          return;
+        }
+
+        setUserButton(b, name, surname, matricule);
+
+        let w = new BufferWriter();
+        Api.writeHeader(w, Api.Op.CREATE, Api.StateField.USERS_ID_MAP_ID);
+        Api.writeCreateUserMapEntry(w, name, surname, matricule); 
+
+        inputName.remove();
+        inputSurname.remove();
+        inputMatricule.remove();
+        b.addEventListener('click', function (){
+          handleClickOnListButton(b, zonesId.STAFFLIST);
+          if (zones[zonesId.STAFFLIST].selection._dataId >= 0 &&
+            zones[zonesId.VIEWTYPE].selection._dataId === viewId.INFORMATION) {
+            EventInfo.update();
+          }
+        });
+
+        Api.request(w)
+          .then(resp => {
+            if (!resp.ok) {
+              throw new Error(`HTTP error! status: ${resp.status}`);
+              b.remove();
+              return;
+            }
+          })
+          .catch( e => {
+            console.error("Could not store ", name, e);
+          });
+      }
+
+      inputName.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          if (inputName.value !== '' &&
+            inputSurname.value !== '' &&
+            inputMatricule.value !== '') {
+            e.preventDefault();
+            save();
+          }
+          inputSurname.focus();
+        } else if (e.key === 'Escape') {
+          b.remove();
+        }
+      });
+      inputSurname.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          if (inputName.value !== '' &&
+            inputSurname.value !== '' &&
+            inputMatricule.value !== '') {
+            e.preventDefault();
+            save();
+          }
+          inputMatricule.focus();
+        } else if (e.key === 'Escape') {
+          b.remove();
+        }
+      });
+      inputMatricule.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          if (inputName.value !== '' &&
+            inputSurname.value !== '' &&
+            inputMatricule.value !== '') {
+            e.preventDefault();
+            save();
+          }
+        } else if (e.key === 'Escape') {
+          b.remove();
+        }
+      });
+      target.appendChild(b);
+      b.appendChild(inputName);
+      b.appendChild(inputSurname);
+      b.appendChild(inputMatricule);
+      inputName.focus();
+      break;
+    case listId.VENUE:
+      createListButtonWithInput(zonesId.VENUELIST, 'Nouveau Lieu', elms.scope[scopeId.VENUE]);
+      break;
+    default:
+  }
 });
 
 document.getElementById('toggle-button').addEventListener('click', () => {

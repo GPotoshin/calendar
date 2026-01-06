@@ -71,145 +71,6 @@ function storeFunctionMaker(stateField, map, arr, freeList) {
   };
 }
 
-function createListButtonWithInput(zone_id, btnPlaceholder, target) {
-  return () => {
-    let b = document.createElement('button');
-    b.className = 'side-menu-list-button dynamic_bg deletable editable';
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.placeholder = btnPlaceholder;
-    target.appendChild(b);
-    b.appendChild(input);
-    input.focus();
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const value = input.value;
-        input.remove();
-        b.textContent = value;
-        target._store(value);
-        b.addEventListener('click', function (){
-          handleClickOnListButton(b, zone_id);
-          if (zones[zone_id].selection._dataId >= 0 &&
-            zones[zonesId.VIEWTYPE].selection._dataId === viewId.INFORMATION) {
-            EventInfo.update();
-          }
-        });
-      } else if (e.key === 'Escape') {
-        b.remove();
-      }
-    });
-  };
-}
-
-function createUserButtonWithInput() {
-  const target = elms.scope[scopeId.STAFF];
-  let b = document.createElement('button');
-  b.className = 'side-menu-list-button dynamic_bg deletable editable';
-  const inputName = document.createElement('input');
-  inputName.type = 'text';
-  inputName.placeholder = 'Prenom';
-  const inputSurname = document.createElement('input');
-  inputSurname.type = 'text';
-  inputSurname.placeholder = 'Nom';
-  const inputMatricule = document.createElement('input');
-  inputMatricule.type = 'text';
-  inputMatricule.placeholder = 'Matricule';
-  inputMatricule.classList = 'dynamic_bg';
-  inputMatricule.style.setProperty('--bg-color', 'transparent');
-  inputMatricule.addEventListener('input', () => {
-    inputMatricule.value = inputMatricule.value.replace(/\D/g, '');
-  });
-
-  function save() {
-    const name = inputName.value;
-    const surname = inputSurname.value;
-    const matricule = Number(inputMatricule.value);
-
-    if (data.usersId.has(Number(matricule))) {
-      inputMatricule.style.setProperty('--bg-color', palette.red);
-      return;
-    }
-
-    setUserButton(b, name, surname, matricule);
-
-    let w = new BufferWriter();
-    Api.writeHeader(w, Api.Op.CREATE, Api.StateField.USERS_ID_MAP_ID);
-    Api.writeCreateUserMapEntry(w, name, surname, matricule); 
-
-    inputName.remove();
-    inputSurname.remove();
-    inputMatricule.remove();
-    b.addEventListener('click', function (){
-      handleClickOnListButton(b, zonesId.STAFFLIST);
-      if (zones[zonesId.STAFFLIST].selection._dataId >= 0 &&
-        zones[zonesId.VIEWTYPE].selection._dataId === viewId.INFORMATION) {
-        EventInfo.update();
-      }
-    });
-
-    Api.request(w)
-    .then(resp => {
-      if (!resp.ok) {
-        throw new Error(`HTTP error! status: ${resp.status}`);
-        b.remove();
-        return;
-      }
-    })
-    .catch( e => {
-      console.error("Could not store ", name, e);
-    });
-  }
-
-  inputName.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      if (inputName.value !== '' &&
-          inputSurname.value !== '' &&
-          inputMatricule.value !== '') {
-        e.preventDefault();
-        save();
-      }
-      inputSurname.focus();
-    } else if (e.key === 'Escape') {
-      b.remove();
-    }
-  });
-  inputSurname.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      if (inputName.value !== '' &&
-          inputSurname.value !== '' &&
-          inputMatricule.value !== '') {
-        e.preventDefault();
-        save();
-      }
-      inputMatricule.focus();
-    } else if (e.key === 'Escape') {
-      b.remove();
-    }
-  });
-  inputMatricule.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      if (inputName.value !== '' &&
-          inputSurname.value !== '' &&
-          inputMatricule.value !== '') {
-        e.preventDefault();
-        save();
-      }
-    } else if (e.key === 'Escape') {
-      b.remove();
-    }
-  });
-  target.appendChild(b);
-  b.appendChild(inputName);
-  b.appendChild(inputSurname);
-  b.appendChild(inputMatricule);
-  inputName.focus();
-}
-
-elms.scope[scopeId.EVENT]._create = createListButtonWithInput(zonesId.EVENTLIST, 'Nouvel Événement', elms.scope[scopeId.EVENT]);
-elms.scope[scopeId.STAFF]._create = createUserButtonWithInput;
-elms.scope[scopeId.VENUE]._create = createListButtonWithInput(zonesId.VENUELIST, 'Nouveau Lieu', elms.scope[scopeId.VENUE]);
-
 elms.scope[scopeId.EVENT]._store =
   storeFunctionMaker(
     Api.StateField.EVENTS_ID_MAP_ID,
@@ -279,7 +140,7 @@ export function composeList(m, names, scope_id, zone_id) {
   }
 }
 
-function setUserButton(b, name, surname, mat) {
+export function setUserButton(b, name, surname, mat) {
     b._dataId = mat;
 
     let left = document.createElement('span');
@@ -300,7 +161,7 @@ export function composeUsersList() {
   }
 }
 
-function handleClickOnListButton(b, zn) {
+export function handleClickOnListButton(b, zn) {
   const z = zones[zn];
   if (z.selection == b) {
     b.style.setProperty('--bg-color', 'transparent');

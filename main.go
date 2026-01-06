@@ -14,7 +14,7 @@ import (
   "io"
   "bufio"
   "strings"
-  "crypto/sha256"
+  // "crypto/sha256"
 )
 
 type HeaderPair struct {
@@ -110,7 +110,7 @@ type ApplicationState struct {
   RolesFreeId []int32
   RolesFreeList []int
 
-  OccerencesId map[int32]int // id -> idx
+  OccurrencesId map[int32]int // id -> idx
   OccurrencesVenue []int32
   OccurrencesDates [][][2]int32 // idea is that every event can happen in intervals and we store the borders of those intervals
   OccurrencesParticipant [][]int32
@@ -134,7 +134,7 @@ type ApplicationState struct {
 
 var state ApplicationState
 
-func rebaseStat() {
+func rebaseState() {
   rebaseMap(state.UsersId, state.UsersFreeList)
   shrinkArray(&state.UsersPassword, state.UsersFreeList)
   shrinkArray(&state.UsersName, state.UsersFreeList)
@@ -168,11 +168,11 @@ func rebaseStat() {
   state.RolesFreeList = state.RolesFreeList[:0]
 
   rebaseMap(state.OccurrencesId, state.OccurrencesFreeList)
-  shrinkArray(&state.OccurrencesVenue, state.OccurrenceFreeList)
-  shrinkArray(&state.OccurrencesDates, state.OccurrenceFreeList)
-  shrinkArray(&state.OccurrencesParticipant, state.OccurrenceFreeList)
-  shrinkArray(&state.OccurrencesParticipantsRole, state.OccurrenceFreeList)
-  state.OccurrencesFreeList = state.OccurencesFreeList[:0]
+  shrinkArray(&state.OccurrencesVenue, state.OccurrencesFreeList)
+  shrinkArray(&state.OccurrencesDates, state.OccurrencesFreeList)
+  shrinkArray(&state.OccurrencesParticipant, state.OccurrencesFreeList)
+  shrinkArray(&state.OccurrencesParticipantsRole, state.OccurrencesFreeList)
+  state.OccurrencesFreeList = state.OccurrencesFreeList[:0]
 }
 
 func readApplicationState(r io.Reader) (ApplicationState, error) {
@@ -269,7 +269,7 @@ func readApplicationState(r io.Reader) (ApplicationState, error) {
     return state, fmt.Errorf("failed to read RolesFreeId: %w", err)
   }
 
-  if state.OccerencesId, err = readMapInt32Int(r); err != nil {
+  if state.OccurrencesId, err = readMapInt32Int(r); err != nil {
     return state, fmt.Errorf("failed to read OccerencesId: %w", err)
   }
   if state.OccurrencesVenue, err = readInt32Array(r); err != nil {
@@ -297,16 +297,16 @@ func writeApplicationState(w io.Writer, state ApplicationState) error {
     return fmt.Errorf("Failed to store data [file format]: %v\n", err)
   }
 
-  idx := storageIndex(state.UsersId, &state.UsersFreeList)
-  state.UsersId[0] = idx
-  storeValue(&state.UsersPassword, idx, sha256.Sum256([]byte("admin")))
-  storeValue(&state.UsersName, idx, "Admin")
-  storeValue(&state.UsersSurname, idx, "Adminovich")
-  storeValue(&state.UsersMail, idx, "admin@mail.fr")
-  storeValue(&state.UsersPhone, idx, 0)
-  storeValue(&state.UsersCompetences, idx, []int32{})
-  storeValue(&state.UsersDutyStation, idx, 0)
-  storeValue(&state.UsersPrivilegeLevel, idx, PRIVILEGE_LEVEL_ADMIN)
+  // idx := storageIndex(state.UsersId, &state.UsersFreeList)
+  // state.UsersId[2] = idx
+  // storeValue(&state.UsersPassword, idx, sha256.Sum256([]byte("chef")))
+  // storeValue(&state.UsersName, idx, "Chef")
+  // storeValue(&state.UsersSurname, idx, "Chefovich")
+  // storeValue(&state.UsersMail, idx, "chef@mail.fr")
+  // storeValue(&state.UsersPhone, idx, 0)
+  // storeValue(&state.UsersCompetences, idx, []int32{})
+  // storeValue(&state.UsersDutyStation, idx, 0)
+  // storeValue(&state.UsersPrivilegeLevel, idx, 0)
 
   // Write Users data
   if err := writeMapInt32Int(w, state.UsersId); err != nil {
@@ -397,7 +397,7 @@ func writeApplicationState(w io.Writer, state ApplicationState) error {
   }
 
   // Write Occurrences data
-  if err := writeMapInt32Int(w, state.OccerencesId); err != nil {
+  if err := writeMapInt32Int(w, state.OccurrencesId); err != nil {
     return fmt.Errorf("failed to write OccerencesId: %w", err)
   }
   if err := writeInt32Array(w, state.OccurrencesVenue); err != nil {
@@ -499,7 +499,7 @@ func writeAdminData(w io.Writer, state ApplicationState) error {
   }
 
   // Write Occurrences data
-  if err := writeMapInt32Int(w, state.OccerencesId); err != nil {
+  if err := writeMapInt32Int(w, state.OccurrencesId); err != nil {
     return fmt.Errorf("failed to write OccerencesId: %w", err)
   }
   if err := writeInt32Array(w, state.OccurrencesVenue); err != nil {
@@ -551,6 +551,15 @@ func middleware(handler http.Handler) http.Handler {
   })
 }
 
+func createMaps() {
+  if state.UsersId        == nil { state.UsersId        = make(map[int32]int) }
+  if state.EventsId       == nil { state.EventsId       = make(map[int32]int) }
+  if state.VenuesId       == nil { state.VenuesId       = make(map[int32]int) }
+  if state.CompetencesId  == nil { state.CompetencesId  = make(map[int32]int) }
+  if state.RolesId        == nil { state.RolesId        = make(map[int32]int) }
+  if state.OccurrencesId  == nil { state.OccurrencesId  = make(map[int32]int) }
+}
+
 func main() {
   sigChan := make(chan os.Signal, 1)
   signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
@@ -558,19 +567,20 @@ func main() {
   // reading data
   file, err := os.OpenFile("data.db", os.O_RDWR, 0644)
   if err != nil {
+    createMaps()
     file, err = os.Create("data.db")
     if err != nil {
       log.Fatal(err)
     }
   } else {
     reader := bufio.NewReader(file)
-
     state, err = readApplicationState(reader)
     if err != nil {
-      log.Println("State is partially set because of: ", err)
+      createMaps()
+      log.Println("State is only partialy set: ", err)
     }
   }
-  
+
   log.Println(state)
 
   state.initAuth()
@@ -582,6 +592,7 @@ func main() {
     if _, err := file.Seek(0, 0); err != nil {
       log.Printf("Failed to seek to beginning: %v\n", err)
     }
+    rebaseState()
     writer := bufio.NewWriter(file)
     if err = writeApplicationState(writer, state); err != nil {
       log.Printf("Failed to store data [binary]: %v\n", err)
