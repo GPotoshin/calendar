@@ -15,11 +15,11 @@ import (
   "os"
 )
 
-func (s *ApplicationState) initAuth() {
+func (s *State) initAuth() {
   s.ConnectionsToken = make(map[[32]byte]int)
 }
 
-func (s *ApplicationState) generateKeys() error {
+func (s *State) generateKeys() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -32,7 +32,7 @@ func (s *ApplicationState) generateKeys() error {
 	return err
 }
 
-func (s *ApplicationState) getPublicKey() []byte {
+func (s *State) getPublicKey() []byte {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
   retval := make([]byte, len(s.publicKey))
@@ -40,13 +40,13 @@ func (s *ApplicationState) getPublicKey() []byte {
 	return retval
 }
 
-func (s *ApplicationState) decrypt(data []byte) ([]byte, error) {
+func (s *State) decrypt(data []byte) ([]byte, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return rsa.DecryptOAEP(sha256.New(), rand.Reader, s.privateKey, data, nil)
 }
 
-func (s *ApplicationState) validateToken(token [32]byte) (int32, bool) {
+func (s *State) validateToken(token [32]byte) (int32, bool) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
@@ -62,7 +62,7 @@ func (s *ApplicationState) validateToken(token [32]byte) (int32, bool) {
 	return s.ConnectionsUser[idx], true
 }
 
-func (s *ApplicationState) cleanupExpiredTokens() {
+func (s *State) cleanupExpiredTokens() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -80,7 +80,7 @@ func (s *ApplicationState) cleanupExpiredTokens() {
 	}
 }
 
-func (s *ApplicationState) startKeyRotation() {
+func (s *State) startKeyRotation() {
   if err := s.generateKeys(); err != nil {
     log.Printf("Failed to iniate auth keys: %v\n", err)
     os.Exit(1)
@@ -98,7 +98,7 @@ func (s *ApplicationState) startKeyRotation() {
 	}()
 }
 
-func (s *ApplicationState) startTokenCleanup() {
+func (s *State) startTokenCleanup() {
 	ticker := time.NewTicker(1 * time.Hour)
 	go func() {
 		for range ticker.C {

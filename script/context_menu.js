@@ -1,8 +1,8 @@
 import { callbacks, elms } from './global_state.js';
-import { BufferWriter } from './io.js';
+import { BufferReader, BufferWriter } from './io.js';
 import { zonesId, listId, scopeId } from './global_state.js';
 import * as Api from './api.js';
-import { deleteValue, deleteOccurrences } from './data_manager.js';
+import { storageIndex, deleteValue, deleteOccurrences } from './data_manager.js';
 import { setUserButton, handleClickOnListButton } from './side_menu.js';
 
 let state = {
@@ -178,24 +178,47 @@ document.getElementById('delete-button').addEventListener('click', function() {
   state.delete_target.remove();
 });
 
-function createListButtonWithInput(zone_id, btnPlaceholder, target) {
+function createEventOrVenue(placeholder, api, map, arr, freeList) {
   let b = document.createElement('button');
   b.className = 'side-menu-list-button dynamic_bg deletable editable';
   const input = document.createElement('input');
   input.type = 'text';
-  input.placeholder = btnPlaceholder;
-  target.appendChild(b);
+  input.placeholder = placeholder;
+  state.extend_target.appendChild(b);
   b.appendChild(input);
   input.focus();
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      const value = input.value;
+      const val = input.value;
       input.remove();
-      b.textContent = value;
-      target._store(value);
+
+      // we instantly react
+      b.textContent = val;
+      let w = new BufferWriter();
+      Api.writeHeader(w, Api.Op.CREATE, api);
+      w.writeString(val);
+      Api.request(w)
+        .then(resp => {
+          if (!resp.ok) {
+            throw new Error(`HTTP error! status: ${resp.status}`);
+          }
+          resp.arrayBuffer()
+            .then(bin => {
+              let r = new BufferReader(bin);
+              let id = r.readInt32();
+              let idx = storageIndex(map, freeList);
+              map[id] = idx;
+              arr[idx] = val;
+              b.textContent = '';
+              setNameAndId(b, val, id);
+            });
+        })
+        .catch(e => {
+          console.error("Could not store ", name, e);
+        });
       b.addEventListener('click', function (){
-        handleClickOnListButton(b, zone_id);
+        handleClickOnListButton(b, zonesId.EVENTLIST);
         if (zones[zone_id].selection._dataId >= 0 &&
           zones[zonesId.VIEWTYPE].selection._dataId === viewId.INFORMATION) {
           EventInfo.update();
@@ -210,11 +233,17 @@ function createListButtonWithInput(zone_id, btnPlaceholder, target) {
 document.getElementById('create-button').addEventListener('click', () => {
   switch (state.extend_target._id) {
     case listId.EVENT:
-      createListButtonWithInput(zonesId.EVENTLIST, 'Nouvel Événement', elms.scope[scopeId.EVENT]);
+      createEventOrVenue(
+        'Nouvel Événement',
+        Api.StateField.EVENTS_ID_MAP_ID,
+        data.eventsId,
+        data.eventsName,
+        data.eventsFreeList,
+      );
       break;
     case listId.STAFF:
+  let b = document.createElement('button');
       const target = elms.scope[scopeId.STAFF];
-      let b = document.createElement('button');
       b.className = 'side-menu-list-button dynamic_bg deletable editable';
       const inputName = document.createElement('input');
       inputName.type = 'text';
@@ -316,7 +345,6 @@ document.getElementById('create-button').addEventListener('click', () => {
       inputName.focus();
       break;
     case listId.VENUE:
-      createListButtonWithInput(zonesId.VENUELIST, 'Nouveau Lieu', elms.scope[scopeId.VENUE]);
       break;
     default:
   }

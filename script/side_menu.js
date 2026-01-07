@@ -46,39 +46,6 @@ elms.scope[scopeId.STAFF]._id = listId.STAFF;
 elms.scope[scopeId.VENUE].className = 'extendable v-container grow';
 elms.scope[scopeId.VENUE]._id = listId.VENUE;
 
-function storeFunctionMaker(stateField, map, arr, freeList) {
-  return (name) => {
-    let w = new BufferWriter();
-    Api.writeHeader(w, Api.Op.CREATE, Api.StateField.EVENTS_ID_MAP_ID);
-   Api.writeCreateMapEntry(w, name);
-    Api.request(w)
-    .then(resp => {
-      if (!resp.ok) {
-        throw new Error(`HTTP error! status: ${resp.status}`);
-      }
-      resp.arrayBuffer()
-      .then(bin => {
-        let r = new BufferReader(bin);
-        let id = r.readInt32();
-        let idx = DM.storageIndex(map, freeList);
-        map[id] = idx;
-        arr[idx] = name;
-      });
-    })
-    .catch(e => {
-      console.error("Could not store ", name, e);
-    });
-  };
-}
-
-elms.scope[scopeId.EVENT]._store =
-  storeFunctionMaker(
-    Api.StateField.EVENTS_ID_MAP_ID,
-    data.eventsId,
-    data.eventsName,
-    data.eventsFreeList,
-  );
-
 hContainer.append(bContainer);
 elms.dataListContainer = lContainer;
 
@@ -123,20 +90,23 @@ function createListButton(zone_id) {
   }
 }
 
+export function setNameAndId(b, name, id) {
+    b._dataId = id;
+    let span = document.createElement('span');
+    span.textContent = name;
+    b.appendChild(span);
+    span = document.createElement('span');
+    span.classList = 'color-grey';
+    span.textContent = '#'+id;
+    b.appendChild(span);
+}
+
 export function composeList(m, names, scope_id, zone_id) {
   for (const [id, idx] of m) {
     const name = names[idx];
     let button = createListButton(zone_id)();
+    setNameAndId(button, name, id);
     elms.scope[scope_id].appendChild(button);
-    button._dataId = id;
-
-    let span = document.createElement('span');
-    span.textContent = name;
-    button.appendChild(span);
-    span = document.createElement('span');
-    span.classList = 'color-grey';
-    span.textContent = '#'+id;
-    button.appendChild(span);
   }
 }
 

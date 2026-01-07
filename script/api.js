@@ -50,9 +50,6 @@ export function writeHeader(w, op, stateField) {
   w.writeInt32(stateField);
 }
 
-export function writeCreateMapEntry(w, name) {
-  w.writeString(name);
-}
 
 export function writeCreateUserMapEntry(w, name, surname, mat) {
   w.writeString(name);

@@ -1,3 +1,4 @@
+
 export function storageIndex(map, freeList) {
   if (freeList.length > 0) {
     return freeList.pop();
@@ -5,6 +6,8 @@ export function storageIndex(map, freeList) {
     return map.size;
   }
 }
+
+export const newId = storageIndex;
 
 export function storeValue(array, idx, value) {
   if (idx >= 0 && idx < array.length) {
@@ -81,6 +84,7 @@ export class DataManager {
 
     this.competencesId = new Map();
     this.competencesName = [];
+    this.competencesFreeId = [];
     this.competencesFreeList = [];
 
     this.rolesId = new Map();
@@ -95,44 +99,44 @@ export class DataManager {
     this.occurrencesFreeList = [];
   }
 
-  read(reader) {
-    const expectedVersion = "admin_data.v0.0.1";
-    const actualVersion = reader.readString();
+  read(r) {
+    const expectedVersion = "admin_data.v0.0.3";
+    const actualVersion = r.readString();
     
     if (expectedVersion !== actualVersion) {
       throw new Error(`Format mismatch. Found: ${actualVersion}, Expected: ${expectedVersion}`);
     }
 
-    this.usersId = reader.readMapInt32Int();
-    this.usersName = reader.readStringArray();
-    this.usersSurname = reader.readStringArray();
-    this.usersMail = reader.readStringArray();
-    this.usersPhone = reader.readInt32Array();
-    this.usersCompetences = reader.readArrayOfInt32Arrays();
-    this.usersDutyStation = reader.readInt32Array();
-    this.usersPrivilageLevel = reader.readInt32Array();
+    this.usersId = r.readMapInt32Int();
+    this.usersName = r.readStringArray();
+    this.usersSurname = r.readStringArray();
+    this.usersMail = r.readStringArray();
+    this.usersPhone = r.readInt32Array();
+    this.usersCompetences = r.readArrayOfInt32Arrays();
+    this.usersDutyStation = r.readInt32Array();
+    this.usersPrivilageLevel = r.readInt32Array();
 
-    this.eventsId = reader.readMapInt32Int();
-    this.eventsName = reader.readStringArray();
-    this.eventsVenue = reader.readArrayOfInt32Arrays();
-    this.eventsRole = reader.readArrayOfInt32Arrays();
-    this.eventsRolesRequirement = reader.readArrayOfArrayOfInt32Arrays();
-    this.eventsPersonalNumMap = reader.readArrayOfArrayOfInt32Arrays();
-    this.eventsDuration = reader.readInt32Array();
+    this.eventsId = r.readMapInt32Int();
+    this.eventsName = r.readStringArray();
+    this.eventsVenue = r.readArrayOfInt32Arrays();
+    this.eventsRole = r.readArrayOfInt32Arrays();
+    this.eventsRolesRequirement = r.readArrayOfArrayOfInt32Arrays();
+    this.eventsPersonalNumMap = r.readArrayOfArrayOfInt32Arrays();
+    this.eventsDuration = r.readInt32Array();
 
-    this.venuesId = reader.readMapInt32Int();
-    this.venuesName = reader.readStringArray();
+    this.venuesId = r.readMapInt32Int();
+    this.venuesName = r.readStringArray();
 
-    this.competencesId = reader.readMapInt32Int();
-    this.competencesName = reader.readStringArray();
+    this.competencesId = r.readMapInt32Int();
+    this.competencesName = r.readStringArray();
 
-    this.rolesId = reader.readMapInt32Int();
-    this.rolesName = reader.readStringArray();
+    this.rolesId = r.readMapInt32Int();
+    this.rolesName = r.readStringArray();
 
-    this.occurrencesId = reader.readMapInt32Int();
-    this.occurrencesVenue = reader.readInt32Array();
-    this.occurrencesDates = reader.readArrayOfInt32PairArrays(); 
-    this.occurrencesParticipant = reader.readArrayOfInt32Arrays();
-    this.occurrencesParticipantsRole = reader.readArrayOfInt32Arrays();
+    this.occurrencesId = r.readMapInt32Int();
+    this.occurrencesVenue = r.readInt32Array();
+    this.occurrencesDates = r.readArrayOfInt32PairArrays(); 
+    this.occurrencesParticipant = r.readArrayOfInt32Arrays();
+    this.occurrencesParticipantsRole = r.readArrayOfInt32Arrays();
   }
 }

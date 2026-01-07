@@ -49,6 +49,9 @@ func deleteValue(m map[int32]int, freeId *[]int32, freeList *[]int, id int32) {
 }
 
 func rebaseMap[K comparable](m map[K]int, freeList []int) {
+  if len(freeList) == 0 {
+    return
+  }
   for key, idx := range m {
     count := 0
     for count < len(freeList) && freeList[count]<idx {
