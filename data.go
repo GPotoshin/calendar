@@ -44,7 +44,6 @@ func deleteValue(m map[int32]int, freeId *[]int32, freeList *[]int, id int32) {
     }
     *freeList = append(*freeList, idx)
     
-    delete(m, id)
   }
 }
 
@@ -65,16 +64,16 @@ func shrinkArray[K any](a *[]K, freeList []int) {
   for i := 0; i < len(freeList); i++ {
     var limit int
     if i == len(freeList)-1 {
-      limit = len(*a)-1-i;
+      limit = len(*a)-1-i
     } else {
-      limit = freeList[i+1]-1-i
+      limit = min(len(*a)-1-i, freeList[i+1]-1-i)
     }
 
     for j := freeList[i]-i; j < limit; j++ {
       (*a)[j] = (*a)[j+1+i]
     }
   }
-  *a = (*a)[:len(*a)-len(freeList)]
+  *a = (*a)[:max(len(*a)-len(freeList),0)]
 }
 
 func getById[K, T comparable](id K, m map[K]int, a []T) (T, bool) {
@@ -86,14 +85,14 @@ func getById[K, T comparable](id K, m map[K]int, a []T) (T, bool) {
   return retval, exists
 }
 
-func deleteOccurrences(array *[][]int32, value int32) {
-	for i := range *array {
-		temp := (*array)[i][:0]
-		for _, arrayValue := range (*array)[i] {
-			if arrayValue != value {
-				temp = append(temp, arrayValue)
+func deleteOccurrences(arr [][]int32, val int32) {
+	for i := range arr {
+		tmp := arr[i][:0]
+		for _, arr_val := range arr[i] {
+			if arr_val != val {
+				tmp = append(tmp, arr_val)
 			}
 		}
-		(*array)[i] = temp
+		arr[i] = tmp
 	}
 }

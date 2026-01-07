@@ -1,9 +1,9 @@
 import { callbacks, elms } from './global_state.js';
 import { BufferReader, BufferWriter } from './io.js';
-import { zonesId, listId, scopeId } from './global_state.js';
+import { zones, zonesId, listId, scopeId } from './global_state.js';
 import * as Api from './api.js';
 import { storageIndex, deleteValue, deleteOccurrences } from './data_manager.js';
-import { setUserButton, handleClickOnListButton } from './side_menu.js';
+import { setNameAndId, setUserButton, handleClickOnListButton } from './side_menu.js';
 
 let state = {
   delete_target: null,
@@ -18,25 +18,6 @@ function handleClickForContextMenu() {
   for (const child of menu.children) {
     child.classList.replace('disp-block', 'disp-none');
   }
-}
-
-function postString(url, str) { // @nocheckin
-  let writer = new BufferWriter();
-  writer.writeString(str);
-  fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/octet-stream',
-    },
-    body: writer.getBuffer(),
-  })
-    .then(resp => {
-      if (!resp.ok) {
-        throw new Error(`HTTP error! status: ${resp.status}`);
-      }})
-    .catch(e => {
-      console.error(`Error: ${e}`);
-    });
 }
 
 function handleAddToList(target, placeholder, url, storage) { // @nocheckin
@@ -60,7 +41,6 @@ function handleAddToList(target, placeholder, url, storage) { // @nocheckin
       });
 
       button.className = 'hover';
-      postString(url, value);
     } else if (e.key === 'Escape') {
       input.remove();
     }
@@ -140,21 +120,29 @@ document.getElementById('edit-button').addEventListener('click', function() {
   }
 });
 
+
 document.getElementById('delete-button').addEventListener('click', function() {
   const id = state.delete_target._dataId;
   if (id == undefined) {
     throw new Error('undefined delete target data id');
   }
   let w = new BufferWriter();
+  let state_field = -1;
   switch (state.delete_target.parentElement._id) {
     case listId.STAFF:
-      Api.writeHeader(w, Api.Op.DELETE, Api.StateField.USERS_ID_MAP_ID);
-      w.writeInt32(Number(state.target._dataId));
+      state_field = Api.StateField.USERS_ID_MAP_ID;
       break;
-
+    case listId.VENUE:
+      state_field = Api.StateField.VENUES_ID_MAP_ID;
+      break;
+    case listId.EVENT:
+      state_field = Api.StateField.EVENTS_ID_MAP_ID;
+      break;
     default:
       throw new Error('incorrect delete target type');
   }
+  Api.writeHeader(w, Api.Op.DELETE, state_field);
+  w.writeInt32(Number(id));
   Api.request(w)
   .then(resp => {
     if (!resp.ok) {
@@ -166,10 +154,19 @@ document.getElementById('delete-button').addEventListener('click', function() {
     return;
   });
   // we are deleting localy if we succeed to delete on the server
-  switch (state.delete_target.parentElement._id) {
+  switch (state.delete_target.parentElement._id) { // fill that switch
     case listId.STAFF:
       deleteValue(data.usersId, data.usersFreeList, id);
       deleteOccurrences(data.occurrencesParticipant, id);
+      break;
+
+    case listId.VENUE:
+      deleteValue(data.venuesId, data.venuesFreeList, id);
+      deleteOccurrences(data.eventsVenues, id);
+      break;
+
+    case listId.EVENT:
+      deleteValue(data.eventsId, data.eventsFreeList, id);
       break;
 
     default:
@@ -178,7 +175,7 @@ document.getElementById('delete-button').addEventListener('click', function() {
   state.delete_target.remove();
 });
 
-function createEventOrVenue(placeholder, api, map, arr, freeList) {
+function createEventOrVenue(placeholder, api, map, arr, freeList, zone_id) {
   let b = document.createElement('button');
   b.className = 'side-menu-list-button dynamic_bg deletable editable';
   const input = document.createElement('input');
@@ -218,7 +215,7 @@ function createEventOrVenue(placeholder, api, map, arr, freeList) {
           console.error("Could not store ", name, e);
         });
       b.addEventListener('click', function (){
-        handleClickOnListButton(b, zonesId.EVENTLIST);
+        handleClickOnListButton(b, zone_id);
         if (zones[zone_id].selection._dataId >= 0 &&
           zones[zonesId.VIEWTYPE].selection._dataId === viewId.INFORMATION) {
           EventInfo.update();
@@ -239,6 +236,7 @@ document.getElementById('create-button').addEventListener('click', () => {
         data.eventsId,
         data.eventsName,
         data.eventsFreeList,
+        zonesId.EVENTLIST,
       );
       break;
     case listId.STAFF:
@@ -345,6 +343,14 @@ document.getElementById('create-button').addEventListener('click', () => {
       inputName.focus();
       break;
     case listId.VENUE:
+      createEventOrVenue(
+        'Nouveau Lieu',
+        Api.StateField.VENUES_ID_MAP_ID,
+        data.venuesId,
+        data.venuesName,
+        data.venuesFreeList,
+        zonesId.VENUELIST,
+      );
       break;
     default:
   }

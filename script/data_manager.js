@@ -57,6 +57,7 @@ export function deleteOccurrences(array, value) {
     array[i] = array[i].filter(arrayValue => arrayValue !== value);
   }
 }
+
 export class DataManager {
   constructor() {
     this.usersId = new Map();
@@ -71,7 +72,7 @@ export class DataManager {
 
     this.eventsId = new Map();
     this.eventsName = [];
-    this.eventsVenue = [];
+    this.eventsVenues = [];
     this.eventsRole = [];
     this.eventsRolesRequirement = [];
     this.eventsPersonalNumMap = [];
@@ -118,7 +119,7 @@ export class DataManager {
 
     this.eventsId = r.readMapInt32Int();
     this.eventsName = r.readStringArray();
-    this.eventsVenue = r.readArrayOfInt32Arrays();
+    this.eventsVenues = r.readArrayOfInt32Arrays();
     this.eventsRole = r.readArrayOfInt32Arrays();
     this.eventsRolesRequirement = r.readArrayOfArrayOfInt32Arrays();
     this.eventsPersonalNumMap = r.readArrayOfArrayOfInt32Arrays();

@@ -87,7 +87,7 @@ type State struct {
 
   EventsId map[int32]int // id -> idx
   EventsName []string
-  EventsVenue [][]int32
+  EventsVenues [][]int32
   EventsRole [][]int32
   EventsRolesRequirement [][][]int32
   EventsPresonalNumMap [][][]int32
@@ -148,7 +148,7 @@ func rebaseState() {
 
   rebaseMap(state.EventsId, state.EventsFreeList)
   shrinkArray(&state.EventsName, state.EventsFreeList)
-  shrinkArray(&state.EventsVenue, state.EventsFreeList)
+  shrinkArray(&state.EventsVenues, state.EventsFreeList)
   shrinkArray(&state.EventsRole, state.EventsFreeList)
   shrinkArray(&state.EventsRolesRequirement, state.EventsFreeList)
   shrinkArray(&state.EventsPresonalNumMap, state.EventsFreeList)
@@ -220,8 +220,8 @@ func readState(r io.Reader) (State, error) {
   if state.EventsName, err = readStringArray(r); err != nil {
     return state, fmt.Errorf("failed to read EventsName: %w", err)
   }
-  if state.EventsVenue, err = readArrayOfInt32Arrays(r); err != nil {
-    return state, fmt.Errorf("failed to read EventsVenue: %w", err)
+  if state.EventsVenues, err = readArrayOfInt32Arrays(r); err != nil {
+    return state, fmt.Errorf("failed to read EventsVenues: %w", err)
   }
   if state.EventsRole, err = readArrayOfInt32Arrays(r); err != nil {
     return state, fmt.Errorf("failed to read EventsRole: %w", err)
@@ -359,8 +359,8 @@ func writeState(w io.Writer, state State, dest int32) error {
   if err := writeStringArray(w, state.EventsName); err != nil {
     return fmt.Errorf("failed to write EventsName: %w", err)
   }
-  if err := writeArrayOfInt32Arrays(w, state.EventsVenue); err != nil {
-    return fmt.Errorf("failed to write EventsVenue: %w", err)
+  if err := writeArrayOfInt32Arrays(w, state.EventsVenues); err != nil {
+    return fmt.Errorf("failed to write EventsVenues: %w", err)
   }
   if err := writeArrayOfInt32Arrays(w, state.EventsRole); err != nil {
     return fmt.Errorf("failed to write EventsRole: %w", err)
@@ -642,48 +642,28 @@ const (
   UPDATE
 ) 
 
-func handleMapInt32Int(
+func handleSimpleCreate(
   r io.Reader,
   w http.ResponseWriter,
-  mode int32,
-  privilege_level int32,
   m map[int32]int,
   names *[]string,
   freeId *[]int32,
   freeList *[]int,
 ) {
-  switch mode {
-  case CREATE:
-    // check
-    if privilege_level != PRIVILEGE_LEVEL_ADMIN {
-      return
-    }
-    // input
-    str, err := readString(r)
-    log.Printf("the input is '%s'\n", str)
-    if err != nil {
-      log.Print(err)
-      http.Error(w, err.Error(), http.StatusBadRequest)
-      return
-    }
-
-    // modifiction
-    id := newId(m, freeId)
-    idx := storageIndex(m, freeList)
-    m[id] = idx
-    storeValue(names, idx, str)
-
-    //output
-    writeInt32(w, id)
-  case REQUEST:
-    http.Error(w, "we do not support that", http.StatusBadRequest)
-  case DELETE:
-    http.Error(w, "we do not support that", http.StatusBadRequest)
-  case UPDATE:
-    http.Error(w, "we do not support that", http.StatusBadRequest)
-  default:
-    http.Error(w, "incorrect mode", http.StatusBadRequest)
+  str, err := readString(r)
+  if err != nil {
+    log.Print(err)
+    http.Error(w, err.Error(), http.StatusBadRequest)
+    return
   }
+  log.Printf("the input is '%s'\n", str)
+
+  id := newId(m, freeId)
+  idx := storageIndex(m, freeList)
+  m[id] = idx
+  storeValue(names, idx, str)
+
+  writeInt32(w, id)
 }
 
 func handleApi(w http.ResponseWriter, r *http.Request) {
@@ -809,7 +789,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
           return
         }
         deleteValue(state.UsersId, nil, &state.UsersFreeList, mat)
-        deleteOccurrences(&state.OccurrencesParticipant, mat)
+        deleteOccurrences(state.OccurrencesParticipant, mat)
         for token, idx := range state.ConnectionsToken {
           if state.ConnectionsUser[idx] == mat {
             deleteToken(state.ConnectionsToken, &state.ConnectionsFreeList, token)
@@ -844,16 +824,37 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     return
 
   case EVENTS_ID_MAP_ID:
-    handleMapInt32Int(
-      r.Body,
-      w,
-      mode,
-      p_level,
-      state.EventsId,
-      &state.EventsName,
-      &state.EventsFreeId,
-      &state.EventsFreeList,
-    )
+    if p_level != PRIVILEGE_LEVEL_ADMIN { return }
+    switch mode {
+    case CREATE:
+      handleSimpleCreate(
+        r.Body,
+        w,
+        state.EventsId,
+        &state.EventsName,
+        &state.EventsFreeId,
+        &state.EventsFreeList,
+      )
+
+    case DELETE:
+      id, err := readInt32(r.Body)
+      if err != nil {
+        log.Println("can't read id ", err)
+        http.Error(w, "incorrect api", http.StatusBadRequest)
+        return
+      }
+
+      _, exists := state.EventsId[id]
+      if !exists {
+        log.Println("matricule already does not exist")
+        return
+      }
+      deleteValue(state.EventsId, &state.EventsFreeId, &state.EventsFreeList, id)
+
+    default:
+      http.Error(w, "we do not support that", http.StatusBadRequest)
+      return
+    }
   case EVENTS_NAME_ID:
     // handleArrayOfStrings(r.Body, w, mode, &state.EventsName, &state.EventsFreeList)
     http.Error(w, "we do not support that", http.StatusBadRequest)
@@ -875,8 +876,39 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     return
 
   case VENUES_ID_MAP_ID:
-    http.Error(w, "we do not support that", http.StatusBadRequest)
-    return
+    if p_level != PRIVILEGE_LEVEL_ADMIN { return }
+    switch mode {
+    case CREATE:
+      handleSimpleCreate(
+        r.Body,
+        w,
+        state.VenuesId,
+        &state.VenuesName,
+        &state.VenuesFreeId,
+        &state.VenuesFreeList,
+      )
+
+    case DELETE:
+      id, err := readInt32(r.Body)
+      if err != nil {
+        log.Println("can't read id ", err)
+        http.Error(w, "incorrect api", http.StatusBadRequest)
+        return
+      }
+
+      _, exists := state.EventsId[id]
+      if !exists {
+        log.Println("matricule already does not exist")
+        return
+      }
+      deleteValue(state.VenuesId, &state.VenuesFreeId, &state.VenuesFreeList, id)
+      deleteOccurrences(state.EventsVenues, id);
+
+    default:
+      http.Error(w, "we do not support that", http.StatusBadRequest)
+      return
+    }
+
   case VENUES_NAME_ID:
     http.Error(w, "we do not support that", http.StatusBadRequest)
     return

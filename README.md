@@ -16,24 +16,25 @@ end of writing. It should be a single line add.
 + we should have all systems to create the same _store() thing
 
 ## TODO
-+ we should have a custom error window
-+ CDU for left side menu
-+ settings for calendar
-+ show settings for events
-    * rework that as a list
-+ show lists of data
-+ not yet planed events list
-+ event placing
-+ correct month swapping (almost, it can fail with fast month scrolling)
-+ correct scrolling (it's laggy): Optimise DOM manipulation (no trashing)
-+ Think about gc and memory managemenet 
-+ Minimise object creation and try to reuse them
-+ We have slope in DataManager, clean it up
-+ Rewriting of read and write interface in go
++ we should have a custom error window (#1)
++ CDU for left side menu (#2)
++ settings for calendar (#3)
++ show settings for events 
+    * rework that as a list (#4)
++ show lists of data (#5)
++ not yet planed events list (#6)
++ event placing (#7)
++ correct month swapping (almost, it can fail with fast month scrolling) (#8)
++ correct scrolling (it's laggy): Optimise DOM manipulation (no trashing) (#9)
++ Think about gc and memory managemenet (#10)
++ Minimise object creation and try to reuse them (#11)
++ We have slope in DataManager, clean it up (#12)
++ Rewriting of read and write interface in go (#13)
 + A Year old data is stored, but is not send. We need a cache like structure,
     that separatly tracks when was the last time a particular bit of data
     was accessed. And if it is old enough, we store it in a separate file and
-    touch this data only on requests.
+    touch this data only on requests. (#14)
++ we should resend the key, if decryption fails, or as a callback on update (#15)
 
 ## Browsers quirks
 + if you have >20 weeks, than calendar body stops getting the correct scaling

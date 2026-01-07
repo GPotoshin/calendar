@@ -197,7 +197,7 @@ calendarBody.addEventListener('mousemove', handleMouseMove);
           data.read(r)
           composeList(data.eventsId, data.eventsName, scopeId.EVENT, zonesId.EVENTLIST);
           composeUsersList();
-          composeList(data.venuesId, data.venueName, scopeId.VENUE, zonesId.VENUELIST);
+          composeList(data.venuesId, data.venuesName, scopeId.VENUE, zonesId.VENUELIST);
         });
     })
     .catch(e => {
