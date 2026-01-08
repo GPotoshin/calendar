@@ -66,18 +66,6 @@ function createButton(name = '') {
   return b;
 }
 
-// I think that this can be a general function mb
-export function createButtonWithInput(btnPlaceHolder, target) {
-  let b = document.createElement('button');
-  b.className = 'hover snap-start togglable';
-  const input = document.createElement('input');
-  input.className = 'dynamic-bg';
-  input.type = 'text';
-  input.placeholder = btnPlaceholder;
-  b.appendChild(input);
-  input.focus();
-}
-
 export function create(name, btnPlaceholder, id) {
   let menu = document.createElement('div');
 

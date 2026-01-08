@@ -100,14 +100,6 @@ function createListButton(z) {
   return b;
 }
 
-export function createButtonAndInput(placeholder) {
-  let b = createButtonTmpl();
-  const i = Utils.createTextInput(placeholder)
-  b.appendChild(i);
-  i.focus();
-  return [b, i];
-}
-
 export function setNameAndId(b, name, id) {
   b._dataId = id;
   let span = document.createElement('span');

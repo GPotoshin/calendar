@@ -663,7 +663,7 @@ func handleSimpleCreate(
   }
   log.Printf("the input is '%s'\n", str)
 
-  for id, idx := range map {
+  for _, idx := range m {
     if (*names)[idx] == str {
       http.Error(w, "collision in names", http.StatusBadRequest)
       return

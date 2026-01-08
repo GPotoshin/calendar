@@ -223,8 +223,11 @@ function setStandardInputCallback(b, input, api, map, arr, freeList, zone_id) {
 }
 
 function createEventOrVenue(placeholder, api, map, arr, freeList, zone_id) {
-  let [b, input] = SideMenu.createButtonAndInput(placeholder);
+  let b = SideMenu.createButtonTmpl();
+  const input = Utils.createTextInput(placeholder)
+  b.appendChild(input);
   state.extend_target.appendChild(b);
+  input.focus();
   setStandardInputCallback(b, input, api, map, arr, freeList, zone_id);
 }
 
@@ -348,9 +351,17 @@ document.getElementById('create-button').addEventListener('click', () => {
       break;
     }
     case listId.EVENT_STAFF: {
-      let [b, input] = SearchDisplay.createButtonWithInput(); // I'm not sure if it will focus
+      let b = document.createElement('button');
+      b.className = 'hover snap-start togglable';
+      const input = document.createElement('input');
+      input.className = 'dynamic-bg';
+      input.type = 'text';
+      input.placeholder = 'Nouveau Rôle';
+      b.appendChild(input);
       state.extend_target.appendChild(b);
-      setStandrdInputCallback(
+      input.focus();
+
+      setStandardInputCallback(
         b,
         input,
         Api.StateField.ROLES_ID_MAP_ID,
@@ -359,7 +370,6 @@ document.getElementById('create-button').addEventListener('click', () => {
         data.rolesFreeList,
         zonesId.NONE,
       );
-
       break;
     }
     default:
