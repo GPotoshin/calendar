@@ -6,12 +6,12 @@ export var numInput = {
 
 numInput.elm.type = 'text';
 numInput.elm.className = 'with-width std-min txt-center tiny-input';
-numInput.elm.style.setProperty('--width', 0+'px');
+Utils.setWidthPx(numInput.elm, 0);
 
 numInput.elm.addEventListener('input', () => {
-  numInput.elm.value = numInput.elm.value.replace(/\D/g, '');
+  numInput.elm.value = Utils.digitise(numInput.elm.value);
   const w = Utils.measureText(window.getComputedStyle(numInput.elm), numInput.elm.value)+2;
-  Utils.setWidthPx(numInput, w);
+  Utils.setWidthPx(numInput.elm, w);
 });
 
 function end() {

@@ -1,10 +1,11 @@
 import { BufferReader, BufferWriter } from './io.js';
+import * as Utils from './utils.js';
 const idInput = document.getElementById('id');
 const passwordInput = document.getElementById('password');
 const connectButton = document.getElementById('connect');
 
 idInput.addEventListener('input', () => {
-  idInput.value = idInput.value.replace(/\D/g, '');
+  idInput.value = Utils.digitise(idInput.value);
 });
 
 let publicKey = null;

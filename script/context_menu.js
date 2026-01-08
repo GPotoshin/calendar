@@ -1,10 +1,10 @@
 import { callbacks, elms } from './global_state.js';
 import { BufferReader, BufferWriter } from './io.js';
 import { zones, zonesId, listId, scopeId } from './global_state.js';
-import * as Api from './api.js';
 import { storageIndex, deleteValue, deleteOccurrences } from './data_manager.js';
-// import { setNameAndId, setUserButton, handleClickOnListButton } from './side_menu.js';
+import * as Api from './api.js';
 import * as SideMenu from './side_menu.js';
+import * as Utils from './utils.js';
 
 let state = {
   delete_target: null,
@@ -176,29 +176,21 @@ document.getElementById('delete-button').addEventListener('click', function() {
   state.delete_target.remove();
 });
 
-function createEventOrVenue(placeholder, api, map, arr, freeList, zone_id) {
-  let b = document.createElement('button');
-  b.className = 'side-menu-list-button dynamic-bg deletable editable';
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.placeholder = placeholder;
-  state.extend_target.appendChild(b);
-  b.appendChild(input);
-  input.focus();
+function setStandardInputCallback(b, input, api, map, arr, freeList, zone_id) {
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
-      e.preventDefault();
       const val = input.value;
       for (const [id, idx] of map) {
         if (arr[idx] === val) {
-          input.style.setProperty('--bg-color', palette.red);
+          setBgColor(input, palette.red);
           return
         }
       }
-      input.remove();
 
-      // we instantly react
+      e.preventDefault();
+      input.remove();
       b.textContent = val;
+
       let w = new BufferWriter();
       Api.writeHeader(w, Api.Op.CREATE, api);
       w.writeString(val);
@@ -219,13 +211,21 @@ function createEventOrVenue(placeholder, api, map, arr, freeList, zone_id) {
           });
         })
         .catch(e => {
+          button.remove();
           console.error("Could not store ", name, e);
         });
       SideMenu.setClickCallback(b, zone_id);
     } else if (e.key === 'Escape') {
+      e.preventDefault();
       b.remove();
     }
   });
+}
+
+function createEventOrVenue(placeholder, api, map, arr, freeList, zone_id) {
+  let [b, input] = SideMenu.createButtonAndInput(placeholder);
+  state.extend_target.appendChild(b);
+  setStandardInputCallback(b, input, api, map, arr, freeList, zone_id);
 }
 
 document.getElementById('create-button').addEventListener('click', () => {
@@ -254,9 +254,8 @@ document.getElementById('create-button').addEventListener('click', () => {
       inputMatricule.type = 'text';
       inputMatricule.placeholder = 'Matricule';
       inputMatricule.classList = 'dynamic-bg';
-      inputMatricule.style.setProperty('--bg-color', 'transparent');
       inputMatricule.addEventListener('input', () => {
-        inputMatricule.value = inputMatricule.value.replace(/\D/g, '');
+        inputMatricule.value = Utils.digitise(inputMatricule.value);
       });
 
       function save() {
@@ -265,7 +264,7 @@ document.getElementById('create-button').addEventListener('click', () => {
         const matricule = Number(inputMatricule.value);
 
         if (data.usersId.has(Number(matricule))) {
-          inputMatricule.style.setProperty('--bg-color', palette.red);
+          Utils.setBgColor(inputMatricule, palette.red);
           return;
         }
 
@@ -349,50 +348,17 @@ document.getElementById('create-button').addEventListener('click', () => {
       break;
     }
     case listId.EVENT_STAFF: {
-      let [button, input] = SearchDisplay.createButtonWithInput();
-      state.extend_target.appendChild(button);
-
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          const value = input.value;
-          for (const [id, idx] of data.rolesId) {
-            if (data.rolesName[idx] === value) {
-              input.style.setProperty('--bg-color', palette.red);
-              return
-            }
-          }
-
-          e.preventDefault();
-          input.remove();
-          button.textContent = value;
-
-          const w = new BufferWriter();
-          Api.writeHeader(w, Api.Op.CREATE, Api.StateField.ROLES_ID_MAP_ID);
-          w.writeString(value);
-          Api.request(w)
-          .then(resp => {
-            if (!resp.ok) {
-              throw new Error(`HTTP error! status:${resp.status}`);
-            }
-            resp.arrayBuffer()
-            .then(bin => {
-              let r = new BufferReader(bin);
-              const id = r.readInt32();
-              const idx = storageIndex(map, freeList);
-              data.rolesId[id] = idx;
-              data.rolesName[idx] = value;
-            });
-          })
-          .catch(e => {
-            button.remove();
-            console.error("failed to store the role");
-          });
-
-        } else if (e.key === 'Escape') {
-          e.preventDefault();
-          b.remove();
-        }
-      });
+      let [b, input] = SearchDisplay.createButtonWithInput(); // I'm not sure if it will focus
+      state.extend_target.appendChild(b);
+      setStandrdInputCallback(
+        b,
+        input,
+        Api.StateField.ROLES_ID_MAP_ID,
+        data.rolesId,
+        data.rolesName,
+        data.rolesFreeList,
+        zonesId.NONE,
+      );
 
       break;
     }

@@ -34,6 +34,7 @@ export const listId = {
 };
 
 export const zonesId = {
+  NONE: -1,
   DATATYPE: 0,
   VIEWTYPE: 1,
   EVENTLIST: 2,

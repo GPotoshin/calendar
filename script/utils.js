@@ -16,3 +16,18 @@ export function measureText(style, text) {
 export function setWidthPx(e, w) {
   e.style.setProperty('--width', Number(w)+'px');
 }
+
+export function setBgColor(e, c) {
+  e.style.setProperty('--bg-color', c);
+}
+
+export function digitise(s) {
+  return s.replace(/\D/g, '');
+}
+
+export function createTextInput(placeholder) {
+  const i = document.createElement('input');
+  i.type = 'text';
+  i.placeholder = placeholder;
+  return i;
+}

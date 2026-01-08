@@ -3,6 +3,7 @@ import { palette } from './color.js';
 import * as DM from './data_manager.js';
 import * as Api from './api.js';
 import * as EventInfo from './event_info.js';
+import * as Utils from './utils.js';
 import { BufferWriter } from './io.js';
 
 function handleClickOnViewButton(b, scope_id) {
@@ -81,6 +82,9 @@ export function createButtonTmpl() {
 }
 
 export function setClickCallback(b, z) {
+  if (z === zonesId.NONE) {
+    return;
+  }
   b.addEventListener('click', function (){
     handleClickOnListButton(b, z);
     if (zones[z].selection &&
@@ -94,6 +98,14 @@ function createListButton(z) {
   let b = createButtonTmpl();
   setClickCallback(b, z);
   return b;
+}
+
+export function createButtonAndInput(placeholder) {
+  let b = createButtonTmpl();
+  const i = Utils.createTextInput(placeholder)
+  b.appendChild(i);
+  i.focus();
+  return [b, i];
 }
 
 export function setNameAndId(b, name, id) {
@@ -139,15 +151,15 @@ export function composeUsersList() {
 export function handleClickOnListButton(b, zn) {
   const z = zones[zn];
   if (z.selection == b) {
-    b.style.setProperty('--bg-color', 'transparent');
+    Utils.setBgColor(b, 'transparent');
     b.classList.toggle('hover');
     z.selection = null;
     return;
   }
-  b.style.setProperty('--bg-color', palette.blue);
+  Utils.setBgColor(b, palette.blue);
   b.classList.toggle('hover');
   if (z.selection) {
-    z.selection.style.setProperty('--bg-color', 'transparent');
+    Utils.setBgColor(z.selection, 'transparent');
     z.selection.classList.toggle('hover');
   }
   z.selection = b;
