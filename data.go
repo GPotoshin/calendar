@@ -43,7 +43,7 @@ func deleteValue(m map[int32]int, freeId *[]int32, freeList *[]int, id int32) {
       *freeId = append(*freeId, id)
     }
     *freeList = append(*freeList, idx)
-    
+    delete(m, id) 
   }
 }
 

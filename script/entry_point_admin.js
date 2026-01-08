@@ -218,15 +218,16 @@ calendarBody.addEventListener('mousemove', handleMouseMove);
   b2.textContent = 'Information';
   b2._dataId = viewId.INFORMATION;
 
-  b2.addEventListener('click' ,()=>{ 
+  b2.addEventListener('click' ,()=>{ // @nocheckin: we have a bug here
     elms.bodyContainer.replaceChild(elms.view[viewId.INFORMATION], elms.bodyContainer.children[1]);
     zones[zonesId.VIEWTYPE].selection = b2;
     if (zones[zonesId.DATATYPE].selection._dataId === scopeId.EVENT) {
-      EventInfo.update();
-    }
+      EventInfo.update(); // in that function we are searching for an element
+    }                     // in the dom, but we are adding them just bellow \/
     elms.view[viewId.INFORMATION].replaceChildren(tmpls[scopeId.EVENT]);
   });
   viewType.append(b1,b2);
+  zones[zonesId.VIEWTYPE].selection = b1;
 }
 
 observers.topWeek = new IntersectionObserver((entries) => {

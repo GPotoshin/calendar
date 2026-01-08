@@ -1,4 +1,4 @@
-import { tmpls, scopeId } from './global_state.js';
+import { zones, zonesId, tmpls, scopeId } from './global_state.js';
 import * as SearchDisplay from './search_display.js';
 
 
@@ -10,7 +10,7 @@ function createStaffTable() {
   const list = ["Participants", "Formateur", "Responsable Pedagogique", "Assistant"];
 
   table.innerHTML = `
-    <h3 class="txt-center">Nomber de</h3>
+    <h3 class="txt-center">Nombre de</h3>
 
     <div class="h-container with-width">
     </div>
@@ -164,7 +164,7 @@ export function update() { // @working
     return;
   }
   const event_id = zone.selection._dataId;
-  let list = document.getElementById('event-staff-number-map');
+  let list = tmpls[scopeId.EVENT].querySelector('#event-staff-number-map'); // w
   list.innerHTML = '';
 
   const _eventId = zones[zonesId.EVENTLIST].selection._dataId;
@@ -193,7 +193,7 @@ export function update() { // @working
     duration = -1;
   }
 
-  let b = document.getElementById('event-duration');
+  let b = tmpls[scopeId.EVENT].querySelector('#event-duration');
   if (duration === -1) {
     b.textContent = '\u00A0';
 

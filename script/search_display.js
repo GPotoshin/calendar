@@ -1,3 +1,6 @@
+import { listId } from './global_state.js';
+import * as Utils from './utils.js';
+
 function fuzzyMatch(pattern, text) {
   pattern = pattern.toLowerCase();
   text = text.toLowerCase();
@@ -63,31 +66,19 @@ function createButton(name = '') {
   return b;
 }
 
-function createButtonWithInput(btnPlaceHolder, target) {
-  return () => {
-    let b = document.createElement('button');
-    b.className = 'hover snap-start togglable';
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.placeholder = btnPlaceholder;
-    target.appendChild(b);
-    b.appendChild(input);
-    input.focus();
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const value = input.value;
-        input.remove();
-        b.textContent = value;
-        target._store(value);
-      } else if (e.key === 'Escape') {
-        b.remove();
-      }
-    });
-  };
+// I think that this can be a general function mb
+export function createButtonWithInput(btnPlaceHolder, target) {
+  let b = document.createElement('button');
+  b.className = 'hover snap-start togglable';
+  const input = document.createElement('input');
+  input.className = 'dynamic-bg';
+  input.type = 'text';
+  input.placeholder = btnPlaceholder;
+  b.appendChild(input);
+  input.focus();
 }
 
-export function create(name, btnPlaceholder) {
+export function create(name, btnPlaceholder, id) {
   let menu = document.createElement('div');
 
   menu.className = 'm-box v-container align-items-center';
@@ -105,9 +96,9 @@ export function create(name, btnPlaceholder) {
   const searchInput = menu.querySelector('.searching-input');
   objList[0].textContent = name;
   const container = objList[1];
-  menu.children[1].style.setProperty('--width', '200px');
-  menu.children[2].style.setProperty('--width', '200px');
-  // objList[1]._create = createButtonWithInput(btnPlaceholder, objList[1]);
+  Utils.setWidthPx(menu.children[1], 200);
+  Utils.setWidthPx(menu.children[2], 200);
+  objList[1]._id = listId.EVENT_STAFF
 
   searchInput.addEventListener('input', () => { updateList(searchInput, container); });
   return menu;
@@ -117,8 +108,8 @@ export function dynamise(menu, btnPlaceholder = '') {
   const objList = menu.querySelectorAll('.js-set');
   const searchInput = menu.querySelector('.searching-input');
   const container = objList[1];
-  menu.children[1].style.setProperty('--width', '200px');
-  menu.children[2].style.setProperty('--width', '200px');
+  Utils.setWidthPx(menu.children[1], 200);
+  Utils.setWidthPx(menu.children[2], 200);
   // objList[1]._create = createButton;
   if (btnPlaceholder != '') {
     objList[1]._btnPlaceholder = btnPlaceholder;

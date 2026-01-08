@@ -1,4 +1,4 @@
-import { measureText } from './utils.js';
+import * as Utils from './utils.js';
 export var numInput = {
   elm: document.createElement('input'),
   endOfWriting: null,
@@ -10,17 +10,20 @@ numInput.elm.style.setProperty('--width', 0+'px');
 
 numInput.elm.addEventListener('input', () => {
   numInput.elm.value = numInput.elm.value.replace(/\D/g, '');
-  numInput.elm.style.setProperty('--width', (measureText(window.getComputedStyle(numInput.elm), numInput.elm.value)+2)+'px');
+  const w = Utils.measureText(window.getComputedStyle(numInput.elm), numInput.elm.value)+2;
+  Utils.setWidthPx(numInput, w);
 });
-numInput.elm.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    numInput.endOfWriting();
-    numInput.endOfWriting = null;
-    numInput.elm.value = '';
-  }
-});
-numInput.elm.addEventListener('blur', () => {
+
+function end() {
   numInput.endOfWriting();
   numInput.endOfWriting = null;
   numInput.elm.value = '';
+}
+numInput.elm.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    end();
+  }
+});
+numInput.elm.addEventListener('blur', () => {
+  end();
 });

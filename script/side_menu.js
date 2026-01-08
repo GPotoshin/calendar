@@ -7,8 +7,7 @@ import { BufferWriter } from './io.js';
 
 function handleClickOnViewButton(b, scope_id) {
   elms.dataListContainer.replaceChildren(elms.scope[scope_id]); 
-  const z = zones[zonesId.DATATYPE];
-  z.selection = b;
+  zones[zonesId.DATATYPE].selection = b;
 }
 
 let state = {
@@ -70,62 +69,68 @@ b3.textContent = 'Lieux';
 b3._dataId = 2;
 bContainer.append(b1, b2, b3);
 
-zones[zonesId.VIEWTYPE].selection = b1;
+zones[zonesId.DATATYPE].selection = b1;
 
 elms.sideMenu.replaceChildren(hContainer, elms.dataListContainer);
 elms.dataListContainer.appendChild(elms.scope[scopeId.EVENT]);
 
-function createListButton(zone_id) {
-  return () => {
-    let button = document.createElement('button');
-    button.className = 'side-menu-list-button dynamic_bg hover deletable editable';
-    button.addEventListener('click', function (){
-      handleClickOnListButton(button, zone_id);
-      if (zones[zone_id].selection &&
-        zones[zonesId.VIEWTYPE].selection._dataId === viewId.INFORMATION) {
-        EventInfo.update();
-      }
-    });
-    return button;
-  }
+export function createButtonTmpl() {
+  let b = document.createElement('button');
+  b.className = 'side-menu-list-button dynamic-bg hover deletable editable';
+  return b;
+}
+
+export function setClickCallback(b, z) {
+  b.addEventListener('click', function (){
+    handleClickOnListButton(b, z);
+    if (zones[z].selection &&
+      zones[zonesId.VIEWTYPE].selection._dataId === viewId.INFORMATION) {
+      EventInfo.update();
+    }
+  });
+}
+
+function createListButton(z) {
+  let b = createButtonTmpl();
+  setClickCallback(b, z);
+  return b;
 }
 
 export function setNameAndId(b, name, id) {
-    b._dataId = id;
-    let span = document.createElement('span');
-    span.textContent = name;
-    b.appendChild(span);
-    span = document.createElement('span');
-    span.classList = 'color-grey';
-    span.textContent = '#'+id;
-    b.appendChild(span);
+  b._dataId = id;
+  let span = document.createElement('span');
+  span.textContent = name;
+  b.appendChild(span);
+  span = document.createElement('span');
+  span.classList = 'color-grey';
+  span.textContent = '#'+id;
+  b.appendChild(span);
 }
 
 export function composeList(m, names, scope_id, zone_id) {
   for (const [id, idx] of m) {
     const name = names[idx];
-    let button = createListButton(zone_id)();
+    let button = createListButton(zone_id);
     setNameAndId(button, name, id);
     elms.scope[scope_id].appendChild(button);
   }
 }
 
 export function setUserButton(b, name, surname, mat) {
-    b._dataId = mat;
-
-    let left = document.createElement('span');
-    left.textContent = name+' '+surname;
-    let right = document.createElement('span');
-    right.classList = "color-grey";
-    right.textContent = '#'+mat;
-    b.replaceChildren(left, right);
+  b._dataId = mat;
+  let left = document.createElement('span');
+  left.textContent = name+' '+surname;
+  let right = document.createElement('span');
+  right.classList = "color-grey";
+  right.textContent = '#'+mat;
+  b.replaceChildren(left, right);
 }
 
 export function composeUsersList() {
   for (const [mat, idx] of data.usersId) {
     const name = data.usersName[idx]; // @factorout
     const surname = data.usersSurname[idx];
-    let button = createListButton(zonesId.STAFFLIST)();
+    let button = createListButton(zonesId.STAFFLIST);
     setUserButton(button, name, surname, mat);
     elms.scope[scopeId.STAFF].appendChild(button);
   }

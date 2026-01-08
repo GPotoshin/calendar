@@ -35,6 +35,7 @@ end of writing. It should be a single line add.
     was accessed. And if it is old enough, we store it in a separate file and
     touch this data only on requests. (#14)
 + we should resend the key, if decryption fails, or as a callback on update (#15)
++ uniform left side button generation (#16)
 
 ## Browsers quirks
 + if you have >20 weeks, than calendar body stops getting the correct scaling

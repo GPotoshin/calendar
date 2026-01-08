@@ -158,7 +158,7 @@ button {
   display: flex;
 }
 
-.dynamic_bg {
+.dynamic-bg {
   background-color: var(--bg-color, transparent);
 }
 

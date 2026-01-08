@@ -12,3 +12,7 @@ export function measureText(style, text) {
   measure.textContent = text;
   return measure.offsetWidth;
 }
+
+export function setWidthPx(e, w) {
+  e.style.setProperty('--width', Number(w)+'px');
+}

@@ -30,6 +30,7 @@ export const listId = {
   EVENT: 0,
   STAFF: 1,
   VENUE: 2,
+  EVENT_STAFF: 3,
 };
 
 export const zonesId = {

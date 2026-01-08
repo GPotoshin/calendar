@@ -642,6 +642,11 @@ const (
   UPDATE
 ) 
 
+// const (
+//   NO_OPTIONS uint32 = 0
+//   NO_NAME_COLLISIONS uint32 = 1
+// )
+
 func handleSimpleCreate(
   r io.Reader,
   w http.ResponseWriter,
@@ -658,6 +663,12 @@ func handleSimpleCreate(
   }
   log.Printf("the input is '%s'\n", str)
 
+  for id, idx := range map {
+    if (*names)[idx] == str {
+      http.Error(w, "collision in names", http.StatusBadRequest)
+      return
+    }
+  }
   id := newId(m, freeId)
   idx := storageIndex(m, freeList)
   m[id] = idx
@@ -921,6 +932,20 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     return
 
   case ROLES_ID_MAP_ID:
+    switch mode {
+    case CREATE:
+      handleSimpleCreate(
+        r.Body,
+        w,
+        state.VenuesId,
+        &state.VenuesName,
+        &state.VenuesFreeId,
+        &state.VenuesFreeList,
+      )
+    default:
+      http.Error(w, "we do not support that", http.StatusBadRequest)
+      return
+    }
     http.Error(w, "we do not support that", http.StatusBadRequest)
     return
   case ROLES_NAME_ID:
