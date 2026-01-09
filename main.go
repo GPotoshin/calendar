@@ -942,6 +942,20 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         &state.RolesFreeId,
         &state.RolesFreeList,
       )
+    case DELETE:
+      id, err := readInt32(r.Body)
+      if err != nil {
+        log.Println("can't read id ", err)
+        http.Error(w, "incorrect api", http.StatusBadRequest)
+        return
+      }
+
+      _, exists := state.EventsId[id]
+      if !exists {
+        log.Println("matricule already does not exist")
+        return
+      }
+      deleteValue(state.RolesId, &state.RolesFreeId, &state.RolesFreeList, id)
     default:
       http.Error(w, "we do not support that", http.StatusBadRequest)
       return

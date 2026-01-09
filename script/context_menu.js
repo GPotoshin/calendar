@@ -10,7 +10,8 @@ import * as SearchDisplay from './search_display.js';
 let state = {
   delete_target: null,
   extend_target: null,
-  target: null,
+  edit_target: null,
+  toggle_target: null,
 };
 
 function handleClickForContextMenu() {
@@ -50,7 +51,7 @@ function handleAddToList(target, placeholder, url, storage) { // @nocheckin
 }
 
 document.getElementById('edit-button').addEventListener('click', function() {
-  let b = state.target;
+  let b = state.edit_target;
   numInput.elm.value = b.textContent;
   b.replaceWith(numInput.elm);
   numInput.elm.focus();
@@ -94,7 +95,7 @@ document.getElementById('edit-button').addEventListener('click', function() {
       const _eventId = zones[zonesId.EVENTLIST].selection._dataId;
       if (numInput.elm.value === '') {
         b.textContent = '\u00A0';
-        data.eventPersonalNumMap[_eventId][b._dIdx] = -1;conte
+        data.eventPersonalNumMap[_eventId][b._dIdx] = -1;
         function localCallback() {
           b.replaceWith(numInput.elm);
           numInput.elm.focus();
@@ -140,6 +141,9 @@ document.getElementById('delete-button').addEventListener('click', function() {
     case listId.EVENT:
       state_field = Api.StateField.EVENTS_ID_MAP_ID;
       break;
+    case listId.EVENT_STAFF:
+      state_field = Api.StateField.ROLES_ID_MAP_ID;
+      break;
     default:
       throw new Error('incorrect delete target type');
   }
@@ -171,6 +175,11 @@ document.getElementById('delete-button').addEventListener('click', function() {
       deleteValue(data.eventsId, data.eventsFreeList, id);
       break;
 
+      // Note: Additional references to roles require attention,
+      // though this shall be addressed in due course.
+    case listId.EVENT_STAFF:
+      deleteValue(data.rolesId, data.rolesFreeList, id);
+      break;
     default:
     throw new Error('incorrect delete target type');
   }
@@ -205,7 +214,7 @@ function setStandardInputCallback(b, input, api, map, arr, freeList, zone_id) {
             let r = new BufferReader(bin);
             let id = r.readInt32();
             let idx = storageIndex(map, freeList);
-            map[id] = idx;
+            map.set(id, idx);
             arr[idx] = val;
             b.textContent = '';
             Utils.setNameAndId(b, val, id);
@@ -377,31 +386,33 @@ document.getElementById('create-button').addEventListener('click', () => {
 });
 
 document.getElementById('toggle-button').addEventListener('click', () => {
-  state.target.classList.toggle('clicked');
+  state.toggle_target.classList.toggle('clicked');
+  switch (state.toggle_target.parrent) {
+
+  }
 });
 
 document.addEventListener('contextmenu', function(e) {
   const menu = elms.rightClickMenu;
+  const target = e.target;
   let show = false;
-  let target = null;
 
-  state.target = e.target;
-  if (state.delete_target = e.target.closest('.deletable')) { 
+  if (state.delete_target = target.closest('.deletable')) { 
     document.getElementById('delete-button').classList.replace('disp-none', 'disp-block');
     show = true;
   }
 
-  if (e.target.classList.contains('editable')) {
+  if (state.edit_target = target.closest('editable')) {
     document.getElementById('edit-button').classList.replace('disp-none', 'disp-block');
     show = true;
   }
 
-  if (e.target.classList.contains('togglable')) {
+  if (state.toggle_target = target.closest('togglable')) {
     document.getElementById('toggle-button').classList.replace('disp-none', 'disp-block');
     show = true;
   }
 
-  if (state.extend_target = e.target.closest('.extendable')) {
+  if (state.extend_target = target.closest('.extendable')) {
     document.getElementById('create-button').classList.replace('disp-none', 'disp-block');
     show = true;
   }

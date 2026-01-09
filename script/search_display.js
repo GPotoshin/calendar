@@ -61,7 +61,7 @@ function updateList(input, container) {
 
 export function createButton(name = '') {
   let b = document.createElement('button');
-  b.className = 'hover search-list-button togglable';
+  b.className = 'hover search-list-button togglable deletable';
   b.textContent = name;
   return b;
 }

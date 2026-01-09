@@ -2,17 +2,13 @@ import { listId, zones, zonesId, tmpls, scopeId } from './global_state.js';
 import * as SearchDisplay from './search_display.js';
 import * as Utils from './utils.js';
 
-
 function createStaffTable() {
   let table = document.createElement('div');
   table.classList.add('v-container', 'align-items-center');
-
   const columnWidth = 125;
-  const list = ["Participants", "Formateur", "Responsable Pedagogique", "Assistant"];
 
   table.innerHTML = `
     <h3 class="txt-center">Nombre de</h3>
-
     <div class="h-container with-width">
     </div>
 
