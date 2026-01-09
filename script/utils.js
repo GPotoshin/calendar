@@ -1,3 +1,5 @@
+// Here we have functions shared between most modules
+
 const measure = document.createElement('span');
 measure.style.cssText = `
 position: absolute;
@@ -30,4 +32,15 @@ export function createTextInput(placeholder) {
   i.type = 'text';
   i.placeholder = placeholder;
   return i;
+}
+
+export function setNameAndId(b, name, id) {
+  b._dataId = id;
+  let span = document.createElement('span');
+  span.textContent = name;
+  b.appendChild(span);
+  span = document.createElement('span');
+  span.classList = 'color-grey';
+  span.textContent = '#'+id;
+  b.appendChild(span);
 }

@@ -5,6 +5,7 @@ import { storageIndex, deleteValue, deleteOccurrences } from './data_manager.js'
 import * as Api from './api.js';
 import * as SideMenu from './side_menu.js';
 import * as Utils from './utils.js';
+import * as SearchDisplay from './search_display.js';
 
 let state = {
   delete_target: null,
@@ -207,12 +208,12 @@ function setStandardInputCallback(b, input, api, map, arr, freeList, zone_id) {
             map[id] = idx;
             arr[idx] = val;
             b.textContent = '';
-            SideMenu.setNameAndId(b, val, id);
+            Utils.setNameAndId(b, val, id);
           });
         })
         .catch(e => {
-          button.remove();
-          console.error("Could not store ", name, e);
+          b.remove();
+          console.error("Could not store ", val, e);
         });
       SideMenu.setClickCallback(b, zone_id);
     } else if (e.key === 'Escape') {
@@ -351,8 +352,7 @@ document.getElementById('create-button').addEventListener('click', () => {
       break;
     }
     case listId.EVENT_STAFF: {
-      let b = document.createElement('button');
-      b.className = 'hover snap-start togglable';
+      let b = SearchDisplay.createButton();
       const input = document.createElement('input');
       input.className = 'dynamic-bg';
       input.type = 'text';

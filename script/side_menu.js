@@ -100,22 +100,11 @@ function createListButton(z) {
   return b;
 }
 
-export function setNameAndId(b, name, id) {
-  b._dataId = id;
-  let span = document.createElement('span');
-  span.textContent = name;
-  b.appendChild(span);
-  span = document.createElement('span');
-  span.classList = 'color-grey';
-  span.textContent = '#'+id;
-  b.appendChild(span);
-}
-
 export function composeList(m, names, scope_id, zone_id) {
   for (const [id, idx] of m) {
     const name = names[idx];
     let button = createListButton(zone_id);
-    setNameAndId(button, name, id);
+    Utils.setNameAndId(button, name, id);
     elms.scope[scope_id].appendChild(button);
   }
 }

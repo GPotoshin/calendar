@@ -303,7 +303,9 @@
 }
 
 .search-list-button {
-
+  scroll-snap-align: start;
+  display: flex;
+  justify-content: space-between;
 }
 
 .login-field {

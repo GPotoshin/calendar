@@ -39,8 +39,6 @@ let state = {
   isUpdating: false,
 };
 
-EventInfo.loadTemplate();
-
 {
   elms.view[viewId.INFORMATION] = document.createElement('div');
   elms.view[viewId.INFORMATION].classList.add('view-content');
@@ -198,6 +196,7 @@ calendarBody.addEventListener('mousemove', handleMouseMove);
           composeList(data.eventsId, data.eventsName, scopeId.EVENT, zonesId.EVENTLIST);
           composeUsersList();
           composeList(data.venuesId, data.venuesName, scopeId.VENUE, zonesId.VENUELIST);
+          EventInfo.loadTemplate();
         });
     })
     .catch(e => {

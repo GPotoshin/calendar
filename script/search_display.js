@@ -59,14 +59,14 @@ function updateList(input, container) {
   }
 }
 
-function createButton(name = '') {
+export function createButton(name = '') {
   let b = document.createElement('button');
-  b.classList.add('hover', 'snap-start', 'togglable');
+  b.className = 'hover search-list-button togglable';
   b.textContent = name;
   return b;
 }
 
-export function create(name, btnPlaceholder, id) {
+export function createAndReturnListContainer(name, id) {
   let menu = document.createElement('div');
 
   menu.className = 'm-box v-container align-items-center';
@@ -89,6 +89,11 @@ export function create(name, btnPlaceholder, id) {
   objList[1]._id = listId.EVENT_STAFF
 
   searchInput.addEventListener('input', () => { updateList(searchInput, container); });
+  return [menu, objList[1]];
+}
+
+export function create(name, id) {
+  let [menu, ] = createAndReturnListContainer(name, id);
   return menu;
 }
 
@@ -98,7 +103,6 @@ export function dynamise(menu, btnPlaceholder = '') {
   const container = objList[1];
   Utils.setWidthPx(menu.children[1], 200);
   Utils.setWidthPx(menu.children[2], 200);
-  // objList[1]._create = createButton;
   if (btnPlaceholder != '') {
     objList[1]._btnPlaceholder = btnPlaceholder;
   }

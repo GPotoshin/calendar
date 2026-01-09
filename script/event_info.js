@@ -1,5 +1,6 @@
-import { zones, zonesId, tmpls, scopeId } from './global_state.js';
+import { listId, zones, zonesId, tmpls, scopeId } from './global_state.js';
 import * as SearchDisplay from './search_display.js';
+import * as Utils from './utils.js';
 
 
 function createStaffTable() {
@@ -57,9 +58,9 @@ function createCompetencesTable() {
   const container = table.querySelector('.js-set');
 
   // const baseWidth = 125; 
-  container.append(SearchDisplay.create('Participant', 'Nouvelle Compétence'));
+  container.append(SearchDisplay.create('Participant', listId.COMPETENCES));
   for (let name of data.rolesName) {
-    container.append(SearchDisplay.create(name, data.rolesName, 'Nouvelle Compétence'));// @nocheckin
+    container.append(SearchDisplay.create(name, listId.COMPETENCES));
   }
 
   return table;
@@ -81,8 +82,17 @@ export function loadTemplate() {
     <div class="v-container">
     </div>
   `;
+
+  let [sDisplay, container] = SearchDisplay.createAndReturnListContainer('Personel', listId.EVENT_STAFF);
+  for (const [id, idx] of data.rolesId) {
+    const name = data.rolesName[idx];
+    const b = SearchDisplay.createButton(); 
+    Utils.setNameAndId(b, name, id);
+    container.appendChild(b);
+  }
+
   tmpls[scopeId.EVENT].children[0].append(
-    SearchDisplay.create('Personel', 'Nouveau Rôle'),
+    sDisplay,
     createStaffTable(),
     createCompetencesTable(),
     createFooterOptions(),

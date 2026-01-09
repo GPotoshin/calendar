@@ -937,17 +937,15 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       handleSimpleCreate(
         r.Body,
         w,
-        state.VenuesId,
-        &state.VenuesName,
-        &state.VenuesFreeId,
-        &state.VenuesFreeList,
+        state.RolesId,
+        &state.RolesName,
+        &state.RolesFreeId,
+        &state.RolesFreeList,
       )
     default:
       http.Error(w, "we do not support that", http.StatusBadRequest)
       return
     }
-    http.Error(w, "we do not support that", http.StatusBadRequest)
-    return
   case ROLES_NAME_ID:
     http.Error(w, "we do not support that", http.StatusBadRequest)
     return
