@@ -874,8 +874,23 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     http.Error(w, "we do not support that", http.StatusBadRequest)
     return
   case EVENTS_ROLE_ID:
-    http.Error(w, "we do not support that", http.StatusBadRequest)
-    return
+    event_id := readInt32(r.Body)
+    role_id := readInt32(r.Body)
+    idx, event_exists := state.EventsId[event_id]
+    _, role_exists := state.RolesId[role_id]
+    if !event_exists || !role_exists {
+      http.Error("we are getting unexisting identifiers", http.StatusBadRequest)
+      return
+    }
+    switch mode {
+      case CREATE:
+        state.EventsRole[idx] = append(state.EventsRole[idx], role_id)
+      case DELETE:
+        filter(state.EventsRole[idx], role_id)
+      default:
+      http.Error(w, "we do not support that", http.StatusBadRequest)
+      return
+    }
   case EVENTS_ROLES_REQUIREMENT_ID:
     http.Error(w, "we do not support that", http.StatusBadRequest)
     return

@@ -85,14 +85,19 @@ func getById[K, T comparable](id K, m map[K]int, a []T) (T, bool) {
   return retval, exists
 }
 
+func filter(arr *[]int32, val int32) {
+  writeIdx := 0
+  for _, item := range arr {
+    if item != val {
+      arr[writeIdx] = item
+      writeIdx++
+    }
+  }
+  return arr[:writeIdx]
+}
+
 func deleteOccurrences(arr [][]int32, val int32) {
 	for i := range arr {
-		tmp := arr[i][:0]
-		for _, arr_val := range arr[i] {
-			if arr_val != val {
-				tmp = append(tmp, arr_val)
-			}
-		}
-		arr[i] = tmp
+    filter(&arr[i], val)
 	}
 }

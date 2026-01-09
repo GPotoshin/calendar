@@ -386,9 +386,44 @@ document.getElementById('create-button').addEventListener('click', () => {
 });
 
 document.getElementById('toggle-button').addEventListener('click', () => {
-  state.toggle_target.classList.toggle('clicked');
-  switch (state.toggle_target.parrent) {
+  const target = state.toggle_target;
+  const turning_on = target.classList.toggle('clicked');
+  switch (state.toggle_target.parentElement._id) { // working
+    case listId.EVENT_STAFF:
+      const event_id = zones[zonesId.EVENTLIST].selection._dataId; 
+      const role_id = target._dataId;
+      const idx = data.eventsId.get(event_id);
+      const role_idx = data.rolesId.get(role_id);
+      if (idx === undefined || role_idx === undefined) {
+        console.error('[toggle-button:click] Incorrect event\'s or role\'s ids');
+        return;
+      }
+      let w = new BufferWriter();
 
+      if (turning_on) {
+        Api.writeHeader(w, Api.Op.CREATE, Api.StateField.EVENTS_ROLE_ID);
+      } else {
+        Api.writeHeader(w, Api.Op.DELETE, Api.StateField.EVENTS_ROLE_ID);
+      }
+
+      w.writeInt32(event_id);
+      w.writeInt32(role_id);
+
+      Api.request(w)
+      .then(resp => {
+        if (!resp.ok) {
+          throw new Error(`HTTP error! status: ${resp.status}`);
+          return;
+        }
+
+        if (turning_on) { data.eventsRole[idx].push(role_id); }
+        else {data.eventsRole = data.eventsRole.filter(x => x !== role_id);}
+      })
+      .catch( e => {
+        target.classList.toggle('clicked');
+        console.error("fail in [toggle-button:click]", name, e);
+      });
+      break;
   }
 });
 
