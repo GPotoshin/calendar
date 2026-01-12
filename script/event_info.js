@@ -2,6 +2,10 @@ import { listId, zones, zonesId, tmpls, scopeId } from './global_state.js';
 import * as SearchDisplay from './search_display.js';
 import * as Utils from './utils.js';
 
+const elms = {
+  event_role_list: null,
+};
+
 function createStaffTable() {
   let table = document.createElement('div');
   table.classList.add('v-container', 'align-items-center');
@@ -86,6 +90,7 @@ export function loadTemplate() {
     Utils.setNameAndId(b, name, id);
     container.appendChild(b);
   }
+  elms.event_role_list = container;
 
   tmpls[scopeId.EVENT].children[0].append(
     sDisplay,
@@ -170,6 +175,16 @@ export function update() { // @working
     return;
   }
   const event_id = zone.selection._dataId;
+  
+  for (const b of elms.event_role_list.children) {
+    if (data.eventsRole[event_id].includes(b._dataId)) {
+      b.classList.add('clicked');
+    } else {
+      b.classList.remove('clicked');
+    }
+  }
+
+
   let list = tmpls[scopeId.EVENT].querySelector('#event-staff-number-map'); // w
   list.innerHTML = '';
 

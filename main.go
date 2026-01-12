@@ -1,6 +1,7 @@
 package main
 
 import (
+  "slices"
   "crypto/rsa"
   "sync"
   "context"
@@ -90,7 +91,7 @@ type State struct {
   EventsVenues [][]int32
   EventsRole [][]int32
   EventsRolesRequirement [][][]int32
-  EventsPresonalNumMap [][][]int32
+  EventsPersonalNumMap [][][]int32
   EventsDuration []int32
   EventsFreeId []int32
   EventsFreeList []int
@@ -151,7 +152,7 @@ func rebaseState() {
   shrinkArray(&state.EventsVenues, state.EventsFreeList)
   shrinkArray(&state.EventsRole, state.EventsFreeList)
   shrinkArray(&state.EventsRolesRequirement, state.EventsFreeList)
-  shrinkArray(&state.EventsPresonalNumMap, state.EventsFreeList)
+  shrinkArray(&state.EventsPersonalNumMap, state.EventsFreeList)
   shrinkArray(&state.EventsDuration, state.EventsFreeList)
   state.EventsFreeList = state.EventsFreeList[:0]
 
@@ -229,7 +230,7 @@ func readState(r io.Reader) (State, error) {
   if state.EventsRolesRequirement, err = readArrayOfArrayOfInt32Arrays(r); err != nil {
     return state, fmt.Errorf("failed to read EventsRolesRequirement: %w", err)
   }
-  if state.EventsPresonalNumMap, err = readArrayOfArrayOfInt32Arrays(r); err != nil {
+  if state.EventsPersonalNumMap, err = readArrayOfArrayOfInt32Arrays(r); err != nil {
     return state, fmt.Errorf("failed to read EventsPresonalNumMap: %w", err)
   }
   if state.EventsDuration, err = readInt32Array(r); err != nil {
@@ -368,7 +369,7 @@ func writeState(w io.Writer, state State, dest int32) error {
   if err := writeArrayOfArrayOfInt32Arrays(w, state.EventsRolesRequirement); err != nil {
     return fmt.Errorf("failed to write EventsRolesRequirement: %w", err)
   }
-  if err := writeArrayOfArrayOfInt32Arrays(w, state.EventsPresonalNumMap); err != nil {
+  if err := writeArrayOfArrayOfInt32Arrays(w, state.EventsPersonalNumMap); err != nil {
     return fmt.Errorf("failed to write EventsPresonalNumMap: %w", err)
   }
   if err := writeInt32Array(w, state.EventsDuration); err != nil {
@@ -507,8 +508,6 @@ func main() {
       slog.Warn("State is only partialy set", "cause", err)
     }
   }
-
-  slog.Info("Initial", "state", state)
 
   state.initAuth()
   state.startKeyRotation()
@@ -656,12 +655,12 @@ func handleSimpleCreate(
   names *[]string,
   freeId *[]int32,
   freeList *[]int,
-) {
+) error {
   str, err := readString(r)
   if err != nil {
     slog.Error("can't read string", "cause", err)
     http.Error(w, err.Error(), http.StatusBadRequest)
-    return
+    return err
   }
   slog.Info("Input", "string", str)
 
@@ -669,7 +668,7 @@ func handleSimpleCreate(
     if (*names)[idx] == str {
       slog.Error("collision in names")
       http.Error(w, "collision in names", http.StatusBadRequest)
-      return
+      return err
     }
   }
   id := newId(m, freeId)
@@ -678,6 +677,7 @@ func handleSimpleCreate(
   storeValue(names, idx, str)
 
   writeInt32(w, id)
+  return nil
 }
 
 func handleApi(w http.ResponseWriter, r *http.Request) {
@@ -841,14 +841,22 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     if p_level != PRIVILEGE_LEVEL_ADMIN { return }
     switch mode {
     case CREATE:
-      handleSimpleCreate(
+      if handleSimpleCreate(
         r.Body,
         w,
         state.EventsId,
         &state.EventsName,
         &state.EventsFreeId,
         &state.EventsFreeList,
-      )
+      ) != nil {
+        return
+      }
+
+      state.EventsVenues = append(state.EventsVenues, []int32{})
+      state.EventsRole = append(state.EventsRole, []int32{})
+      state.EventsRolesRequirement = append(state.EventsRolesRequirment, [][]int32{})
+      state.EventsPersonalNumMap = append(state.EventsPersonalNumMap, [][]int32{})
+      state.EventsDuration = append(state.EventsRole, -1)
 
     case DELETE:
       id, err := readInt32(r.Body)
@@ -895,6 +903,11 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       http.Error(w, "we are getting unexisting identifiers", http.StatusBadRequest)
       return
     }
+    if len(state.EventsRole) <= idx {
+      state.EventsRole = slices.Grow(state.EventsRole, idx+1-len(state.EventsRole));
+      state.EventsRole = state.EventsRole[:idx+1];
+    }
+
     switch mode {
       case CREATE:
         state.EventsRole[idx] = append(state.EventsRole[idx], role_id)
@@ -1011,5 +1024,4 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     http.Error(w, "incorrect field id", http.StatusBadRequest)
     return
   }
-  slog.Info("Api result", "state", state)
 }

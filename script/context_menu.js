@@ -437,12 +437,12 @@ document.addEventListener('contextmenu', function(e) {
     show = true;
   }
 
-  if (state.edit_target = target.closest('editable')) {
+  if (state.edit_target = target.closest('.editable')) {
     document.getElementById('edit-button').classList.replace('disp-none', 'disp-block');
     show = true;
   }
 
-  if (state.toggle_target = target.closest('togglable')) {
+  if (state.toggle_target = target.closest('.togglable')) {
     document.getElementById('toggle-button').classList.replace('disp-none', 'disp-block');
     show = true;
   }
