@@ -5,6 +5,8 @@ import * as Utils from './utils.js';
 const elms = {
   event_role_list: null,
   comp_tables: null,
+  numtab_header_list: null,
+  numtab_content: null,
 };
 
 function createStaffTable() {
@@ -14,7 +16,7 @@ function createStaffTable() {
 
   table.innerHTML = `
     <h3 class="txt-center">Nombre de</h3>
-    <div class="h-container with-width">
+    <div class="h-container with-width align-items-center">
     </div>
 
     <div class="m-box v-container with-width">
@@ -23,25 +25,9 @@ function createStaffTable() {
     </div>
     `;
   
-  function createLocalHeader(name) {
-    let retval = document.createElement('div');
-    retval.className = 'disp-flex grow half-wide justify-content-center';
-    let header = document.createElement('h4');
-    header.className = 'txt-center';
-    header.textContent = name;
-    retval.append(header);
-    return retval;
-  }
 
-  // let container = table.children[1];
-  // container.style.setProperty('--width', (columnWidth*(list.length+1)) + 'px');
-  // for (let name of list) {
-  //   container.append(createLocalHeader(name));
-  // }
-  //
-  // container = table.children[2];
-  // container.style.setProperty('--width', (columnWidth*(list.length+1)) + 'px');
-  
+  elms.numtab_header_list = table.children[1];
+  elms.numtab_content = table.children[2];
   return table;
 }
 
@@ -100,21 +86,20 @@ export function loadTemplate() {
   );
 }
 
-function createTemplateLine() {
-  let line = document.createElement('div');
-  line.className = 'h-container align-items-center wide';
-  line.innerHTML = tmplHTML
-  return line;
-}
-
 export function update() { // @working
   // scoped functions
-  const tmplHTML = `
-    <div class="disp-flex grow half-wide justify-content-center bottom-right-border">
-    <div class="with-padding">de <button class="std-min hover no-padding txt-center tiny-button"></button> à <button class="std-min hover no-padding txt-center tiny-button"></button></div>
+  const participant_num_field_html = `
+    <div class="disp-flex with-width justify-content-center bottom-right-border">
+    <div class="with-padding">de <button class="std-min hover no-padding txt-center tiny-button">
+    </button> à <button class="std-min hover no-padding txt-center tiny-button"></button>
     </div>
-    <div class="disp-flex grow half-wide bottom-border">
-    <div class="with-padding"><button class="hover std-min no-padding txt-center tiny-button"> </button></div>
+    </div>
+    `;
+  const staff_num_field_html = `
+    <div class="disp-flex with-width bottom-border">
+    <div class="with-padding">
+    <button class="hover std-min no-padding txt-center tiny-button"></button>
+    </div>
     </div>
     `;
 
@@ -175,27 +160,44 @@ export function update() { // @working
     return;
   }
   const event_id = zone.selection._dataId;
+  const event_roles = data.eventsRole[event_id];
 
+  // roles table
   for (const b of elms.event_role_list._btnList) {
-    if (data.eventsRole[event_id].includes(b._dataId)) {
+    if (event_roles.includes(b._dataId)) {
       b.classList.add('clicked');
     } else {
       b.classList.remove('clicked');
     }
   }
 
-  let list = tmpls[scopeId.EVENT].querySelector('#event-staff-number-map'); // w
-  list.innerHTML = '';
+  // numtab
+  let width = 125*(event_roles.length+1);
+  Utils.setWidthPx(elms.numtab_header_list, width);
+  Utils.setWidthPx(elms.numtab_content, width);
 
-  const _eventId = zones[zonesId.EVENTLIST].selection._dataId;
-
-  let dataArray = data.eventsPersonalNumMap[_eventId];
-  if (dataArray === undefined) {
-    dataArray = [];
-    data.eventsPersonalNumMap[_eventId] = [];
+  function createLocalHeader(name) {
+    let retval = document.createElement('div');
+    retval.className = 'disp-flex with-width justify-content-center';
+    Utils.setWidthPx(retval, width);
+    let header = document.createElement('h4');
+    header.className = 'txt-center';
+    header.textContent = name;
+    retval.append(header);
+    return retval;
   }
+  // @nocheckin: we will need to merge all those iterations together
+  let list = [createLocalHeader('Participant')];
+  for (const role_id of event_roles[event_id]) {
+    const role_idx = data.rolesId.get(role_id);
+    const name = data.rolesName[role_idx];
+    list.push(createLocalHeader(name));
+  }
+  elms.numtab_header_list.replaceChildren(...list);
+
+  const btns_in_line = event_roles.length+2;
   for (let i = 0; i < dataArray.length;) {
-    let line = createTemplateLine();
+    let line = createTemplateLine(event_roles.length);
     line._dIdx = Math.floor(i/3);
     const btns = line.querySelectorAll('button');
     for (let j = 0; j < btns.length; j++) {
@@ -208,14 +210,14 @@ export function update() { // @working
   addEmptyLine(list);
 
   list = [SearchDisplay.create('Participant', listId.COMPETENCES)];
-  for (const role_id of data.eventsRole[event_id]) {
+  for (const role_id of event_roles) {
     const role_idx = data.rolesId.get(role_id);
     const name = data.rolesName[role_idx];
     list.push(SearchDisplay.create(name, listId.COMPETENCES));
   }
   elms.comp_tables.replaceChildren(...list);
 
-  let duration = data.eventsDuration[_eventId];
+  let duration = data.eventsDuration[event_id];
   if (duration === undefined) {
     data.eventsDuration[_eventId] = -1;
     duration = -1;
