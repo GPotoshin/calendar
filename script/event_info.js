@@ -4,6 +4,7 @@ import * as Utils from './utils.js';
 
 const elms = {
   event_role_list: null,
+  comp_tables: null,
 };
 
 function createStaffTable() {
@@ -56,13 +57,9 @@ function createCompetencesTable() {
     `;
 
   const container = table.querySelector('.js-set');
+  elms.comp_tables = container;
 
   // const baseWidth = 125; 
-  container.append(SearchDisplay.create('Participant', listId.COMPETENCES));
-  for (let name of data.rolesName) {
-    container.append(SearchDisplay.create(name, listId.COMPETENCES));
-  }
-
   return table;
 }
 
@@ -178,7 +175,7 @@ export function update() { // @working
     return;
   }
   const event_id = zone.selection._dataId;
-  
+
   for (const b of elms.event_role_list._btnList) {
     if (data.eventsRole[event_id].includes(b._dataId)) {
       b.classList.add('clicked');
@@ -209,6 +206,14 @@ export function update() { // @working
     list.appendChild(line);
   }
   addEmptyLine(list);
+
+  list = [SearchDisplay.create('Participant', listId.COMPETENCES)];
+  for (const role_id of data.eventsRole[event_id]) {
+    const role_idx = data.rolesId.get(role_id);
+    const name = data.rolesName[role_idx];
+    list.push(SearchDisplay.create(name, listId.COMPETENCES));
+  }
+  elms.comp_tables.replaceChildren(...list);
 
   let duration = data.eventsDuration[_eventId];
   if (duration === undefined) {

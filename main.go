@@ -895,6 +895,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     if err != nil {
       slog.Error("can't read role id", "cause", err)
       http.Error(w, "bad request", http.StatusBadRequest)
+      return
     }
     idx, event_exists := state.EventsId[event_id]
     _, role_exists := state.RolesId[role_id]

@@ -6,6 +6,7 @@ import * as Api from './api.js';
 import * as SideMenu from './side_menu.js';
 import * as Utils from './utils.js';
 import * as SearchDisplay from './search_display.js';
+import * as EventInfo from './event_info.js';
 
 let state = {
   delete_target: null,
@@ -417,7 +418,8 @@ document.getElementById('toggle-button').addEventListener('click', () => {
         }
 
         if (turning_on) { data.eventsRole[idx].push(role_id); }
-        else {data.eventsRole = data.eventsRole.filter(x => x !== role_id);}
+        else { data.eventsRole[idx] = data.eventsRole[idx].filter(x => x !== role_id); }
+        EventInfo.update();
       })
       .catch( e => {
         target.classList.toggle('clicked');
