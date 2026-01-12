@@ -84,11 +84,14 @@ export function loadTemplate() {
   `;
 
   let [sDisplay, container] = SearchDisplay.createAndReturnListContainer('Personel', listId.EVENT_STAFF);
+  container._btnList = [];
+
   for (const [id, idx] of data.rolesId) {
     const name = data.rolesName[idx];
     const b = SearchDisplay.createButton(); 
     Utils.setNameAndId(b, name, id);
     container.appendChild(b);
+    container._btnList.push(b);
   }
   elms.event_role_list = container;
 
@@ -176,14 +179,13 @@ export function update() { // @working
   }
   const event_id = zone.selection._dataId;
   
-  for (const b of elms.event_role_list.children) {
+  for (const b of elms.event_role_list._btnList) {
     if (data.eventsRole[event_id].includes(b._dataId)) {
       b.classList.add('clicked');
     } else {
       b.classList.remove('clicked');
     }
   }
-
 
   let list = tmpls[scopeId.EVENT].querySelector('#event-staff-number-map'); // w
   list.innerHTML = '';
