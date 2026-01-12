@@ -7,8 +7,7 @@ import (
 	"crypto/x509"
   "html/template"
 	"io"
-	"log"
-  "fmt"
+	"log/slog"
 	"net/http"
 	"time"
   "bytes"
@@ -82,17 +81,17 @@ func (s *State) cleanupExpiredTokens() {
 
 func (s *State) startKeyRotation() {
   if err := s.generateKeys(); err != nil {
-    log.Printf("Failed to iniate auth keys: %v\n", err)
+    slog.Error("Failed to iniate auth keys", "cause", err)
     os.Exit(1)
   }
 	ticker := time.NewTicker(24 * time.Hour)
 	go func() {
 		for range ticker.C {
-			log.Println("Rotating RSA keys...")
+			slog.Info("Rotating RSA keys...")
 			if err := s.generateKeys(); err != nil {
-				log.Printf("Failed to rotate keys: %v\n", err)
+				slog.Error("Failed to rotate keys: %v\n", err)
 			} else { // we need to send new key to open connections
-				log.Println("Keys rotated successfully")
+				slog.Info("Keys rotated successfully")
 			}
 		}
 	}()
@@ -115,46 +114,46 @@ func handlePublicKey(w http.ResponseWriter, r *http.Request) {
 
 	pubKey := state.getPublicKey()
 	if err := writeBytes(w, pubKey); err != nil {
-		log.Printf("Failed to write public key: %v\n", err)
+		slog.Error("Failed to write public key", "cause", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
 
 func handleLogin(w http.ResponseWriter, r *http.Request) {
-  fmt.Println("Handeling login")
+  slog.Info("Handeling login")
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-  log.Println("reading payload size")
+  slog.Info("reading payload size")
 	encryptedSize, err := readInt32(r.Body)
 	if err != nil {
-		log.Printf("Failed to read encrypted data size: %v\n", err)
+		slog.Error("Failed to read encrypted data size", "cause", err)
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
 
-  log.Println("checking payload size")
+  slog.Info("checking payload size")
 	if encryptedSize < 0 || encryptedSize > 1024*1024 {
-		log.Printf("Invalid encrypted data size: %d\n", encryptedSize)
+		slog.Error("Invalid encrypted data size", "size", encryptedSize)
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
 
-  log.Println("reading encrypted data")
+  slog.Info("reading encrypted data")
 	encryptedData := make([]byte, encryptedSize)
 	if _, err := io.ReadFull(r.Body, encryptedData); err != nil {
-		log.Printf("Failed to read encrypted data: %v\n", err)
+		slog.Error("Failed to read encrypted data: %v\n", "cause", err)
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
 
-  log.Println("Decrypting the data")
+  slog.Info("Decrypting the data")
 	decryptedData, err := state.decrypt(encryptedData)
 	if err != nil {
-		log.Printf("Failed to decrypt data: %v\n", err)
+		slog.Error("Failed to decrypt data", "cause", err)
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
@@ -163,13 +162,13 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	userId, err := readInt32(reader)
 	if err != nil {
-		log.Printf("Failed to parse username: %v\n", err)
+		slog.Error("Failed to parse username", "cause", err)
 		return
 	}
 
 	password, err := readHash(reader)
 	if err != nil {
-		log.Printf("Failed to parse password: %v\n", err)
+		slog.Error("Failed to parse password", "cause", err)
 		return
 	}
 
@@ -190,7 +189,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
   var token [32]byte
   for i := 0; i < 10; i++ {
     if _, err := rand.Read(token[:]); err != nil {
-      log.Printf("entropy source error: %w", err)
+      slog.Error("entropy source error", "cause", err)
       http.Error(w, "Entropy source error", http.StatusInternalServerError)
       return
     }
@@ -212,13 +211,13 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
     state.mutex.Unlock()
   }
 
-  log.Printf("Failed to generate token: %v\n", err)
+  slog.Error("Failed to generate token", "cause", err)
   http.Error(w, "Failed to generate token", http.StatusInternalServerError)
   return
 
   _token_generation_success:
   if err := writeHash(w, token); err != nil {
-    log.Printf("Failed to write token: %v\n", err)
+    slog.Error("Failed to write token", "cause", err)
     return
   }
 
@@ -227,13 +226,13 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
   state.mutex.Unlock()
 
   if err := writeInt32(w, privilege); err != nil {
-    log.Printf("Failed to write prvilegeLevel: %v\n", err)
+    slog.Error("Failed to write prvilegeLevel", "cause", err)
     return
   }
 
   t, err := template.ParseFiles("index.html", "month.html")
   if err != nil {
-    log.Printf("failed to parse index.html and month.html: %v\n", err);
+    slog.Error("failed to parse index.html and month.html", "cause", err);
   }
 
   type DayData struct {}
@@ -249,12 +248,12 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
   err = t.Execute(&buf, data)
 
   if err != nil {
-    log.Printf("failed to compose App: %v\n", err);
+    slog.Error("failed to compose App", "cause", err);
   }
   if err := writeBytes(w, buf.Bytes()); err != nil {
-    log.Printf("Failed to write App: %v\n", err)
+    slog.Error("Failed to write App", "cause", err)
     return
   }
-  log.Printf("User %s logged in successfully\n", userId)
+  slog.Info("User logged in successfully", "id", userId)
   return
 }

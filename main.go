@@ -6,7 +6,7 @@ import (
   "context"
   "fmt"
   "net/http"
-  "log"
+  "log/slog"
   "time"
   "os"
   "os/signal"
@@ -446,7 +446,7 @@ func writeState(w io.Writer, state State, dest int32) error {
 
 func middleware(handler http.Handler) http.Handler {
   return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-    log.Printf("%s %s %s\n", r.RemoteAddr, r.Method, r.URL)
+    slog.Info("serving", "addr", r.RemoteAddr, "met", r.Method, "url", r.URL)
     
     csp := []string{
 			"default-src 'self'",
@@ -496,45 +496,46 @@ func main() {
     createMaps()
     file, err = os.Create("data.db")
     if err != nil {
-      log.Fatal(err)
+      slog.Error("Error creating data base", "cause", err)
+      return
     }
   } else {
     reader := bufio.NewReader(file)
     state, err = readState(reader)
     if err != nil {
       createMaps()
-      log.Println("State is only partialy set: ", err)
+      slog.Warn("State is only partialy set", "cause", err)
     }
   }
 
-  log.Println(state)
+  slog.Info("Initial", "state", state)
 
   state.initAuth()
   state.startKeyRotation()
   state.startTokenCleanup()
 
   defer func() {
-    log.Println("Running cleanup...")
+    slog.Info("Running cleanup...")
     if _, err := file.Seek(0, 0); err != nil {
-      log.Printf("Failed to seek to beginning: %v\n", err)
+      slog.Error("Failed to seek to beginning", "cause", err)
     }
     rebaseState()
     writer := bufio.NewWriter(file)
     if err = writeState(writer, state, DEST_DISK); err != nil {
-      log.Printf("Failed to store data [binary]: %v\n", err)
+      slog.Error("Failed to store data [binary]", "cause", err)
     }
     if err = writer.Flush(); err != nil {
-      log.Printf("Failed to flush a buffered writer: %v\n", err)
+      slog.Error("Failed to flush a buffered writer", "cause", err)
     }
     currentPos, err := file.Seek(0, io.SeekCurrent)
     if err != nil {
-      log.Printf("Failed to get current position: %v\n", err)
+      slog.Error("Failed to get current position", "cause", err)
     }
     if err = file.Truncate(currentPos); err != nil {
-      log.Printf("Failed to truncate file: %v\n", err)
+      slog.Error("Failed to truncate file: %v\n", err)
     }
     file.Close()
-    log.Println("Database connection closed.")
+    slog.Info("Database connection closed.")
   }()
 
   http.HandleFunc("/regular.ttf", serveFile("fonts/SourceSansPro-Regular.ttf", []HeaderPair{{Key: "Content-Type", Value: "font/ttf"}}))
@@ -576,27 +577,28 @@ func main() {
   }
 
   go func() {
-    log.Println("Starting HTTP redirect server on :80")
+    slog.Info("Starting HTTP redirect server on :80")
     http.ListenAndServe(":80", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
       http.Redirect(w, r, "https://"+r.Host+r.RequestURI, http.StatusMovedPermanently)
     }))
   }()
 
   go func() {
-    fmt.Println("Server starting on :443 (HTTPS)")
+    slog.Info("Server starting on :443 (HTTPS)")
     if err := srv.ListenAndServeTLS("./test/cert.pem", "./test/key.pem"); err != nil && err != http.ErrServerClosed {
-      log.Fatal(err)
+      slog.Error("Can't launch https server", "cause", err)
     }
   }()
 
   <-sigChan
-  log.Println("Shutting down...")
+  slog.Info("Shutting down...")
   ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
   defer cancel()
   if err := srv.Shutdown(ctx); err != nil {
-    log.Fatalf("Server forced to shutdown: %v\n", err)
+    slog.Error("Server forced to shutdown", "cause", err)
+    return
   }
-  log.Println("Server Exiting")
+  slog.Info("Server Exiting")
 }
 
 func handleData(w http.ResponseWriter, r *http.Request) {
@@ -614,21 +616,21 @@ func handleData(w http.ResponseWriter, r *http.Request) {
   }
   idx, exists = state.UsersId[state.ConnectionsUser[idx]]
   if !exists {
-    log.Println("We have a token: ", token, ", which corresponds to a not existing user: ", state.ConnectionsUser[idx])
+    slog.Error("Incorrect user id", "We have a token", token, "which corresponds to a not existing user", state.ConnectionsUser[idx])
     http.Error(w, "Internal error", http.StatusInternalServerError)
     return 
   }
 
   if state.UsersPrivilegeLevel[idx] == PRIVILEGE_LEVEL_ADMIN {
-    log.Println("Writing admin data")
+    slog.Info("Writing admin data")
     rebaseState()
     if err = writeState(w, state, DEST_ADMIN); err != nil {
-      log.Printf("Error writing admin data: %v", err)
+      slog.Error("Couldn't write admin data", "cause", err)
       http.Error(w, "Error writing application state", http.StatusInternalServerError)
       return
     }
   } else {
-    log.Println("incorrect privilage level to send data")
+    slog.Error("incorrect privilage level to send data")
     http.Error(w, "incorrect privilage level", http.StatusBadRequest)
   }
 
@@ -657,14 +659,15 @@ func handleSimpleCreate(
 ) {
   str, err := readString(r)
   if err != nil {
-    log.Print(err)
+    slog.Error("can't read string", "cause", err)
     http.Error(w, err.Error(), http.StatusBadRequest)
     return
   }
-  log.Printf("the input is '%s'\n", str)
+  slog.Info("Input", "string", str)
 
   for _, idx := range m {
     if (*names)[idx] == str {
+      slog.Error("collision in names")
       http.Error(w, "collision in names", http.StatusBadRequest)
       return
     }
@@ -686,26 +689,26 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
   }
   api_version, err := readString(r.Body)
   if err != nil {
-    log.Print(err)
+    slog.Error("can't read api version", "cause", err)
     http.Error(w, err.Error(), http.StatusBadRequest)
     return
   }
   if api_version != "bin_api.v0.0.0" {
-    log.Println("API version is incorrect. We are getting ", api_version)
+    slog.Error("API version is incorrect", "We are getting", api_version)
     http.Error(w, "incorrect api version", http.StatusBadRequest)
     return
   }
 
   token, err := readHash(r.Body)
   if err != nil {
-    log.Println("can't read token")
+    slog.Error("can't read token")
     http.Error(w, "incorrect api", http.StatusBadRequest)
     return
   }
   
   c_idx, exists := state.ConnectionsToken[token]
   if !exists {
-    log.Println("token does not exists")
+    slog.Error("token does not exists")
     http.Error(w, "incorrect api", http.StatusBadRequest)
     return
   }
@@ -713,27 +716,27 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
   u_id := state.ConnectionsUser[c_idx]
   u_idx, exists := state.UsersId[u_id]
   if !exists {
-    log.Println("we have an unexisting u_id within ConnectinosUser")
+    slog.Error("we have an unexisting u_id within ConnectinosUser")
     http.Error(w, "internal error", http.StatusInternalServerError)
   }
   p_level := state.UsersPrivilegeLevel[u_idx]
 
   mode, err := readInt32(r.Body)
   if err != nil {
-    log.Println("can't read mode", err)
+    slog.Error("can't read mode", err)
     http.Error(w, "incorrect api", http.StatusBadRequest)
     return
   }
 
   field_id, err := readInt32(r.Body)
   if err != nil {
-    log.Println("can't read field_id", err)
+    slog.Error("can't read field_id", err)
     http.Error(w, "incorrect api", http.StatusBadRequest)
     return
   }
 
   if field_id < 0 || field_id >= STATE_FIELD_COUNT {
-    log.Println("incorrect field_id in api")
+    slog.Error("incorrect field_id in api")
     http.Error(w, "incorrect api", http.StatusBadRequest)
     return
   }
@@ -741,7 +744,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
   switch field_id {
   case USERS_ID_MAP_ID:
     if p_level != PRIVILEGE_LEVEL_ADMIN {
-      log.Println("unpriviliged user tried accessing priviliged api")
+      slog.Error("unpriviliged user tried accessing priviliged api")
       http.Error(w, "incorrect privilige level", http.StatusBadRequest)
       return
     }
@@ -749,28 +752,28 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       case CREATE:
         name, err := readString(r.Body)
         if err != nil {
-          log.Println("can't read name ", err)
+          slog.Error("can't read name ", "cause", err)
           http.Error(w, "incorrect api", http.StatusBadRequest)
           return
         }
 
         surname, err := readString(r.Body)
         if err != nil {
-          log.Println("can't read surname ", err)
+          slog.Error("can't read surname ", "cause", err)
           http.Error(w, "incorrect api", http.StatusBadRequest)
           return
         }
         
         mat, err := readInt32(r.Body)
         if err != nil {
-          log.Println("can't read matricule ", err)
+          slog.Error("can't read matricule ", "cause", err)
           http.Error(w, "incorrect api", http.StatusBadRequest)
           return
         }
 
         _, exists := state.UsersId[mat]
         if exists {
-          log.Println("collision in matricule storage")
+          slog.Error("collision in matricule storage")
           http.Error(w, "matricule already exists", http.StatusBadRequest)
           return
         }
@@ -789,14 +792,14 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       case DELETE:
         mat, err := readInt32(r.Body)
         if err != nil {
-          log.Println("can't read matricule ", err)
+          slog.Error("can't read matricule ", "cause", err)
           http.Error(w, "incorrect api", http.StatusBadRequest)
           return
         }
 
         _, exists := state.UsersId[mat]
         if !exists {
-          log.Println("matricule already does not exist")
+          slog.Error("matricule already does not exist")
           return
         }
         deleteValue(state.UsersId, nil, &state.UsersFreeList, mat)
@@ -850,14 +853,14 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     case DELETE:
       id, err := readInt32(r.Body)
       if err != nil {
-        log.Println("can't read id ", err)
+        slog.Error("can't read id ", "cause", err)
         http.Error(w, "incorrect api", http.StatusBadRequest)
         return
       }
 
       _, exists := state.EventsId[id]
       if !exists {
-        log.Println("matricule already does not exist")
+        slog.Error("matricule already does not exist")
         return
       }
       deleteValue(state.EventsId, &state.EventsFreeId, &state.EventsFreeList, id)
@@ -874,19 +877,29 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     http.Error(w, "we do not support that", http.StatusBadRequest)
     return
   case EVENTS_ROLE_ID:
-    event_id := readInt32(r.Body)
-    role_id := readInt32(r.Body)
+    event_id, err := readInt32(r.Body)
+    if err != nil {
+      slog.Error("can't read event id", "cause", err)
+      http.Error(w, "bad request", http.StatusBadRequest)
+      return
+    }
+    role_id, err := readInt32(r.Body)
+    if err != nil {
+      slog.Error("can't read role id", "cause", err)
+      http.Error(w, "bad request", http.StatusBadRequest)
+    }
     idx, event_exists := state.EventsId[event_id]
     _, role_exists := state.RolesId[role_id]
     if !event_exists || !role_exists {
-      http.Error("we are getting unexisting identifiers", http.StatusBadRequest)
+      slog.Error("we are getting unexisting identifiers")
+      http.Error(w, "we are getting unexisting identifiers", http.StatusBadRequest)
       return
     }
     switch mode {
       case CREATE:
         state.EventsRole[idx] = append(state.EventsRole[idx], role_id)
       case DELETE:
-        filter(state.EventsRole[idx], role_id)
+        filter(&state.EventsRole[idx], role_id)
       default:
       http.Error(w, "we do not support that", http.StatusBadRequest)
       return
@@ -917,14 +930,14 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     case DELETE:
       id, err := readInt32(r.Body)
       if err != nil {
-        log.Println("can't read id ", err)
+        slog.Error("can't read id ", "cause", err)
         http.Error(w, "incorrect api", http.StatusBadRequest)
         return
       }
 
       _, exists := state.EventsId[id]
       if !exists {
-        log.Println("matricule already does not exist")
+        slog.Error("matricule already does not exist")
         return
       }
       deleteValue(state.VenuesId, &state.VenuesFreeId, &state.VenuesFreeList, id)
@@ -960,14 +973,14 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     case DELETE:
       id, err := readInt32(r.Body)
       if err != nil {
-        log.Println("can't read id ", err)
+        slog.Error("can't read id ", "cause", err)
         http.Error(w, "incorrect api", http.StatusBadRequest)
         return
       }
 
       _, exists := state.EventsId[id]
       if !exists {
-        log.Println("matricule already does not exist")
+        slog.Error("matricule already does not exist")
         return
       }
       deleteValue(state.RolesId, &state.RolesFreeId, &state.RolesFreeList, id)
@@ -998,5 +1011,5 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     http.Error(w, "incorrect field id", http.StatusBadRequest)
     return
   }
-  log.Println(state)
+  slog.Info("Api result", "state", state)
 }

@@ -87,13 +87,13 @@ func getById[K, T comparable](id K, m map[K]int, a []T) (T, bool) {
 
 func filter(arr *[]int32, val int32) {
   writeIdx := 0
-  for _, item := range arr {
+  for _, item := range *arr {
     if item != val {
-      arr[writeIdx] = item
+      (*arr)[writeIdx] = item
       writeIdx++
     }
   }
-  return arr[:writeIdx]
+  (*arr) = (*arr)[:writeIdx]
 }
 
 func deleteOccurrences(arr [][]int32, val int32) {
