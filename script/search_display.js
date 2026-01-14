@@ -73,11 +73,10 @@ export function createAndReturnListContainer(name, id) {
   menu.innerHTML = `
     <h4 class="js-set txt-center">Personnel</h4>
     <div class="h-container with-width">
-    <div class="searching-field h-container disp-flex grow"><div class="arrow">></div><input class="searching-input" type="text" placeholder="Trouver"></input></div>
+      <div class="searching-field h-container disp-flex grow"><div class="arrow">></div><input class="searching-input" type="text" placeholder="Trouver"></input></div>
     </div>
     <div class="h-container with-width grow">
-    <div class="js-set text-box v-container scrollable-box scroll bordered grow half-wide extendable">
-    </div>
+    <div class="js-set text-box v-container scrollable-box scroll bordered grow half-wide extendable"></div>
     </div>
     `;
   const objList = menu.querySelectorAll('.js-set');

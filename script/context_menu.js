@@ -176,10 +176,11 @@ document.getElementById('delete-button').addEventListener('click', function() {
       deleteValue(data.eventsId, data.eventsFreeList, id);
       break;
 
-      // Note: Additional references to roles require attention,
-      // though this shall be addressed in due course.
-    case listId.EVENT_STAFF:
+    case listId.EVENT_STAFF: // we should here remove the button from a backing array
+      EventInfo.elms.event_role_list._btnList = EventInfo.elms.event_role_list._btnList.filter(b => b !== state.delete_target);
       deleteValue(data.rolesId, data.rolesFreeList, id);
+      deleteOccurrences(data.eventsRole, id);
+      EventInfo.update();
       break;
     default:
     throw new Error('incorrect delete target type');
@@ -380,6 +381,7 @@ document.getElementById('create-button').addEventListener('click', () => {
         data.rolesFreeList,
         zonesId.NONE,
       );
+      EventInfo.elms.event_role_list._btnList.push(b);
       break;
     }
     default:

@@ -2,7 +2,7 @@ import { listId, zones, zonesId, tmpls, scopeId } from './global_state.js';
 import * as SearchDisplay from './search_display.js';
 import * as Utils from './utils.js';
 
-const elms = {
+export const elms = {
   event_role_list: null,
   comp_tables: null,
   numtab_header_list: null,
@@ -201,11 +201,12 @@ export function update() { // @working
     for (let j = 0; j < btns.length; j++) {
       let b = btns[j];
       b._dIdx = i;
-      b.textContent = event_roles[i++];
+      // b.textContent = event_roles[i++]; // @nocheckin: this is an incorrect array of numbers
+      i++;
     };
     list.push(line);
   }
-  addEmptyLine(list);
+  addEmptyLine(list); // @nocheckin: function does not work correctly
   elms.numtab_content.replaceChildren(...list);
 
   list = [SearchDisplay.create('Participant', listId.COMPETENCES)];

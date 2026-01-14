@@ -998,6 +998,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         return
       }
       deleteValue(state.RolesId, &state.RolesFreeId, &state.RolesFreeList, id)
+      deleteOccurrences(state.EventsRole, id)
     default:
       http.Error(w, "we do not support that", http.StatusBadRequest)
       return
