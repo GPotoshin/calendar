@@ -12,6 +12,12 @@ let state = {
   prev_focus_num: 0,
 };
 
+// @nocheckin: We should actually try to rerender the view and swap only
+// when it is done and be at the correct scrollTop offset. Because that
+// generation of dom can take a bit of time.
+
+// [14/01/26:Potoshin] This function is only called in entry_point file once,
+// so it should not exist.
 export function setMonthScrollPosition() {
   const calendarBody = document.getElementById('calendar-body');
   const calendarContent = document.getElementById('calendar-content');

@@ -18,19 +18,6 @@ func (s *State) initAuth() {
   s.ConnectionsToken = make(map[[32]byte]int)
 }
 
-func (s *State) generateKeys() error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		return err
-	}
-	s.privateKey = privateKey
-	s.keyGeneratedAt = time.Now()
-  s.publicKey, err = x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
-	return err
-}
-
 func (s *State) getPublicKey() []byte {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
@@ -68,33 +55,50 @@ func (s *State) cleanupExpiredTokens() {
 	now := time.Now()
 	for token, idx := range s.ConnectionsToken {
 		if now.After(s.ConnectionsTime[idx][1]) {
-      state.mutex.Lock()
       deleteToken(s.ConnectionsToken, &s.ConnectionsFreeList, token)
       shrinkArray(&s.ConnectionsUser, s.ConnectionsFreeList)
       shrinkArray(&s.ConnectionsTime, s.ConnectionsFreeList)
       shrinkArray(&s.ConnectionsChannel, s.ConnectionsFreeList)
       s.ConnectionsFreeList = s.ConnectionsFreeList[:0]
-      state.mutex.Unlock()
 		}
 	}
 }
 
 func (s *State) startKeyRotation() {
   if err := s.generateKeys(); err != nil {
-    slog.Error("Failed to iniate auth keys", "cause", err)
+    slog.Error("failed to iniate auth keys", "cause", err)
     os.Exit(1)
   }
 	ticker := time.NewTicker(24 * time.Hour)
 	go func() {
 		for range ticker.C {
-			slog.Info("Rotating RSA keys...")
+			slog.Info("rotating rsa keys...")
 			if err := s.generateKeys(); err != nil {
-				slog.Error("Failed to rotate keys: %v\n", err)
+				slog.Error("failed to rotate keys: %v\n", err)
 			} else { // we need to send new key to open connections
-				slog.Info("Keys rotated successfully")
+				slog.Info("keys rotated successfully")
 			}
 		}
 	}()
+}
+
+func (s *State) generateKeys() error {
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+    slog.Error("Can't regenerate a private key")
+		return err
+	}
+  publicKey, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
+	if err != nil {
+    slog.Error("Can't regenerate a public key")
+		return err
+	}
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.privateKey = privateKey
+	s.keyGeneratedAt = time.Now()
+  s.publicKey = publicKey
+	return nil
 }
 
 func (s *State) startTokenCleanup() {

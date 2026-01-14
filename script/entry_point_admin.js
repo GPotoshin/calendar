@@ -37,6 +37,7 @@ let state = {
   focusedElement: null,
   baseDayNumber: 0,
   isUpdating: false,
+  scrollPosSave: 0,
 };
 
 {
@@ -207,23 +208,32 @@ calendarBody.addEventListener('mousemove', handleMouseMove);
 {
   let viewType = document.getElementById('view-type');
   let b1 = document.createElement('button');
+  let b2 = document.createElement('button');
   b1.textContent = 'Calendrier';
   b1._dataId = viewId.CALENDAR;
   b1.addEventListener('click' ,()=>{
-    zones[zonesId.VIEWTYPE].selection = b1;
     elms.bodyContainer.replaceChild(elms.view[viewId.CALENDER], elms.bodyContainer.children[1]);
+    if (zones[zonesId.VIEWTYPE].selection === b2) {
+      // probably we don't need to swap styles, if we do it before rendering
+      elms.calendarBody.classList.replace('scroll-smooth', 'scroll-auto');
+      elms.calendarBody.scrollTop = state.scrollPosSave;
+      elms.calendarBody.classList.replace('scroll-auto', 'scroll-smooth');
+    }
+    zones[zonesId.VIEWTYPE].selection = b1;
   });
-  let b2 = document.createElement('button');
   b2.textContent = 'Information';
   b2._dataId = viewId.INFORMATION;
-
   b2.addEventListener('click' ,()=>{ // @nocheckin: we have a bug here
-    elms.bodyContainer.replaceChild(elms.view[viewId.INFORMATION], elms.bodyContainer.children[1]);
-    zones[zonesId.VIEWTYPE].selection = b2;
-    if (zones[zonesId.DATATYPE].selection._dataId === scopeId.EVENT) {
-      EventInfo.update(); // in that function we are searching for an element
-    }                     // in the dom, but we are adding them just bellow \/
-    elms.view[viewId.INFORMATION].replaceChildren(tmpls[scopeId.EVENT]);
+    if (zones[zonesId.VIEWTYPE].selection === b1) {
+      state.scrollPosSave = elms.calendarBody.scrollTop;
+      elms.bodyContainer.replaceChild(elms.view[viewId.INFORMATION], elms.bodyContainer.children[1]);
+      zones[zonesId.VIEWTYPE].selection = b2;
+      if (zones[zonesId.DATATYPE].selection._dataId === scopeId.EVENT) {
+        EventInfo.update(); // in that function we are searching for an element
+        // in the dom, but we are adding them just bellow
+        elms.view[viewId.INFORMATION].replaceChildren(tmpls[scopeId.EVENT]);
+      }
+    }
   });
   viewType.append(b1,b2);
   zones[zonesId.VIEWTYPE].selection = b1;
@@ -269,6 +279,8 @@ observers.calendarScrolling = new IntersectionObserver((entries) => {
       console.log('we are hitting');
       const week = elms.calendarContent.querySelectorAll('.week-row')[0];
       elms.calendarBody.classList.replace('scroll-smooth', 'scroll-auto');
+      // @nocheckin: We should scroll by a variable offset determined after
+      // dom content modification.
       elms.calendarBody.scrollTop -= shiftingBy*week.offsetHeight;
       elms.calendarBody.classList.replace('scroll-auto', 'scroll-smooth');
       requestAnimationFrame(() => {
@@ -282,6 +294,10 @@ observers.calendarScrolling = new IntersectionObserver((entries) => {
         iterateOverDays((day) => {
           day.children[0].textContent = date.getDate();
           day._dayNum = Math.floor(date.getTime() / MS_IN_DAY);
+          if (day._dayNum == today) {
+            day.classList.add('today');
+            elms.todayFrame = day;
+          }
           date.setDate(date.getDate() + 1);
         });
         refocusMonth();

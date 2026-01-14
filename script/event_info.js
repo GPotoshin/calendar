@@ -27,7 +27,7 @@ function createStaffTable() {
   
 
   elms.numtab_header_list = table.children[1];
-  elms.numtab_content = table.children[2];
+  elms.numtab_content = table.children[2].children[0];
   return table;
 }
 
@@ -103,14 +103,26 @@ export function update() { // @working
     </div>
     `;
 
-  function createTemplateLine() {
+  const zone = zones[zonesId.EVENTLIST];
+  if (zone.selection == null) { // we need to show general setting
+    return;
+  }
+  const event_id = zone.selection._dataId;
+  const event_roles = data.eventsRole[event_id];
+
+
+  function createTemplateLine(staff_num, width) {
     let line = document.createElement('div');
     line.className = 'h-container align-items-center wide';
-    line.innerHTML = tmplHTML;
+    line.innerHTML = participant_num_field_html+staff_num_field_html.repeat(staff_num);
+    for (const e of line.children) {
+      Utils.setWidthPx(e, width)
+    }
     return line;
   }
 
-  function addEmptyLine(parent) {
+  // @nocheckin
+  function addEmptyLine(list) { // we need to change that
     let line = createTemplateLine();
     const btns = line.querySelectorAll('button');
     const btnsCallbacks = [];
@@ -127,20 +139,19 @@ export function update() { // @working
       };
       if (dataIsSet) {
         line.classList.add('deletable');
-        let dataArray = data.eventsPersonalNumMap[zones[zonesId.EVENTLIST].selection._dataId];
-        line._dIdx = dataArray.length/3;
+        line._dIdx = event_roles.length/btns.length; // why??
         for (let j = 0; j < btns.length; j++) {
-          btns[j]._dIdx = dataArray.length;
-          dataArray.push(Number(btns[j].textContent));
+          btns[j]._dIdx = event_roles.length;
+          event_roles.push(Number(btns[j].textContent));
           btns[j].classList.add('editable');
           btns[j].removeEventListener('click', btnsCallbacks[j]);
         }
-        addEmptyLine(parent);
+        addEmptyLine(list);
       }
     }
     btns.forEach(b => {
       b.textContent = '\u00A0'; // '\u00A0' is an empty space with non zero size
-      b.className = 'std-min hover no-padding txt-center tiny-button';
+      b.className = 'std-min hover no-padding txt-center tiny-button'; // why are we setting?
 
       function localCallback() {
         b.replaceWith(numInput.elm);
@@ -150,18 +161,10 @@ export function update() { // @working
       btnsCallbacks.push(localCallback);
       b.addEventListener('click', localCallback);
     });
-
-    parent.appendChild(line);
+    list.push(line);
   }
 
   // actual function code
-  const zone = zones[zonesId.EVENTLIST];
-  if (zone.selection == null) { // we need to show general setting
-    return;
-  }
-  const event_id = zone.selection._dataId;
-  const event_roles = data.eventsRole[event_id];
-
   // roles table
   for (const b of elms.event_role_list._btnList) {
     if (event_roles.includes(b._dataId)) {
@@ -172,7 +175,8 @@ export function update() { // @working
   }
 
   // numtab
-  let width = 125*(event_roles.length+1);
+  const base_width = 125;
+  let width = base_width*(event_roles.length+1);
   Utils.setWidthPx(elms.numtab_header_list, width);
   Utils.setWidthPx(elms.numtab_content, width);
 
@@ -188,26 +192,27 @@ export function update() { // @working
   }
   // @nocheckin: we will need to merge all those iterations together
   let list = [createLocalHeader('Participant')];
-  for (const role_id of event_roles[event_id]) {
+  for (const role_id of event_roles) {
     const role_idx = data.rolesId.get(role_id);
     const name = data.rolesName[role_idx];
     list.push(createLocalHeader(name));
   }
   elms.numtab_header_list.replaceChildren(...list);
 
-  const btns_in_line = event_roles.length+2;
-  for (let i = 0; i < dataArray.length;) {
-    let line = createTemplateLine(event_roles.length);
-    line._dIdx = Math.floor(i/3);
+  list = [];
+  for (let i = 0; i < event_roles.length;) {
+    let line = createTemplateLine(event_roles.length, base_width);
     const btns = line.querySelectorAll('button');
+    line._dIdx = Math.floor(i/btns.length);
     for (let j = 0; j < btns.length; j++) {
       let b = btns[j];
       b._dIdx = i;
-      b.textContent = dataArray[i++];
+      b.textContent = event_roles[i++];
     };
-    list.appendChild(line);
+    list.push(line);
   }
   addEmptyLine(list);
+  elms.numtab_content.replaceChildren(...list);
 
   list = [SearchDisplay.create('Participant', listId.COMPETENCES)];
   for (const role_id of event_roles) {

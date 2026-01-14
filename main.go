@@ -854,9 +854,9 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
 
       state.EventsVenues = append(state.EventsVenues, []int32{})
       state.EventsRole = append(state.EventsRole, []int32{})
-      state.EventsRolesRequirement = append(state.EventsRolesRequirment, [][]int32{})
+      state.EventsRolesRequirement = append(state.EventsRolesRequirement, [][]int32{})
       state.EventsPersonalNumMap = append(state.EventsPersonalNumMap, [][]int32{})
-      state.EventsDuration = append(state.EventsRole, -1)
+      state.EventsDuration = append(state.EventsDuration, -1)
 
     case DELETE:
       id, err := readInt32(r.Body)
