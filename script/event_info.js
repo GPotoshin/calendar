@@ -108,52 +108,53 @@ export function update() { // @working
   const event_roles = data.eventsRole[event_id];
 
 
-  function createTemplateLine(staff_num, width) {
+  function createTemplateLine(staff_num) {
     let line = document.createElement('div');
     line.className = 'h-container align-items-center wide';
     line.innerHTML = participant_num_field_html+staff_num_field_html.repeat(staff_num);
+    for (let i = 0; i < line.children.length-1; i++) {
+      line.children.classList.add("right-border");
+    }
     return line;
   }
 
-  // @nocheckin
-  function addEmptyLine(list) { // we need to change that
-    let line = createTemplateLine();
-    const btns = line.querySelectorAll('button');
-    const btnsCallbacks = [];
-    function endOfWriting(b) {
-      b.textContent = numInput.elm.value || '\u00A0';
-      numInput.elm.replaceWith(b);
+  let btnsCallbacks = [];
+  function endOfWriting(list, staff_num, b, line, btns) {
+    b.textContent = numInput.elm.value || '\u00A0';
+    numInput.elm.replaceWith(b);
 
-      let dataIsSet = true;
-      for (let _b of btns) {
-        if (_b.textContent == '\u00A0') {
-          dataIsSet = false;
-          break;
-        }
-      };
-      if (dataIsSet) {
-        line.classList.add('deletable');
-        line._dIdx = event_roles.length/btns.length; // why??
-        for (let j = 0; j < btns.length; j++) {
-          btns[j]._dIdx = event_roles.length;
-          event_roles.push(Number(btns[j].textContent));
-          btns[j].classList.add('editable');
-          btns[j].removeEventListener('click', btnsCallbacks[j]);
-        }
-        addEmptyLine(list);
+    let dataIsSet = true;
+    for (let _b of btns) {
+      if (_b.textContent == '\u00A0') {
+        dataIsSet = false;
+        break;
       }
+    };
+    if (dataIsSet) {
+      line.classList.add('deletable');
+      line._dIdx = event_roles.length/btns.length;
+      // we need to make an API store request here
+      for (let j = 0; j < btns.length; j++) {
+        btns[j]._dIdx = event_roles.length;
+        btns[j].classList.add('editable');
+        btns[j].removeEventListener('click', btnsCallbacks[j]);
+      }
+      btnsCallbacks = [];
+      addEmptyLine(list, staff_num);
     }
-    btns.forEach(b => {
+  }
+  function addEmptyLine(list, staff_num) { // we need to change that
+    let line = createTemplateLine(staff_num);
+    const btns = line.querySelectorAll('button');
+    for (const b of btns) {
       b.textContent = '\u00A0'; // '\u00A0' is an empty space with non zero size
       b.className = 'std-min hover no-padding txt-center tiny-button'; // why are we setting?
-
-      function localCallback() {
+      btnsCallbacks.push(() => {
         b.replaceWith(numInput.elm);
         numInput.elm.focus();
-        numInput.endOfWriting = () => { endOfWriting(b) };
-      }
-      btnsCallbacks.push(localCallback);
-      b.addEventListener('click', localCallback);
+        numInput.endOfWriting = () => { endOfWriting(list, staff_num, b, line, btns) };
+      });
+      b.addEventListener('click', btnsCallbacks[btnsCallbacks.length - 1]);
     });
     list.push(line);
   }
@@ -193,16 +194,16 @@ export function update() { // @working
   }
   elms.numtab_header_list.replaceChildren(...list);
 
+  const num_map = data.eventsPersonalNumMap[event_id];
   list = [];
-  for (let i = 0; i < event_roles.length;) {
-    let line = createTemplateLine(event_roles.length, base_width);
+  for (let i = 0; i < num_map.length;) {
+    let line = createTemplateLine(event_roles.length);
     const btns = line.querySelectorAll('button');
     line._dIdx = Math.floor(i/btns.length);
     for (let j = 0; j < btns.length; j++) {
       let b = btns[j];
       b._dIdx = i;
-      // b.textContent = event_roles[i++]; // @nocheckin: this is an incorrect array of numbers
-      i++;
+      b.textContent = num_map[i++];
     };
     list.push(line);
   }
