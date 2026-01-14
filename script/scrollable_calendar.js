@@ -1,3 +1,5 @@
+import * as Glob from './global_state.js';
+
 let state = {
   cells: null,
   backed_week: null,
@@ -131,13 +133,23 @@ export function handleMouseMove(e) {
     state.bar.classList.add('event-occurence');
     state.bar.classList.add('event-single');
     state.bar.classList.add('no-select');
-    state.bar.textContent = 'Event #'+event_counter;
-    event_counter+=1;
+    
+    const event_selection = Glob.zones[Glob.zonesId.EVENTLIST].selection;
+    if (event_selection != null) {
+      const ev_id = event_selection._dataId;
+      const idx = Glob.data.eventsId.get(ev_id);
+      const name = Glob.data.eventsName[idx];
+      state.bar.textContent = name;
+    }
+    else {
+      state.bar.textContent = 'Event #'+event_counter;
+      event_counter+=1;
+    }
 
     state.bar.dataset.rightCellNum = state.start_cell_num;
     state.bar.dataset.leftCellNum = state.start_cell_num;
     state.bar.dataset.top = 0;
-    state.bar.style.top = "0%";
+    state.bar.style.top = '0%';
 
     addBarToCell(state);
 

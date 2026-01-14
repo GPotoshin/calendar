@@ -276,7 +276,6 @@ observers.calendarScrolling = new IntersectionObserver((entries) => {
       if (entry.target === elms.markerBlocks[0]) {
         shiftingBy = -SHIFTING_BY;
       }
-      console.log('we are hitting');
       const week = elms.calendarContent.querySelectorAll('.week-row')[0];
       elms.calendarBody.classList.replace('scroll-smooth', 'scroll-auto');
       // @nocheckin: We should scroll by a variable offset determined after
