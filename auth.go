@@ -131,13 +131,11 @@ func handlePublicKey(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleLogin(w http.ResponseWriter, r *http.Request) {
-  slog.Info("Handeling login")
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-  slog.Info("reading payload size")
 	encryptedSize, err := readInt32(r.Body)
 	if err != nil {
 		slog.Error("Failed to read encrypted data size", "cause", err)
@@ -145,14 +143,12 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-  slog.Info("checking payload size")
 	if encryptedSize < 0 || encryptedSize > 1024*1024 {
 		slog.Error("Invalid encrypted data size", "size", encryptedSize)
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
 
-  slog.Info("reading encrypted data")
 	encryptedData := make([]byte, encryptedSize)
 	if _, err := io.ReadFull(r.Body, encryptedData); err != nil {
 		slog.Error("Failed to read encrypted data: %v\n", "cause", err)
@@ -160,7 +156,6 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-  slog.Info("Decrypting the data")
 	decryptedData, err := state.decrypt(encryptedData)
 	if err != nil {
 		slog.Error("Failed to decrypt data", "cause", err)

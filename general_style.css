@@ -227,3 +227,9 @@ button {
 .snap-start {
   scroll-snap-align: start;
 }
+
+.num-field {
+  width: 125px;
+  border-bottom: 1px solid #ccc;
+  display: flex;
+}

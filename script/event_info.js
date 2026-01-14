@@ -19,15 +19,12 @@ function createStaffTable() {
     <div class="h-container with-width align-items-center">
     </div>
 
-    <div class="m-box v-container with-width">
-    <div id="event-staff-number-map" class="v-container scrollable-box disp-flex grow scroll-smooth bordered">
-    </div>
+    <div id="event-staff-number-map" class="m-box with-width v-container scrollable-box disp-flex grow scroll-smooth bordered">
     </div>
     `;
   
-
   elms.numtab_header_list = table.children[1];
-  elms.numtab_content = table.children[2].children[0];
+  elms.numtab_content = table.children[2];
   return table;
 }
 
@@ -89,14 +86,14 @@ export function loadTemplate() {
 export function update() { // @working
   // scoped functions
   const participant_num_field_html = `
-    <div class="disp-flex justify-content-center bottom-right-border">
+    <div class="num-field justify-content-center">
     <div class="with-padding">de <button class="std-min hover no-padding txt-center tiny-button">
     </button> à <button class="std-min hover no-padding txt-center tiny-button"></button>
     </div>
     </div>
     `;
   const staff_num_field_html = `
-    <div class="disp-flex bottom-border">
+    <div class="num-field">
     <div class="with-padding">
     <button class="hover std-min no-padding txt-center tiny-button"></button>
     </div>
