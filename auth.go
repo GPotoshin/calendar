@@ -12,6 +12,7 @@ import (
 	"time"
   "bytes"
   "os"
+  "sort"
 )
 
 func (s *State) initAuth() {
@@ -56,12 +57,17 @@ func (s *State) cleanupExpiredTokens() {
 	for token, idx := range s.ConnectionsToken {
 		if now.After(s.ConnectionsTime[idx][1]) {
       deleteToken(s.ConnectionsToken, &s.ConnectionsFreeList, token)
-      shrinkArray(&s.ConnectionsUser, s.ConnectionsFreeList)
-      shrinkArray(&s.ConnectionsTime, s.ConnectionsFreeList)
-      shrinkArray(&s.ConnectionsChannel, s.ConnectionsFreeList)
-      s.ConnectionsFreeList = s.ConnectionsFreeList[:0]
 		}
 	}
+  if !isSorted(s.ConnectionsFreeList) {
+    slog.Info("connections free list is not sorted")
+  }
+  sort.Ints(s.ConnectionsFreeList)
+  rebaseMap(s.ConnectionsToken, s.ConnectionsFreeList)
+  shrinkArray(&s.ConnectionsUser, s.ConnectionsFreeList)
+  shrinkArray(&s.ConnectionsTime, s.ConnectionsFreeList)
+  shrinkArray(&s.ConnectionsChannel, s.ConnectionsFreeList)
+  s.ConnectionsFreeList = s.ConnectionsFreeList[:0]
 }
 
 func (s *State) startKeyRotation() {

@@ -89,14 +89,14 @@ export function loadTemplate() {
 export function update() { // @working
   // scoped functions
   const participant_num_field_html = `
-    <div class="disp-flex with-width justify-content-center bottom-right-border">
+    <div class="disp-flex justify-content-center bottom-right-border">
     <div class="with-padding">de <button class="std-min hover no-padding txt-center tiny-button">
     </button> à <button class="std-min hover no-padding txt-center tiny-button"></button>
     </div>
     </div>
     `;
   const staff_num_field_html = `
-    <div class="disp-flex with-width bottom-border">
+    <div class="disp-flex bottom-border">
     <div class="with-padding">
     <button class="hover std-min no-padding txt-center tiny-button"></button>
     </div>
@@ -115,9 +115,6 @@ export function update() { // @working
     let line = document.createElement('div');
     line.className = 'h-container align-items-center wide';
     line.innerHTML = participant_num_field_html+staff_num_field_html.repeat(staff_num);
-    for (const e of line.children) {
-      Utils.setWidthPx(e, width)
-    }
     return line;
   }
 

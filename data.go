@@ -1,5 +1,14 @@
 package main
 
+func isSorted(arr []int) bool {
+  for i := 1; i < len(arr); i++ {
+    if arr[i] < arr[i-1] {
+      return false
+    }
+  }
+  return true
+}
+
 func newId[K, V comparable](m map[K]V, freeId *[]int32) int32 {
 	if len(*freeId) > 0 {
     id := (*freeId)[len(*freeId)-1]
@@ -47,6 +56,7 @@ func deleteValue(m map[int32]int, freeId *[]int32, freeList *[]int, id int32) {
   }
 }
 
+// we may want to do hashing here
 func rebaseMap[K comparable](m map[K]int, freeList []int) {
   if len(freeList) == 0 {
     return

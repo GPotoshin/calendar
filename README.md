@@ -47,3 +47,15 @@ correctly written state it sends only correct data. And if it does not the bug
 should be fixed and we do not need a backrout.
 + We are sending changes over a custom bytecode API.
 + On creation we have a bulky function that sets all callbacks
+
+## Crash
+2026/01/14 10:55:29 INFO Writing admin data
+panic: runtime error: index out of range [9] with length 9
+
+goroutine 34 [running]:
+main.(*State).cleanupExpiredTokens(0x102b02f40)
+        /Users/giorno/work/calendar/auth.go:57 +0x278
+main.(*State).startTokenCleanup.func1()
+        /Users/giorno/work/calendar/auth.go:108 +0x44
+created by main.(*State).startTokenCleanup in goroutine 1
+        /Users/giorno/work/calendar/auth.go:106 +0x78
