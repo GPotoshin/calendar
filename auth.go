@@ -59,9 +59,6 @@ func (s *State) cleanupExpiredTokens() {
       deleteToken(s.ConnectionsToken, &s.ConnectionsFreeList, token)
 		}
 	}
-  if !isSorted(s.ConnectionsFreeList) {
-    slog.Info("connections free list is not sorted")
-  }
   sort.Ints(s.ConnectionsFreeList)
   rebaseMap(s.ConnectionsToken, s.ConnectionsFreeList)
   shrinkArray(&s.ConnectionsUser, s.ConnectionsFreeList)

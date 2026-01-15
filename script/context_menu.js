@@ -7,6 +7,7 @@ import * as SideMenu from './side_menu.js';
 import * as Utils from './utils.js';
 import * as SearchDisplay from './search_display.js';
 import * as EventInfo from './event_info.js';
+import { numInput } from './num_input.js';
 
 let state = {
   delete_target: null,
@@ -207,25 +208,25 @@ function setStandardInputCallback(b, input, api, map, arr, freeList, zone_id) {
       Api.writeHeader(w, Api.Op.CREATE, api);
       w.writeString(val);
       Api.request(w)
-        .then(resp => {
-          if (!resp.ok) {
-            throw new Error(`HTTP error! status: ${resp.status}`);
-          }
-          resp.arrayBuffer()
-          .then(bin => {
-            let r = new BufferReader(bin);
-            let id = r.readInt32();
-            let idx = storageIndex(map, freeList);
-            map.set(id, idx);
-            arr[idx] = val;
-            b.textContent = '';
-            Utils.setNameAndId(b, val, id);
-          });
-        })
-        .catch(e => {
-          b.remove();
-          console.error("Could not store ", val, e);
+      .then(resp => {
+        if (!resp.ok) {
+          throw new Error(`HTTP error! status: ${resp.status}`);
+        }
+        resp.arrayBuffer()
+        .then(bin => {
+          let r = new BufferReader(bin);
+          let id = r.readInt32();
+          let idx = storageIndex(map, freeList);
+          map.set(id, idx);
+          arr[idx] = val;
+          b.textContent = '';
+          Utils.setNameAndId(b, val, id);
         });
+      })
+      .catch(e => {
+        b.remove();
+        console.error("Could not store ", val, e);
+      });
       SideMenu.setClickCallback(b, zone_id);
     } else if (e.key === 'Escape') {
       e.preventDefault();

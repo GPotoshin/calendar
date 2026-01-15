@@ -838,7 +838,11 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     return
 
   case EVENTS_ID_MAP_ID:
-    if p_level != PRIVILEGE_LEVEL_ADMIN { return }
+    if p_level != PRIVILEGE_LEVEL_ADMIN {
+      slog.Error("unpriviliged user tried accessing priviliged api")
+      http.Error(w, "incorrect privilige level", http.StatusBadRequest)
+      return
+    }
     switch mode {
     case CREATE:
       if handleSimpleCreate(
@@ -885,6 +889,11 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     http.Error(w, "we do not support that", http.StatusBadRequest)
     return
   case EVENTS_ROLE_ID:
+    if p_level != PRIVILEGE_LEVEL_ADMIN {
+      slog.Error("unpriviliged user tried accessing priviliged api")
+      http.Error(w, "incorrect privilige level", http.StatusBadRequest)
+      return
+    }
     event_id, err := readInt32(r.Body)
     if err != nil {
       slog.Error("can't read event id", "cause", err)
@@ -915,21 +924,54 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       case DELETE:
         filter(&state.EventsRole[idx], role_id)
       default:
-      http.Error(w, "we do not support that", http.StatusBadRequest)
+        http.Error(w, "we do not support that", http.StatusBadRequest)
       return
     }
   case EVENTS_ROLES_REQUIREMENT_ID:
     http.Error(w, "we do not support that", http.StatusBadRequest)
     return
   case EVENTS_PERSONAL_NUM_MAP_ID:
-    http.Error(w, "we do not support that", http.StatusBadRequest)
-    return
+    if p_level != PRIVILEGE_LEVEL_ADMIN {
+      slog.Error("unpriviliged user tried accessing priviliged api")
+      http.Error(w, "incorrect privilige level", http.StatusBadRequest)
+      return
+    }
+    switch mode {
+      case CREATE:
+        event_id, err := readInt32(r.Body)
+        if err != nil {
+          slog.Error("[NUM_MAP:CREATE] can't read event_id", "cause", err)
+          http.Error(w, "incorrect request", http.StatusBadRequest)
+          return
+        }
+        idx, exists := state.EventsId[event_id];
+        if !exists {
+          slog.Error("[NUM_MAP:CREATE] event does not exist")
+          http.Error(w, "incorrect request", http.StatusBadRequest)
+          return
+        }
+        data, err := readInt32Array(r.Body)
+        if err != nil {
+          slog.Error("[NUM_MAP:CREATE] can't read data", "cause", err)
+          http.Error(w, "incorrect request", http.StatusBadRequest)
+          return
+        }
+        state.EventsPersonalNumMap[idx] = append(state.EventsPersonalNumMap[idx], data)
+
+      default:
+        http.Error(w, "we do not support that", http.StatusBadRequest)
+        return
+    }
   case EVENTS_DURATION_ID:
     http.Error(w, "we do not support that", http.StatusBadRequest)
     return
 
   case VENUES_ID_MAP_ID:
-    if p_level != PRIVILEGE_LEVEL_ADMIN { return }
+    if p_level != PRIVILEGE_LEVEL_ADMIN {
+      slog.Error("unpriviliged user tried accessing priviliged api")
+      http.Error(w, "incorrect privilige level", http.StatusBadRequest)
+      return
+    }
     switch mode {
     case CREATE:
       handleSimpleCreate(
@@ -974,6 +1016,11 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     return
 
   case ROLES_ID_MAP_ID:
+    if p_level != PRIVILEGE_LEVEL_ADMIN {
+      slog.Error("unpriviliged user tried accessing priviliged api")
+      http.Error(w, "incorrect privilige level", http.StatusBadRequest)
+      return
+    }
     switch mode {
     case CREATE:
       handleSimpleCreate(

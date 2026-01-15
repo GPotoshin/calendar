@@ -1,6 +1,9 @@
-import { listId, zones, zonesId, tmpls, scopeId } from './global_state.js';
+import { data, listId, zones, zonesId, tmpls, scopeId } from './global_state.js';
 import * as SearchDisplay from './search_display.js';
 import * as Utils from './utils.js';
+import { numInput } from './num_input.js';
+import { BufferWriter } from './io.js';
+import * as Api from './api.js';
 
 export const elms = {
   event_role_list: null,
@@ -42,7 +45,6 @@ function createCompetencesTable() {
   const container = table.querySelector('.js-set');
   elms.comp_tables = container;
 
-  // const baseWidth = 125; 
   return table;
 }
 
@@ -105,21 +107,22 @@ export function update() { // @working
     return;
   }
   const event_id = zone.selection._dataId;
-  const event_roles = data.eventsRole[event_id];
-
+  const event_idx = data.eventsId.get(event_id);
+  const event_roles = data.eventsRole[event_idx];
+  const num_map = data.eventsPersonalNumMap;
 
   function createTemplateLine(staff_num) {
     let line = document.createElement('div');
     line.className = 'h-container align-items-center wide';
     line.innerHTML = participant_num_field_html+staff_num_field_html.repeat(staff_num);
     for (let i = 0; i < line.children.length-1; i++) {
-      line.children.classList.add("right-border");
+      line.children[i].classList.add('right-border');
     }
     return line;
   }
 
   let btnsCallbacks = [];
-  function endOfWriting(list, staff_num, b, line, btns) {
+  function endOfWriting(staff_num, b, line, btns) {
     b.textContent = numInput.elm.value || '\u00A0';
     numInput.elm.replaceWith(b);
 
@@ -134,16 +137,38 @@ export function update() { // @working
       line.classList.add('deletable');
       line._dIdx = event_roles.length/btns.length;
       // we need to make an API store request here
+      let w = new BufferWriter();
+      Api.writeHeader(w, Api.Op.CREATE, Api.StateField.EVENTS);
+      w.writeInt32(event_id);
+      w.writeInt32(btns.length);
+      let data = new Int32Array(btns.length);
       for (let j = 0; j < btns.length; j++) {
         btns[j]._dIdx = event_roles.length;
         btns[j].classList.add('editable');
         btns[j].removeEventListener('click', btnsCallbacks[j]);
+        const n = Number(btns[j].textContent);
+        w.writeInt32(n);
+        data[j] = n;
       }
-      btnsCallbacks = [];
-      addEmptyLine(list, staff_num);
+      Api.request(w)
+      .then(resp => {
+        if (!resp.ok) {
+          throw new Error(`HTTP error! status: ${resp.status}`);
+        }
+        for (const n of data) {
+          num_map[event].push(n);
+        }
+      })
+      .catch(e => {
+        line.remove();
+        console.error('Could not store num_map line');
+      });
+      addEmptyLine(staff_num);
     }
   }
-  function addEmptyLine(list, staff_num) { // we need to change that
+
+  function addEmptyLine(staff_num) { // we need to change that
+    btnsCallbacks = [];
     let line = createTemplateLine(staff_num);
     const btns = line.querySelectorAll('button');
     for (const b of btns) {
@@ -152,15 +177,14 @@ export function update() { // @working
       btnsCallbacks.push(() => {
         b.replaceWith(numInput.elm);
         numInput.elm.focus();
-        numInput.endOfWriting = () => { endOfWriting(list, staff_num, b, line, btns) };
+        numInput.endOfWriting = () => { endOfWriting(staff_num, b, line, btns) };
       });
       b.addEventListener('click', btnsCallbacks[btnsCallbacks.length - 1]);
-    });
-    list.push(line);
+    };
+    elms.numtab_content.appendChild(line);
   }
 
   // actual function code
-  // roles table
   for (const b of elms.event_role_list._btnList) {
     if (event_roles.includes(b._dataId)) {
       b.classList.add('clicked');
@@ -194,21 +218,20 @@ export function update() { // @working
   }
   elms.numtab_header_list.replaceChildren(...list);
 
-  const num_map = data.eventsPersonalNumMap[event_id];
   list = [];
-  for (let i = 0; i < num_map.length;) {
+  for (let i = 0; i < num_map[event_idx].length;) {
     let line = createTemplateLine(event_roles.length);
     const btns = line.querySelectorAll('button');
     line._dIdx = Math.floor(i/btns.length);
     for (let j = 0; j < btns.length; j++) {
       let b = btns[j];
       b._dIdx = i;
-      b.textContent = num_map[i++];
+      b.textContent = num_map[event_idx][i++];
     };
     list.push(line);
   }
-  addEmptyLine(list); // @nocheckin: function does not work correctly
   elms.numtab_content.replaceChildren(...list);
+  addEmptyLine(event_roles.length); // idea is that addEmptyLine will add a line directly to the dom
 
   list = [SearchDisplay.create('Participant', listId.COMPETENCES)];
   for (const role_id of event_roles) {
@@ -218,7 +241,7 @@ export function update() { // @working
   }
   elms.comp_tables.replaceChildren(...list);
 
-  let duration = data.eventsDuration[event_id];
+  let duration = data.eventsDuration[event_idx];
   if (duration === undefined) {
     data.eventsDuration[_eventId] = -1;
     duration = -1;
