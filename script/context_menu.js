@@ -135,21 +135,21 @@ document.getElementById('delete-button').addEventListener('click', function() {
   let state_field = -1;
   switch (state.delete_target.parentElement._id) {
     case listId.STAFF:
-      state_field = Api.StateField.USERS_ID_MAP_ID;
+      state_field = Api.USERS_ID_MAP_ID;
       break;
     case listId.VENUE:
-      state_field = Api.StateField.VENUES_ID_MAP_ID;
+      state_field = Api.VENUES_ID_MAP_ID;
       break;
     case listId.EVENT:
-      state_field = Api.StateField.EVENTS_ID_MAP_ID;
+      state_field = Api.EVENTS_ID_MAP_ID;
       break;
     case listId.EVENT_STAFF:
-      state_field = Api.StateField.ROLES_ID_MAP_ID;
+      state_field = Api.ROLES_ID_MAP_ID;
       break;
     default:
       throw new Error('incorrect delete target type');
   }
-  Api.writeHeader(w, Api.Op.DELETE, state_field);
+  Api.writeHeader(w, Api.DELETE, state_field);
   w.writeInt32(Number(id));
   Api.request(w)
   .then(resp => {
@@ -205,7 +205,7 @@ function setStandardInputCallback(b, input, api, map, arr, freeList, zone_id) {
       b.textContent = val;
 
       let w = new BufferWriter();
-      Api.writeHeader(w, Api.Op.CREATE, api);
+      Api.writeHeader(w, Api.CREATE, api);
       w.writeString(val);
       Api.request(w)
       .then(resp => {
@@ -249,7 +249,7 @@ document.getElementById('create-button').addEventListener('click', () => {
     case listId.EVENT: {
       createEventOrVenue(
         'Nouvel Événement',
-        Api.StateField.EVENTS_ID_MAP_ID,
+        Api.EVENTS_ID_MAP_ID,
         data.eventsId,
         data.eventsName,
         data.eventsFreeList,
@@ -287,7 +287,7 @@ document.getElementById('create-button').addEventListener('click', () => {
         SideManu.setUserButton(b, name, surname, matricule);
 
         let w = new BufferWriter();
-        Api.writeHeader(w, Api.Op.CREATE, Api.StateField.USERS_ID_MAP_ID);
+        Api.writeHeader(w, Api.CREATE, Api.USERS_ID_MAP_ID);
         Api.writeCreateUserMapEntry(w, name, surname, matricule); 
 
         inputName.remove();
@@ -355,7 +355,7 @@ document.getElementById('create-button').addEventListener('click', () => {
     case listId.VENUE: {
       createEventOrVenue(
         'Nouveau Lieu',
-        Api.StateField.VENUES_ID_MAP_ID,
+        Api.VENUES_ID_MAP_ID,
         data.venuesId,
         data.venuesName,
         data.venuesFreeList,
@@ -376,7 +376,7 @@ document.getElementById('create-button').addEventListener('click', () => {
       setStandardInputCallback(
         b,
         input,
-        Api.StateField.ROLES_ID_MAP_ID,
+        Api.ROLES_ID_MAP_ID,
         data.rolesId,
         data.rolesName,
         data.rolesFreeList,
@@ -405,9 +405,9 @@ document.getElementById('toggle-button').addEventListener('click', () => {
       let w = new BufferWriter();
 
       if (turning_on) {
-        Api.writeHeader(w, Api.Op.CREATE, Api.StateField.EVENTS_ROLE_ID);
+        Api.writeHeader(w, Api.CREATE, Api.EVENTS_ROLE_ID);
       } else {
-        Api.writeHeader(w, Api.Op.DELETE, Api.StateField.EVENTS_ROLE_ID);
+        Api.writeHeader(w, Api.DELETE, Api.EVENTS_ROLE_ID);
       }
 
       w.writeInt32(event_id);
@@ -432,32 +432,30 @@ document.getElementById('toggle-button').addEventListener('click', () => {
   }
 });
 
+function display(s, btn_name) {
+  document.getElementById(btn_name).classList.replace('disp-none', 'disp-block');
+  s.show = true;
+}
+
 document.addEventListener('contextmenu', function(e) {
+  const s = { show: false };
   const menu = elms.rightClickMenu;
   const target = e.target;
-  let show = false;
 
-  if (state.delete_target = target.closest('.deletable')) { 
-    document.getElementById('delete-button').classList.replace('disp-none', 'disp-block');
-    show = true;
+  if (state.delete_target = target.closest('.deletable')) {
+    display(s, 'delete-button');
   }
-
   if (state.edit_target = target.closest('.editable')) {
-    document.getElementById('edit-button').classList.replace('disp-none', 'disp-block');
-    show = true;
+    display(s, 'edit-button');
   }
-
   if (state.toggle_target = target.closest('.togglable')) {
-    document.getElementById('toggle-button').classList.replace('disp-none', 'disp-block');
-    show = true;
+    display(s, 'toggle-button');
   }
-
   if (state.extend_target = target.closest('.extendable')) {
-    document.getElementById('create-button').classList.replace('disp-none', 'disp-block');
-    show = true;
+    display(s, 'create-button');
   }
 
-  if (show) {
+  if (s.show) {
     e.preventDefault();
     menu.classList.replace('disp-none', 'disp-flex');
     menu.style.setProperty('--menu-left', e.clientX + 'px');

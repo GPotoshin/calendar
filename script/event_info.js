@@ -88,17 +88,14 @@ export function loadTemplate() {
 export function update() { // @working
   // scoped functions
   const participant_num_field_html = `
-    <div class="num-field justify-content-center">
-    <div class="with-padding">de <button class="std-min hover no-padding txt-center tiny-button">
+    <div class="with-padding num-field align-items-center justify-content-center">
+    de <button class="std-min hover no-padding txt-center tiny-button">
     </button> à <button class="std-min hover no-padding txt-center tiny-button"></button>
-    </div>
     </div>
     `;
   const staff_num_field_html = `
-    <div class="num-field">
-    <div class="with-padding">
+    <div class="num-field with-padding">
     <button class="hover std-min no-padding txt-center tiny-button"></button>
-    </div>
     </div>
     `;
 
@@ -138,26 +135,24 @@ export function update() { // @working
       line._dIdx = event_roles.length/btns.length;
       // we need to make an API store request here
       let w = new BufferWriter();
-      Api.writeHeader(w, Api.Op.CREATE, Api.StateField.EVENTS);
+      Api.writeHeader(w, Api.CREATE, Api.EVENTS_PERSONAL_NUM_MAP_ID);
       w.writeInt32(event_id);
       w.writeInt32(btns.length);
-      let data = new Int32Array(btns.length);
+      let data = [];
       for (let j = 0; j < btns.length; j++) {
         btns[j]._dIdx = event_roles.length;
         btns[j].classList.add('editable');
         btns[j].removeEventListener('click', btnsCallbacks[j]);
         const n = Number(btns[j].textContent);
         w.writeInt32(n);
-        data[j] = n;
+        data.push(n);
       }
       Api.request(w)
       .then(resp => {
         if (!resp.ok) {
           throw new Error(`HTTP error! status: ${resp.status}`);
         }
-        for (const n of data) {
-          num_map[event].push(n);
-        }
+        num_map[event_idx].push(data);
       })
       .catch(e => {
         line.remove();
@@ -219,14 +214,15 @@ export function update() { // @working
   elms.numtab_header_list.replaceChildren(...list);
 
   list = [];
-  for (let i = 0; i < num_map[event_idx].length;) {
+  for (let i = 0; i < num_map[event_idx].length; i++) {
     let line = createTemplateLine(event_roles.length);
+    line.classList.add('deletable');
     const btns = line.querySelectorAll('button');
-    line._dIdx = Math.floor(i/btns.length);
+    line._dIdx = i;
     for (let j = 0; j < btns.length; j++) {
       let b = btns[j];
-      b._dIdx = i;
-      b.textContent = num_map[event_idx][i++];
+      b._dIdx = j;
+      b.textContent = num_map[event_idx][i][j];
     };
     list.push(line);
   }

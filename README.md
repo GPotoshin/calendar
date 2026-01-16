@@ -25,7 +25,7 @@ end of writing. It should be a single line add.
 + not yet planed events list (#6)
 + event placing (#7)
 + correct month swapping (almost, it can fail with fast month scrolling) (#8)
-+ correct scrolling (it's laggy): Optimise DOM manipulation (no trashing) (#9)
++ correct scrolling (it's laggy): optimise DOM manipulation (no trashing) (#9)
 + Think about gc and memory managemenet (#10)
 + Minimise object creation and try to reuse them (#11)
 + We have slope in DataManager, clean it up (#12)

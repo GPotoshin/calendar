@@ -73,9 +73,17 @@ const (
   PRIVILEGE_LEVEL_USER
 )
 
+// every data object is always referenced by Id, but is stored at a runtime
+// computable index. For example a user with $usr_id has its related
+// information stored at the index $UsersId[$usr_id]. If we are dealing
+// with subindexing in each category, its indexing is a direct mapping.
+// For exmaple, for a given event EventsRole has a list of role ids and
+// EventsRolesRequirement stores requirements at the same index.
+// There may be some ecceptions, as in EventsPersonalNumMap we are storing
+// directly rows from UI.
 
 type State struct {
-  UsersId map[int32]int // id -> idx
+  UsersId map[int32]int
   UsersPassword [][32]byte
   UsersName []string // we probably should write an index map
   UsersSurname []string
@@ -86,7 +94,7 @@ type State struct {
   UsersPrivilegeLevel []int32 // if it is >= 0, than that shows it as a chief of the Duty Station. If it is a constant
   UsersFreeList []int
 
-  EventsId map[int32]int // id -> idx
+  EventsId map[int32]int
   EventsName []string
   EventsVenues [][]int32
   EventsRole [][]int32
@@ -96,22 +104,22 @@ type State struct {
   EventsFreeId []int32
   EventsFreeList []int
 
-  VenuesId map[int32]int // id -> idx
+  VenuesId map[int32]int
   VenuesName []string
   VenuesFreeId []int32
   VenuesFreeList []int
 
-  CompetencesId map[int32]int // id -> idx
+  CompetencesId map[int32]int
   CompetencesName []string
   CompetencesFreeId []int32
   CompetencesFreeList []int
 
-  RolesId map[int32]int // id -> idx
+  RolesId map[int32]int
   RolesName []string
   RolesFreeId []int32
   RolesFreeList []int
 
-  OccurrencesId map[int32]int // id -> idx
+  OccurrencesId map[int32]int
   OccurrencesVenue []int32
   OccurrencesDates [][][2]int32 // idea is that every event can happen in intervals and we store the borders of those intervals
   OccurrencesParticipant [][]int32
@@ -119,7 +127,7 @@ type State struct {
   OccurrencesFreeId []int32
   OccurrencesFreeList []int
 
-  ConnectionsToken map[[32]byte]int // id -> idx
+  ConnectionsToken map[[32]byte]int
   ConnectionsUser []int32
   ConnectionsTime [][2]time.Time
   ConnectionsChannel []chan []byte
