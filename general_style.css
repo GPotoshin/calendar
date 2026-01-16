@@ -151,7 +151,7 @@ button {
 }
 
 .disp-none {
-  display: none;  
+  display: none !important;  
 }
 
 .disp-flex {

@@ -128,65 +128,67 @@ document.getElementById('edit-button').addEventListener('click', function() {
 
 document.getElementById('delete-button').addEventListener('click', function() {
   const id = state.delete_target._dataId;
-  if (id == undefined) {
-    throw new Error('undefined delete target data id');
-  }
+  if (id == undefined) { throw new Error('undefined delete target data id'); }
+  state.delete_target.classList.add('disp-none');
+
   let w = new BufferWriter();
-  let state_field = -1;
   switch (state.delete_target.parentElement._id) {
     case listId.STAFF:
-      state_field = Api.USERS_ID_MAP_ID;
+      Api.writeHeader(w, Api.DELETE, Api.USERS_ID_MAP_ID);
       break;
     case listId.VENUE:
-      state_field = Api.VENUES_ID_MAP_ID;
+      Api.writeHeader(w, Api.DELETE, Api.VENUES_ID_MAP_ID);
       break;
     case listId.EVENT:
-      state_field = Api.EVENTS_ID_MAP_ID;
+      Api.writeHeader(w, Api.DELETE, Api.EVENTS_ID_MAP_ID);
       break;
     case listId.EVENT_STAFF:
-      state_field = Api.ROLES_ID_MAP_ID;
+      Api.writeHeader(w, Api.DELETE, Api.ROLES_ID_MAP_ID);
+      break;
+    case listId.NUMMAP_LINE:
+      Api.writeHeader(w, Api.DELETE, Api.EVENTS_PERSONAL_NUM_MAP_ID);
+      w.writeInt32(zones[zonesId.EVENTLIST].selection._dataId);
       break;
     default:
+      state.delete_target.classList.remove('disp-none');
       throw new Error('incorrect delete target type');
   }
-  Api.writeHeader(w, Api.DELETE, state_field);
   w.writeInt32(Number(id));
   Api.request(w)
   .then(resp => {
     if (!resp.ok) {
       throw new Error(`HTTP error! status: ${resp.status}`);
     }
+    switch (state.delete_target.parentElement._id) {
+      case listId.STAFF:
+        deleteValue(data.usersId, data.usersFreeList, id);
+        deleteOccurrences(data.occurrencesParticipant, id);
+        break;
+      case listId.VENUE:
+        deleteValue(data.venuesId, data.venuesFreeList, id);
+        deleteOccurrences(data.eventsVenues, id);
+        break;
+      case listId.EVENT:
+        deleteValue(data.eventsId, data.eventsFreeList, id);
+        break;
+      case listId.EVENT_STAFF: // we should here remove the button from a backing array
+        EventInfo.elms.event_role_list._btnList =
+          EventInfo.elms.event_role_list._btnList.filter(b => b !== state.delete_target);
+
+        deleteValue(data.rolesId, data.rolesFreeList, id);
+        deleteOccurrences(data.eventsRole, id);
+        EventInfo.update();
+        break;
+      default:
+        throw new Error('incorrect delete target type');
+    }
+    state.delete_target.remove();
   })
   .catch(e => {
+    state.delete_target.classList.remove('disp-none');
     console.error("Could not delete ", e);
     return;
   });
-  // we are deleting localy if we succeed to delete on the server
-  switch (state.delete_target.parentElement._id) { // fill that switch
-    case listId.STAFF:
-      deleteValue(data.usersId, data.usersFreeList, id);
-      deleteOccurrences(data.occurrencesParticipant, id);
-      break;
-
-    case listId.VENUE:
-      deleteValue(data.venuesId, data.venuesFreeList, id);
-      deleteOccurrences(data.eventsVenues, id);
-      break;
-
-    case listId.EVENT:
-      deleteValue(data.eventsId, data.eventsFreeList, id);
-      break;
-
-    case listId.EVENT_STAFF: // we should here remove the button from a backing array
-      EventInfo.elms.event_role_list._btnList = EventInfo.elms.event_role_list._btnList.filter(b => b !== state.delete_target);
-      deleteValue(data.rolesId, data.rolesFreeList, id);
-      deleteOccurrences(data.eventsRole, id);
-      EventInfo.update();
-      break;
-    default:
-    throw new Error('incorrect delete target type');
-  }
-  state.delete_target.remove();
 });
 
 function setStandardInputCallback(b, input, api, map, arr, freeList, zone_id) {
