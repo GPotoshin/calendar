@@ -290,7 +290,9 @@ document.getElementById('create-button').addEventListener('click', () => {
 
         let w = new BufferWriter();
         Api.writeHeader(w, Api.CREATE, Api.USERS_ID_MAP_ID);
-        Api.writeCreateUserMapEntry(w, name, surname, matricule); 
+        w.writeInt32(mat);
+        w.writeString(name);
+        w.writeString(surname);
 
         inputName.remove();
         inputSurname.remove();
@@ -300,11 +302,11 @@ document.getElementById('create-button').addEventListener('click', () => {
           .then(resp => {
             if (!resp.ok) {
               throw new Error(`HTTP error! status: ${resp.status}`);
-              b.remove();
               return;
             }
           })
           .catch( e => {
+            b.remove();
             console.error("Could not store ", name, e);
           });
       }

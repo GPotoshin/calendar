@@ -46,13 +46,6 @@ export function writeHeader(w, op, stateField) {
   w.writeInt32(stateField);
 }
 
-
-export function writeCreateUserMapEntry(w, name, surname, mat) {
-  w.writeString(name);
-  w.writeString(surname);
-  w.writeInt32(mat);
-}
-
 export function request(w) {
   return fetch('/api', {
     method: 'POST',

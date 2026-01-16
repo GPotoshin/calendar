@@ -1,7 +1,6 @@
 import { elms, zones, viewId, zonesId, scopeId, listId, data } from './global_state.js';
 import { palette } from './color.js';
 import * as DM from './data_manager.js';
-import * as Api from './api.js';
 import * as EventInfo from './event_info.js';
 import * as Utils from './utils.js';
 import { BufferWriter } from './io.js';

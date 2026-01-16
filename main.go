@@ -660,6 +660,11 @@ func isAdmin(w http.ResponseWriter, p_level int32) bool {
   return true
 }
 
+func cannotRead(w http.ResponseWriter, loc string, name string, err error) {
+  slog.Error("["+loc+"]: Can't read "+name, "cause", err)
+  http.Error(w, "incorrect api", http.StatusBadRequest)
+}
+
 func handleSimpleCreate(
   r io.Reader,
   w http.ResponseWriter,
@@ -670,8 +675,7 @@ func handleSimpleCreate(
 ) error {
   str, err := readString(r)
   if err != nil {
-    slog.Error("can't read string", "cause", err)
-    http.Error(w, err.Error(), http.StatusBadRequest)
+    cannotRead(w, "handleSimpleCreate", "name", err)
     return err
   }
   slog.Info("Input", "string", str)
@@ -701,8 +705,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
   }
   api_version, err := readString(r.Body)
   if err != nil {
-    slog.Error("can't read api version", "cause", err)
-    http.Error(w, err.Error(), http.StatusBadRequest)
+    cannotRead(w, "handleApi", "api_version", err)
     return
   }
   if api_version != "bin_api.v0.0.0" {
@@ -710,21 +713,17 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     http.Error(w, "incorrect api version", http.StatusBadRequest)
     return
   }
-
   token, err := readHash(r.Body)
   if err != nil {
-    slog.Error("can't read token")
-    http.Error(w, "incorrect api", http.StatusBadRequest)
+    cannotRead(w, "handleApi", "token", err)
     return
   }
-  
   c_idx, exists := state.ConnectionsToken[token]
   if !exists {
     slog.Error("token does not exists")
     http.Error(w, "incorrect api", http.StatusBadRequest)
     return
   }
-
   u_id := state.ConnectionsUser[c_idx]
   u_idx, exists := state.UsersId[u_id]
   if !exists {
@@ -732,21 +731,16 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     http.Error(w, "internal error", http.StatusInternalServerError)
   }
   p_level := state.UsersPrivilegeLevel[u_idx]
-
   mode, err := readInt32(r.Body)
   if err != nil {
-    slog.Error("can't read mode", err)
-    http.Error(w, "incorrect api", http.StatusBadRequest)
+    cannotRead(w, "handleApi", "mode", err)
     return
   }
-
   field_id, err := readInt32(r.Body)
   if err != nil {
-    slog.Error("can't read field_id", err)
-    http.Error(w, "incorrect api", http.StatusBadRequest)
+    cannotRead(w, "handleApi", "field_id", err)
     return
   }
-
   if field_id < 0 || field_id >= STATE_FIELD_COUNT {
     slog.Error("incorrect field_id in api")
     http.Error(w, "incorrect api", http.StatusBadRequest)
@@ -756,41 +750,33 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
   switch field_id {
   case USERS_ID_MAP_ID:
     if !isAdmin(w, p_level) { return }
+    mat, err := readInt32(r.Body)
+    if err != nil {
+      cannotRead(w, "USERS_ID_MAP", "matricule", err)
+      return
+    }
+    _, exists := state.UsersId[mat]
     switch mode {
       case CREATE:
         name, err := readString(r.Body)
         if err != nil {
-          slog.Error("can't read name ", "cause", err)
-          http.Error(w, "incorrect api", http.StatusBadRequest)
+          cannotRead(w, "USERS_ID_MAP:CREATE", "name", err)
           return
         }
-
         surname, err := readString(r.Body)
         if err != nil {
-          slog.Error("can't read surname ", "cause", err)
-          http.Error(w, "incorrect api", http.StatusBadRequest)
+          cannotRead(w, "USERS_ID_MAP:CREATE", "surname", err)
           return
         }
-        
-        mat, err := readInt32(r.Body)
-        if err != nil {
-          slog.Error("can't read matricule ", "cause", err)
-          http.Error(w, "incorrect api", http.StatusBadRequest)
-          return
-        }
-
-        _, exists := state.UsersId[mat]
         if exists {
           slog.Error("collision in matricule storage")
           http.Error(w, "matricule already exists", http.StatusBadRequest)
           return
         }
-
         idx := storageIndex(state.UsersId, &state.UsersFreeList)
         state.UsersId[mat] = idx
         storeValue(&state.UsersName, idx, name)
         storeValue(&state.UsersSurname, idx, surname)
-        
       case UPDATE:
         http.Error(w, "we do not support that", http.StatusBadRequest)
         return
@@ -798,14 +784,6 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         http.Error(w, "we do not support that", http.StatusBadRequest)
         return
       case DELETE:
-        mat, err := readInt32(r.Body)
-        if err != nil {
-          slog.Error("can't read matricule ", "cause", err)
-          http.Error(w, "incorrect api", http.StatusBadRequest)
-          return
-        }
-
-        _, exists := state.UsersId[mat]
         if !exists {
           slog.Error("matricule already does not exist")
           return
@@ -897,14 +875,12 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     if !isAdmin(w, p_level) { return }
     event_id, err := readInt32(r.Body)
     if err != nil {
-      slog.Error("can't read event id", "cause", err)
-      http.Error(w, "bad request", http.StatusBadRequest)
+      cannotRead(w, "EVENTS_ROLE_ID", "event_id", err)
       return
     }
     role_id, err := readInt32(r.Body)
     if err != nil {
-      slog.Error("can't read role id", "cause", err)
-      http.Error(w, "bad request", http.StatusBadRequest)
+      cannotRead(w, "EVENTS_ROLE_ID", "role_id", err)
       return
     }
     idx, event_exists := state.EventsId[event_id]
@@ -935,8 +911,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     if !isAdmin(w, p_level) { return }
     event_id, err := readInt32(r.Body)
     if err != nil {
-      slog.Error("[NUM_MAP:CREATE] can't read event_id", "cause", err)
-      http.Error(w, "incorrect request", http.StatusBadRequest)
+      cannotRead(w, "NUM_MAP", "event_id", err)
       return
     }
     idx, exists := state.EventsId[event_id];
@@ -949,19 +924,17 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       case CREATE:
         data, err := readInt32Array(r.Body)
         if err != nil {
-          slog.Error("[NUM_MAP:CREATE] can't read data", "cause", err)
-          http.Error(w, "incorrect request", http.StatusBadRequest)
+          cannotRead(w, "NUM_MAP:CREATE", "data", err)
           return
         }
         state.EventsPersonalNumMap[idx] = append(state.EventsPersonalNumMap[idx], data)
       case DELETE:
         line_idx, err := readInt32(r.Body)
         if err != nil {
-          slog.Error("[NUM_MAP:CREATE] can't read line_idx", "cause", err)
-          http.Error(w, "incorrect request", http.StatusBadRequest)
+          cannotRead(w, "NUM_MAP:DELETE", "line_idx", err)
           return
         }
-        filter_id(&state.EventsPersonalNumMap[idx], line_idx);
+        filter_idx(&state.EventsPersonalNumMap[idx], int(line_idx));
 
       default:
         http.Error(w, "we do not support that", http.StatusBadRequest)
@@ -987,8 +960,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     case DELETE:
       id, err := readInt32(r.Body)
       if err != nil {
-        slog.Error("can't read id ", "cause", err)
-        http.Error(w, "incorrect api", http.StatusBadRequest)
+        cannotRead(w, "VENUES_ID:DELETE", "id", err)
         return
       }
 
@@ -1031,11 +1003,9 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     case DELETE:
       id, err := readInt32(r.Body)
       if err != nil {
-        slog.Error("can't read id ", "cause", err)
-        http.Error(w, "incorrect api", http.StatusBadRequest)
+        cannotRead(w, "ROLES_ID:DELETE", "id", err)
         return
       }
-
       _, exists := state.EventsId[id]
       if !exists {
         slog.Error("matricule already does not exist")
