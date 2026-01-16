@@ -665,6 +665,11 @@ func cannotRead(w http.ResponseWriter, loc string, name string, err error) {
   http.Error(w, "incorrect api", http.StatusBadRequest)
 }
 
+func noSupport(w http.ResponseWriter, loc string) {
+  slog.Error("["+loc+"]: no support")
+  http.Error(w, "we do not support that", http.StatusBadRequest)
+}
+
 func handleSimpleCreate(
   r io.Reader,
   w http.ResponseWriter,
@@ -797,30 +802,30 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         }
 
       default:
-        http.Error(w, "we do not support that", http.StatusBadRequest)
+        noSupport(w, "USERS_ID:default")
         return 
     }
 
   case USERS_NAME_ID:
-    http.Error(w, "we do not support that", http.StatusBadRequest)
+    noSupport(w, "USERS_NAME_ID")
     return
   case USERS_SURNAME_ID:
-    http.Error(w, "we do not support that", http.StatusBadRequest)
+    noSupport(w, "USERS_SURNAME_ID")
     return
   case USERS_MAIL_ID:
-    http.Error(w, "we do not support that", http.StatusBadRequest)
+    noSupport(w, "USERS_MAIL_ID")
     return
   case USERS_PHONE_ID:
-    http.Error(w, "we do not support that", http.StatusBadRequest)
+    noSupport(w, "USERS_PHONE_ID")
     return
   case USERS_COMPETENCES_ID:
-    http.Error(w, "we do not support that", http.StatusBadRequest)
+    noSupport(w, "USERS_COMPETENCES_ID")
     return
   case USERS_DUTY_STATION_ID:
-    http.Error(w, "we do not support that", http.StatusBadRequest)
+    noSupport(w, "USERS_DUTY_STATION_ID")
     return
   case USERS_PRIVILEGE_LEVEL_ID:
-    http.Error(w, "we do not support that", http.StatusBadRequest)
+    noSupport(w, "USERS_PRIVILEGE_LEVEL_ID")
     return
 
   case EVENTS_ID_MAP_ID:
@@ -861,15 +866,14 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       deleteValue(state.EventsId, &state.EventsFreeId, &state.EventsFreeList, id)
 
     default:
-      http.Error(w, "we do not support that", http.StatusBadRequest)
+      noSupport(w, "EVENTS_ID:default")
       return
     }
   case EVENTS_NAME_ID:
-    // handleArrayOfStrings(r.Body, w, mode, &state.EventsName, &state.EventsFreeList)
-    http.Error(w, "we do not support that", http.StatusBadRequest)
+    noSupport(w, "EVENTS_NAME_ID")
     return
   case EVENTS_VENUE_ID:
-    http.Error(w, "we do not support that", http.StatusBadRequest)
+    noSupport(w, "EVENTS_VENUE_ID")
     return
   case EVENTS_ROLE_ID:
     if !isAdmin(w, p_level) { return }
@@ -890,22 +894,22 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       http.Error(w, "we are getting unexisting identifiers", http.StatusBadRequest)
       return
     }
-    if len(state.EventsRole) <= idx {
-      state.EventsRole = slices.Grow(state.EventsRole, idx+1-len(state.EventsRole));
-      state.EventsRole = state.EventsRole[:idx+1];
-    }
 
     switch mode {
       case CREATE:
+        if len(state.EventsRole) <= idx {
+          state.EventsRole = slices.Grow(state.EventsRole, idx+1-len(state.EventsRole));
+          state.EventsRole = state.EventsRole[:idx+1];
+        }
         state.EventsRole[idx] = append(state.EventsRole[idx], role_id)
       case DELETE:
         filter_val(&state.EventsRole[idx], role_id)
       default:
-        http.Error(w, "we do not support that", http.StatusBadRequest)
-      return
+        noSupport(w, "EVENTS_ROLES_REQUIREMENT_ID:default")
+        return
     }
   case EVENTS_ROLES_REQUIREMENT_ID:
-    http.Error(w, "we do not support that", http.StatusBadRequest)
+    noSupport(w, "EVENTS_ROLES_REQUIREMENT_ID")
     return
   case EVENTS_PERSONAL_NUM_MAP_ID:
     if !isAdmin(w, p_level) { return }
@@ -937,11 +941,11 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         filter_idx(&state.EventsPersonalNumMap[idx], int(line_idx));
 
       default:
-        http.Error(w, "we do not support that", http.StatusBadRequest)
+        noSupport(w, "EVENTS_ROLES_REQUIREMENT_ID:default")
         return
     }
   case EVENTS_DURATION_ID:
-    http.Error(w, "we do not support that", http.StatusBadRequest)
+    noSupport(w, "EVENTS_DURATION_ID")
     return
 
   case VENUES_ID_MAP_ID:
@@ -973,19 +977,19 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       deleteOccurrences(state.EventsVenues, id);
 
     default:
-      http.Error(w, "we do not support that", http.StatusBadRequest)
+      noSupport(w, "VENUES_ID:default")
       return
     }
 
   case VENUES_NAME_ID:
-    http.Error(w, "we do not support that", http.StatusBadRequest)
+    noSupport(w, "VENUES_NAME_ID")
     return
 
   case COMPETENCES_ID_MAP_ID:
-    http.Error(w, "we do not support that", http.StatusBadRequest)
+    noSupport(w, "COMPETENCES_ID_MAP_ID")
     return
   case COMPETENCES_NAME_ID:
-    http.Error(w, "we do not support that", http.StatusBadRequest)
+    noSupport(w, "COMPETENCES_NAME_ID")
     return
 
   case ROLES_ID_MAP_ID:
@@ -1014,30 +1018,30 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       deleteValue(state.RolesId, &state.RolesFreeId, &state.RolesFreeList, id)
       deleteOccurrences(state.EventsRole, id)
     default:
-      http.Error(w, "we do not support that", http.StatusBadRequest)
+      noSupport(w, "ROLES_ID:default")
       return
     }
   case ROLES_NAME_ID:
-    http.Error(w, "we do not support that", http.StatusBadRequest)
+    noSupport(w, "ROLES_NAME_ID")
     return
 
   case OCCURRENCES_ID_MAP_ID:
-    http.Error(w, "we do not support that", http.StatusBadRequest)
+    noSupport(w, "OCCURRENCES_ID_MAP_ID")
     return
   case OCCURRENCES_VENUE_ID:
-    http.Error(w, "we do not support that", http.StatusBadRequest)
+    noSupport(w, "OCCURRENCES_VENUE_ID")
     return
   case OCCURRENCES_DATES_ID:
-    http.Error(w, "we do not support that", http.StatusBadRequest)
+    noSupport(w, "OCCURRENCES_DATES_ID")
     return
   case OCCURRENCES_PARTICIPANT_ID:
-    http.Error(w, "we do not support that", http.StatusBadRequest)
+    noSupport(w, "OCCURRENCES_PARTICIPANT_ID")
     return
   case OCCURRENCES_PARTICIPANTS_ROLE_ID:
-    http.Error(w, "we do not support that", http.StatusBadRequest)
+    noSupport(w, "OCCURRENCES_PARTICIPANTS_ROLE_ID")
     return
   default:
-    http.Error(w, "incorrect field id", http.StatusBadRequest)
+    noSupport(w, "default")
     return
   }
 }
