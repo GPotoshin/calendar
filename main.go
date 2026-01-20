@@ -660,9 +660,13 @@ func isAdmin(w http.ResponseWriter, p_level int32) bool {
   return true
 }
 
-func cannotRead(w http.ResponseWriter, loc string, name string, err error) {
-  slog.Error("["+loc+"]: Can't read "+name, "cause", err)
-  http.Error(w, "incorrect api", http.StatusBadRequest)
+func readError(w http.ResponseWriter, loc string, name string, err error) bool {
+  if err != nil {
+    slog.Error("["+loc+"]: Can't read "+name, "cause", err)
+    http.Error(w, "incorrect api", http.StatusBadRequest)
+    return true
+  }
+  return false
 }
 
 func noSupport(w http.ResponseWriter, loc string) {
@@ -679,8 +683,7 @@ func handleSimpleCreate(
   freeList *[]int,
 ) error {
   str, err := readString(r)
-  if err != nil {
-    cannotRead(w, "handleSimpleCreate", "name", err)
+  if readError(w, "handleSimpleCreate", "name", err) {
     return err
   }
   slog.Info("Input", "string", str)
@@ -709,8 +712,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     return
   }
   api_version, err := readString(r.Body)
-  if err != nil {
-    cannotRead(w, "handleApi", "api_version", err)
+  if readError(w, "handleApi", "api_version", err) {
     return
   }
   if api_version != "bin_api.v0.0.0" {
@@ -719,8 +721,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     return
   }
   token, err := readHash(r.Body)
-  if err != nil {
-    cannotRead(w, "handleApi", "token", err)
+  if readError(w, "handleApi", "token", err) {
     return
   }
   c_idx, exists := state.ConnectionsToken[token]
@@ -737,13 +738,11 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
   }
   p_level := state.UsersPrivilegeLevel[u_idx]
   mode, err := readInt32(r.Body)
-  if err != nil {
-    cannotRead(w, "handleApi", "mode", err)
+  if readError(w, "handleApi", "mode", err) {
     return
   }
   field_id, err := readInt32(r.Body)
-  if err != nil {
-    cannotRead(w, "handleApi", "field_id", err)
+  if readError(w, "handleApi", "field_id", err) {
     return
   }
   if field_id < 0 || field_id >= STATE_FIELD_COUNT {
@@ -756,21 +755,18 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
   case USERS_ID_MAP_ID:
     if !isAdmin(w, p_level) { return }
     mat, err := readInt32(r.Body)
-    if err != nil {
-      cannotRead(w, "USERS_ID_MAP", "matricule", err)
+    if readError(w, "USERS_ID_MAP", "matricule", err) {
       return
     }
     _, exists := state.UsersId[mat]
     switch mode {
       case CREATE:
         name, err := readString(r.Body)
-        if err != nil {
-          cannotRead(w, "USERS_ID_MAP:CREATE", "name", err)
+        if readError(w, "USERS_ID_MAP:CREATE", "name", err) {
           return
         }
         surname, err := readString(r.Body)
-        if err != nil {
-          cannotRead(w, "USERS_ID_MAP:CREATE", "surname", err)
+        if readError(w, "USERS_ID_MAP:CREATE", "surname", err) {
           return
         }
         if exists {
@@ -878,13 +874,11 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
   case EVENTS_ROLE_ID:
     if !isAdmin(w, p_level) { return }
     event_id, err := readInt32(r.Body)
-    if err != nil {
-      cannotRead(w, "EVENTS_ROLE_ID", "event_id", err)
+    if readError(w, "EVENTS_ROLE_ID", "event_id", err) {
       return
     }
     role_id, err := readInt32(r.Body)
-    if err != nil {
-      cannotRead(w, "EVENTS_ROLE_ID", "role_id", err)
+    if readError(w, "EVENTS_ROLE_ID", "role_id", err) {
       return
     }
     idx, event_exists := state.EventsId[event_id]
@@ -895,6 +889,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       return
     }
 
+    num_map := state.EventsPersonalNumMap[idx]
     switch mode {
       case CREATE:
         if len(state.EventsRole) <= idx {
@@ -902,8 +897,15 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
           state.EventsRole = state.EventsRole[:idx+1];
         }
         state.EventsRole[idx] = append(state.EventsRole[idx], role_id)
+        for i := 0; i < num_map.len; i++ {
+          num_map[i] = append(num_map[i], -1)
+        }
       case DELETE:
-        filter_val(&state.EventsRole[idx], role_id)
+        pos := slices.Index(state.EventsRole[idx], role_id)
+        filterIdx(&state.EventsRole[idx], pos)
+        for i := 0; i < num_map.len; i++ {
+          filterIdx(&num_map[i], pos)
+        }
       default:
         noSupport(w, "EVENTS_ROLES_REQUIREMENT_ID:default")
         return
@@ -914,32 +916,44 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
   case EVENTS_PERSONAL_NUM_MAP_ID:
     if !isAdmin(w, p_level) { return }
     event_id, err := readInt32(r.Body)
-    if err != nil {
-      cannotRead(w, "NUM_MAP", "event_id", err)
+    if readError(w, "NUM_MAP", "event_id", err) {
       return
     }
-    idx, exists := state.EventsId[event_id];
+    event_idx, exists := state.EventsId[event_id];
     if !exists {
       slog.Error("[NUM_MAP:CREATE] event does not exist")
       http.Error(w, "incorrect request", http.StatusBadRequest)
       return
     }
+    num_map := state.EventsPersonalNumMap
     switch mode {
       case CREATE:
         data, err := readInt32Array(r.Body)
-        if err != nil {
-          cannotRead(w, "NUM_MAP:CREATE", "data", err)
+        if readError(w, "NUM_MAP:CREATE", "data", err) {
           return
         }
-        state.EventsPersonalNumMap[idx] = append(state.EventsPersonalNumMap[idx], data)
+        num_map[event_idx] = append(num_map[idx], data)
       case DELETE:
         line_idx, err := readInt32(r.Body)
-        if err != nil {
-          cannotRead(w, "NUM_MAP:DELETE", "line_idx", err)
+        if readError(w, "NUM_MAP:DELETE", "line_idx", err) {
           return
         }
-        filter_idx(&state.EventsPersonalNumMap[idx], int(line_idx));
-
+        filterIdx(&state.EventsPersonalNumMap[idx], int(line_idx));
+      case UPDATE:
+        line_idx, err := readInt32(r.Body)
+        if readError(w, "NUM_MAP:UPDATE", "line_idx", err) {
+          return
+        }
+        num_idx, err := readInt32(r.Body)
+        if readError(w, "NUM_MAP:UPDATE", "num_idx", err) {
+          return
+        }
+        val, err := readInt32(r.Body)
+        if readError(w, "NUM_MAP:UPDATE", "num_idx", err) {
+          return
+        }
+        num_map[event_idx][line_idx][num_idx] = 
+        
       default:
         noSupport(w, "EVENTS_ROLES_REQUIREMENT_ID:default")
         return
@@ -963,8 +977,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
 
     case DELETE:
       id, err := readInt32(r.Body)
-      if err != nil {
-        cannotRead(w, "VENUES_ID:DELETE", "id", err)
+      if readError(w, "VENUES_ID:DELETE", "id", err) {
         return
       }
 
@@ -1006,8 +1019,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       )
     case DELETE:
       id, err := readInt32(r.Body)
-      if err != nil {
-        cannotRead(w, "ROLES_ID:DELETE", "id", err)
+      if readError(w, "ROLES_ID:DELETE", "id", err) {
         return
       }
       _, exists := state.EventsId[id]

@@ -28,6 +28,7 @@ function createStaffTable() {
   
   elms.numtab_header_list = table.children[1];
   elms.numtab_content = table.children[2];
+  elms.numtab_content._id = listId.NUMMAP;
   return table;
 }
 
@@ -118,10 +119,46 @@ export function update() { // @working
     return line;
   }
 
-  let btnsCallbacks = [];
-  function endOfWriting(staff_num, b, line, btns) {
+  function swapButtonBack(b) {
     b.textContent = numInput.elm.value || '\u00A0';
     numInput.elm.replaceWith(b);
+  }
+
+  function evolveButton(b) {
+    b.classList.add('editable');
+    b.removeEventListener('click', btns[j]._clickCallback);
+    b._clickCallback = null;
+  }
+
+  function getNumVal(b) {
+    return Number(b.textContent);
+  }
+
+  function endOfButtonWriting(b, line_idx) {
+    swapButtonBack(b);
+    if (b.textContent !== '\u00A0') {
+      const n = getNumVal(b);
+      let w = Api.createBufferWriter(Api.UPDATE, Api.EVENTS_PERSONAL_NUM_MAP_ID);
+      w.writeInt32(event_id);
+      w.writeInt32(line_idx);
+      w.writeInt32(b._dIdx);
+      w.writeInt32(n);
+      Api.request(w)
+      .then(resp => {
+        if (!resp.ok) {
+          throw new Error(`HTTP error! status: ${resp.status}`);
+        }
+        evolveButton(b);
+        num_map[event_idx][line_idx][b._dIdx] = n;
+      })
+      .catch(e => {
+        console.error('Could not store num_map button');
+      });
+    }
+  }
+
+  function endOfLineWriting(staff_num, b, line, btns) {
+    swapButtonBack(b);
 
     let dataIsSet = true;
     for (let _b of btns) {
@@ -132,18 +169,16 @@ export function update() { // @working
     };
     if (dataIsSet) {
       line.classList.add('deletable');
-      line._dIdx = event_roles.length/btns.length;
+      line._dIdx = num_map[event_idx].length;
       // we need to make an API store request here
-      let w = new BufferWriter();
-      Api.writeHeader(w, Api.CREATE, Api.EVENTS_PERSONAL_NUM_MAP_ID);
+      let w = Api.createBufferWriter(Api.CREATE, Api.EVENTS_PERSONAL_NUM_MAP_ID);
       w.writeInt32(event_id);
       w.writeInt32(btns.length);
       let data = [];
       for (let j = 0; j < btns.length; j++) {
-        btns[j]._dIdx = event_roles.length;
-        btns[j].classList.add('editable');
-        btns[j].removeEventListener('click', btnsCallbacks[j]);
-        const n = Number(btns[j].textContent);
+        btns[j]._dIdx = j;
+        evolveButton(btns[j]);
+        const n = getNumVal(btns[j]);
         w.writeInt32(n);
         data.push(n);
       }
@@ -162,19 +197,33 @@ export function update() { // @working
     }
   }
 
-  function addEmptyLine(staff_num) { // we need to change that
-    btnsCallbacks = [];
+  function setEmptyBtn(b, clickCallback) {
+    b.textContent = '\u00A0';
+    b.className = 'std-min hover no-padding txt-center tiny-button';
+    b._clickCallback = clickCallback;
+    b.addEventListener('click', clickCallback)
+  }
+
+  function swapBtn(b) {
+    b.replaceWith(numInput.elm);
+    numInput.elm.focus();
+  }
+
+  function setClickCallback(b, callback) {
+    b._clickCallback = callback;
+    b.addEventListener('click', callback)
+  }
+
+  function addEmptyLine(staff_num) {
     let line = createTemplateLine(staff_num);
     const btns = line.querySelectorAll('button');
     for (const b of btns) {
-      b.textContent = '\u00A0'; // '\u00A0' is an empty space with non zero size
-      b.className = 'std-min hover no-padding txt-center tiny-button'; // why are we setting?
-      btnsCallbacks.push(() => {
-        b.replaceWith(numInput.elm);
-        numInput.elm.focus();
-        numInput.endOfWriting = () => { endOfWriting(staff_num, b, line, btns) };
+      setEmptyBtn(b, () => {
+        swapBtn(b);
+        numInput.endOfWriting = () => {
+          endOfLineWriting(staff_num, b, line, btns)
+        };
       });
-      b.addEventListener('click', btnsCallbacks[btnsCallbacks.length - 1]);
     };
     elms.numtab_content.appendChild(line);
   }
@@ -188,7 +237,7 @@ export function update() { // @working
     }
   }
 
-  // numtab
+  // nummap
   const base_width = 125;
   let width = base_width*(event_roles.length+1);
   Utils.setWidthPx(elms.numtab_header_list, width);
@@ -218,11 +267,21 @@ export function update() { // @working
     let line = createTemplateLine(event_roles.length);
     line.classList.add('deletable');
     const btns = line.querySelectorAll('button');
-    line._dIdx = i;
+    line._dataId = i;
     for (let j = 0; j < btns.length; j++) {
       let b = btns[j];
-      b._dIdx = j;
-      b.textContent = num_map[event_idx][i][j];
+      b._dataId = j;
+      const val = num_map[event_idx][i][j];
+      if (val === -1) {
+        setEmptyBtn(b, () => {
+          swpaBtn(b);
+          numInput.endOfWriting = () => {
+            endOfButtonWriting(b, i);
+          }
+        }); 
+      } else {
+        b.textContent = val;
+      }
     };
     list.push(line);
   }
@@ -252,6 +311,7 @@ export function update() { // @working
       numInput.elm.focus();
       numInput.endOfWriting = () => { endOfWriting() };
     }
+
     function endOfWriting() {
       numInput.elm.replaceWith(b);
       const _eventId = zones[zonesId.EVENTLIST].selection._dataId;

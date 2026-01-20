@@ -128,7 +128,9 @@ document.getElementById('edit-button').addEventListener('click', function() {
 
 document.getElementById('delete-button').addEventListener('click', function() {
   const id = state.delete_target._dataId;
-  if (id == undefined) { throw new Error('undefined delete target data id'); }
+  if (id == undefined) {
+    throw new Error('delete-target should have a property `_dataId` which infers to which piece of data the element is associated with');
+  }
   state.delete_target.classList.add('disp-none');
 
   let w = new BufferWriter();
@@ -145,13 +147,13 @@ document.getElementById('delete-button').addEventListener('click', function() {
     case listId.EVENT_STAFF:
       Api.writeHeader(w, Api.DELETE, Api.ROLES_ID_MAP_ID);
       break;
-    case listId.NUMMAP_LINE:
+    case listId.NUMMAP:
       Api.writeHeader(w, Api.DELETE, Api.EVENTS_PERSONAL_NUM_MAP_ID);
       w.writeInt32(zones[zonesId.EVENTLIST].selection._dataId);
       break;
     default:
       state.delete_target.classList.remove('disp-none');
-      throw new Error('incorrect delete target type');
+      throw new Error('delete_target\'s parent should have `_id` property with a value from `listId`');
   }
   w.writeInt32(Number(id));
   Api.request(w)
@@ -176,13 +178,24 @@ document.getElementById('delete-button').addEventListener('click', function() {
           EventInfo.elms.event_role_list._btnList.filter(b => b !== state.delete_target);
 
         deleteValue(data.rolesId, data.rolesFreeList, id);
-        deleteOccurrences(data.eventsRole, id);
+        for (let i = 0; i < data.eventsRole.length; i++) {
+          let eventsRoles = data.eventsRole[i];
+          let idx = eventsRoles.indexOf(id);
+          eventsRoles.splice(Number(id), 1);
+          let nummap = data.eventsPersonalNumMap[i];
+          for (let j = 0; j < nummap.length; j++) {
+            nummap.splice(idx, 1);
+          }
+        }
+        EventInfo.update();
+        break;
+      case listId.NUMMAP:
+        data.eventsPersonalNumMap[zones[zonesId.EVENTLIST].selection._dataId].splice(Number(id), 1)
         EventInfo.update();
         break;
       default:
-        throw new Error('incorrect delete target type');
+        throw new Error('that listId does not support local storage');
     }
-    state.delete_target.remove();
   })
   .catch(e => {
     state.delete_target.classList.remove('disp-none');
@@ -206,8 +219,7 @@ function setStandardInputCallback(b, input, api, map, arr, freeList, zone_id) {
       input.remove();
       b.textContent = val;
 
-      let w = new BufferWriter();
-      Api.writeHeader(w, Api.CREATE, api);
+      let w = Api.createBufferWriter(Api.CREATE, api);
       w.writeString(val);
       Api.request(w)
       .then(resp => {
@@ -288,8 +300,7 @@ document.getElementById('create-button').addEventListener('click', () => {
 
         SideManu.setUserButton(b, name, surname, matricule);
 
-        let w = new BufferWriter();
-        Api.writeHeader(w, Api.CREATE, Api.USERS_ID_MAP_ID);
+        let w = Api.createBufferWriter(Api.CREATE, Api.USERS_ID_MAP_ID);
         w.writeInt32(mat);
         w.writeString(name);
         w.writeString(surname);
@@ -424,8 +435,22 @@ document.getElementById('toggle-button').addEventListener('click', () => {
           return;
         }
 
-        if (turning_on) { data.eventsRole[idx].push(role_id); }
-        else { data.eventsRole[idx] = data.eventsRole[idx].filter(x => x !== role_id); }
+        if (turning_on) {
+          data.eventsRole[idx].push(role_id);
+          for (const arr of data.eventsPersonalNumMap[idx]) {
+            arr.push(-1);
+          }
+        }
+        else {
+          let delete_idx = -1;
+          data.eventsRole[idx] = data.eventsRole[idx].filter((x, i) => {
+            delete_idx = i;  
+            return x !== role_id;
+          });
+          for (let arr of data.eventsPersonalNumMap[idx]) {
+            arr = arr.filter((x, i) => i !== delete_idx);
+          }
+        }
         EventInfo.update();
       })
       .catch( e => {

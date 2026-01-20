@@ -32,7 +32,7 @@ export const listId = {
   VENUE: 2,
   EVENT_STAFF: 3,
   COMPETENCES: 4,
-  NUMMAP_LINE: 5,
+  NUMMAP: 5,
 };
 
 export const zonesId = {

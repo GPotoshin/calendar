@@ -1,4 +1,5 @@
 import { token } from './login.js';
+import { BufferWriter } from './io.js';
 
 export const CREATE  = 0;
 export const REQUEST = 1;
@@ -44,6 +45,12 @@ export function writeHeader(w, op, stateField) {
   w.writeHash(token);
   w.writeInt32(op);
   w.writeInt32(stateField);
+}
+
+export function createBufferWriter(op, stateField) {
+  let w = new BufferWriter();
+  Api.writeHeader(w, op, stateField);
+  return w;
 }
 
 export function request(w) {
