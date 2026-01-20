@@ -97,7 +97,7 @@ document.getElementById('edit-button').addEventListener('click', function() {
       const _eventId = zones[zonesId.EVENTLIST].selection._dataId;
       if (numInput.elm.value === '') {
         b.textContent = '\u00A0';
-        data.eventPersonalNumMap[_eventId][b._dIdx] = -1;
+        data.eventPersonalNumMap[_eventId][b._dataId] = -1;
         function localCallback() {
           b.replaceWith(numInput.elm);
           numInput.elm.focus();
@@ -107,18 +107,18 @@ document.getElementById('edit-button').addEventListener('click', function() {
           numInput.elm.replaceWith(b);
           const _eventId = zones[zonesId.EVENTLIST].selection._dataId;
           if (numInput.elm.value === '') {
-            data.eventPersonalNumMap[_eventId][b._dIdx] = -1;
+            data.eventPersonalNumMap[_eventId][b._dataId] = -1;
             return;
           }
           b.textContent = numInput.elm.value;
-          data.eventPersonalNumMap[_eventId][b._dIdx] = Number(numInput.elm.value);
+          data.eventPersonalNumMap[_eventId][b._dataId] = Number(numInput.elm.value);
           b.classList.add('editable');
           b.removeEventListener('click', localCallback);
         }
         b.addEventListener('click', localCallback);
       } else {
         b.textContent = numInput.elm.value;
-        data.eventPersonalNumMap[_eventId][b._dIdx] = Number(b.textContent);
+        data.eventPersonalNumMap[_eventId][b._dataId] = Number(b.textContent);
       }
       numInput.elm.replaceWith(b);
     };
@@ -434,21 +434,19 @@ document.getElementById('toggle-button').addEventListener('click', () => {
           throw new Error(`HTTP error! status: ${resp.status}`);
           return;
         }
+        let num_map = data.eventsPersonalNumMap;
 
         if (turning_on) {
           data.eventsRole[idx].push(role_id);
-          for (const arr of data.eventsPersonalNumMap[idx]) {
+          for (const arr of num_map[idx]) {
             arr.push(-1);
           }
         }
         else {
-          let delete_idx = -1;
-          data.eventsRole[idx] = data.eventsRole[idx].filter((x, i) => {
-            delete_idx = i;  
-            return x !== role_id;
-          });
-          for (let arr of data.eventsPersonalNumMap[idx]) {
-            arr = arr.filter((x, i) => i !== delete_idx);
+          const pos = data.eventsRole[idx].indexOf(role_id); 
+          data.eventsRole[idx].splice(pos, 1);
+          for (let arr of num_map[idx]) {
+            arr.splice(pos+2, 1);
           }
         }
         EventInfo.update();

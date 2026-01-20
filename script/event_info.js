@@ -126,7 +126,7 @@ export function update() { // @working
 
   function evolveButton(b) {
     b.classList.add('editable');
-    b.removeEventListener('click', btns[j]._clickCallback);
+    b.removeEventListener('click', b._clickCallback);
     b._clickCallback = null;
   }
 
@@ -141,7 +141,7 @@ export function update() { // @working
       let w = Api.createBufferWriter(Api.UPDATE, Api.EVENTS_PERSONAL_NUM_MAP_ID);
       w.writeInt32(event_id);
       w.writeInt32(line_idx);
-      w.writeInt32(b._dIdx);
+      w.writeInt32(b._dataId);
       w.writeInt32(n);
       Api.request(w)
       .then(resp => {
@@ -149,7 +149,7 @@ export function update() { // @working
           throw new Error(`HTTP error! status: ${resp.status}`);
         }
         evolveButton(b);
-        num_map[event_idx][line_idx][b._dIdx] = n;
+        num_map[event_idx][line_idx][b._dataId] = n;
       })
       .catch(e => {
         console.error('Could not store num_map button');
@@ -169,14 +169,14 @@ export function update() { // @working
     };
     if (dataIsSet) {
       line.classList.add('deletable');
-      line._dIdx = num_map[event_idx].length;
+      line._dataId = num_map[event_idx].length;
       // we need to make an API store request here
       let w = Api.createBufferWriter(Api.CREATE, Api.EVENTS_PERSONAL_NUM_MAP_ID);
       w.writeInt32(event_id);
       w.writeInt32(btns.length);
       let data = [];
       for (let j = 0; j < btns.length; j++) {
-        btns[j]._dIdx = j;
+        btns[j]._dataId = j;
         evolveButton(btns[j]);
         const n = getNumVal(btns[j]);
         w.writeInt32(n);
@@ -274,7 +274,7 @@ export function update() { // @working
       const val = num_map[event_idx][i][j];
       if (val === -1) {
         setEmptyBtn(b, () => {
-          swpaBtn(b);
+          swapBtn(b);
           numInput.endOfWriting = () => {
             endOfButtonWriting(b, i);
           }

@@ -897,14 +897,14 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
           state.EventsRole = state.EventsRole[:idx+1];
         }
         state.EventsRole[idx] = append(state.EventsRole[idx], role_id)
-        for i := 0; i < num_map.len; i++ {
+        for i := 0; i < len(num_map); i++ {
           num_map[i] = append(num_map[i], -1)
         }
       case DELETE:
         pos := slices.Index(state.EventsRole[idx], role_id)
         filterIdx(&state.EventsRole[idx], pos)
-        for i := 0; i < num_map.len; i++ {
-          filterIdx(&num_map[i], pos)
+        for i := 0; i < len(num_map); i++ {
+          filterIdx(&num_map[i], pos+2)
         }
       default:
         noSupport(w, "EVENTS_ROLES_REQUIREMENT_ID:default")
@@ -932,13 +932,13 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         if readError(w, "NUM_MAP:CREATE", "data", err) {
           return
         }
-        num_map[event_idx] = append(num_map[idx], data)
+        num_map[event_idx] = append(num_map[event_idx], data)
       case DELETE:
         line_idx, err := readInt32(r.Body)
         if readError(w, "NUM_MAP:DELETE", "line_idx", err) {
           return
         }
-        filterIdx(&state.EventsPersonalNumMap[idx], int(line_idx));
+        filterIdx(&state.EventsPersonalNumMap[event_idx], int(line_idx));
       case UPDATE:
         line_idx, err := readInt32(r.Body)
         if readError(w, "NUM_MAP:UPDATE", "line_idx", err) {
@@ -952,7 +952,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         if readError(w, "NUM_MAP:UPDATE", "num_idx", err) {
           return
         }
-        num_map[event_idx][line_idx][num_idx] = 
+        num_map[event_idx][line_idx][num_idx] = val
         
       default:
         noSupport(w, "EVENTS_ROLES_REQUIREMENT_ID:default")

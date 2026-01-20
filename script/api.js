@@ -49,7 +49,7 @@ export function writeHeader(w, op, stateField) {
 
 export function createBufferWriter(op, stateField) {
   let w = new BufferWriter();
-  Api.writeHeader(w, op, stateField);
+  writeHeader(w, op, stateField);
   return w;
 }
 
