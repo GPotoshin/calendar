@@ -1,4 +1,3 @@
-
 export function storageIndex(map, freeList) {
   if (freeList.length > 0) {
     return freeList.pop();
