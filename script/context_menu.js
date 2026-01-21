@@ -56,12 +56,10 @@ function createUserDataInputs() {
     surname:   Utils.createTextInput('Nom'),
     matricule: Utils.createTextInput('Matricule'),
   };
-  
   retval.matricule.classList = 'dynamic-bg';
   retval.matricule.addEventListener('input', () => {
     retval.matricule.value = Utils.digitise(retval.matricule.value);
   });
-
   return retval;
 }
 
@@ -135,17 +133,17 @@ function isEscOrSaveOnEnter(e, b, inputs, op, next = null, old = null) {
                 throw new Error(`HTTP error! status: ${resp.status}`);
                 return;
               }
-              const idx = data.UsersId.get(old.matricule);
+              const idx = data.usersId.get(old.matricule);
               if (!idx) {
                 console.error("old matricule does not exist locally");
                 return
               }
               if (old.matricule !== matricule) {
-                data.UsersId.delete(old.matricule);
-                data.UsersId.set(matricule, idx);
+                data.usersId.delete(old.matricule);
+                data.usersId.set(matricule, idx);
               }
-              data.UsersName[idx] = name;
-              data.UsersSurname[idx] = surname;
+              data.usersName[idx] = name;
+              data.usersSurname[idx] = surname;
             })
             .catch( e => {
               SideMenu.setUserButton(b, old.name, old.surname, old.matricule);
@@ -162,6 +160,7 @@ function isEscOrSaveOnEnter(e, b, inputs, op, next = null, old = null) {
 }
 
 document.getElementById('edit-button').addEventListener('click', function() {
+  const b = state.edit_target;
   const id = Number(state.edit_target._dataId);
   if (id == undefined) {
     throw new Error('delete-target should have a property `_dataId` which infers to which piece of data the element is associated with');

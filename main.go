@@ -704,6 +704,18 @@ func handleSimpleCreate(
   return nil
 }
 
+func readNameAndSurname(w http.ResponseWriter, r *http.Request, op_name string) (string, string, bool) {
+  name, err := readString(r.Body)
+  if readError(w, "USERS_ID_MAP:"+op_name, "name", err) {
+    return "", "", false
+  }
+  surname, err := readString(r.Body)
+  if readError(w, "USERS_ID_MAP:"+op_name, "surname", err) {
+    return "", "", false
+  }
+  return name, surname, true
+}
+
 func handleApi(w http.ResponseWriter, r *http.Request) {
   state.mutex.Lock()
   defer state.mutex.Unlock()
@@ -758,27 +770,38 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     if readError(w, "USERS_ID_MAP", "matricule", err) {
       return
     }
-    _, exists := state.UsersId[mat]
+    idx, exists := state.UsersId[mat]
     switch mode {
       case CREATE:
-        name, err := readString(r.Body)
-        if readError(w, "USERS_ID_MAP:CREATE", "name", err) {
-          return
-        }
-        surname, err := readString(r.Body)
-        if readError(w, "USERS_ID_MAP:CREATE", "surname", err) {
-          return
-        }
+        name, surname, success := readNameAndSurname(w, r, "CREATE")
+        if !success { return }
+
         if exists {
           slog.Error("collision in matricule storage")
-          http.Error(w, "matricule already exists", http.StatusBadRequest)
+          http.Error(w, "bad request", http.StatusBadRequest)
           return
         }
-        idx := storageIndex(state.UsersId, &state.UsersFreeList)
+        idx = storageIndex(state.UsersId, &state.UsersFreeList)
         state.UsersId[mat] = idx
         storeValue(&state.UsersName, idx, name)
         storeValue(&state.UsersSurname, idx, surname)
       case UPDATE:
+        if !exists {
+          slog.Error("editing an inexisting user")
+          http.Error(w, "bad request", http.StatusBadRequest)
+          return
+        }
+        new_id, err := readInt32(r.Body)
+        if readError(w, "USERS_ID_MAP:UPDATE", "new_id", err) { return }
+        name, surname, success := readNameAndSurname(w, r, "CREATE")
+        if !success { return }
+        if new_id != mat {
+          delete(state.UsersId, mat)
+          state.UsersId[new_id] = idx
+        }
+        state.UsersName[idx] = name
+        state.UsersSurname[idx] = surname
+
         http.Error(w, "we do not support that", http.StatusBadRequest)
         return
       case REQUEST:
