@@ -5,7 +5,7 @@ export var numInput = {
 };
 
 numInput.elm.type = 'text';
-numInput.elm.className = 'with-width std-min txt-center tiny-input';
+numInput.elm.className = 'std-min txt-center tiny-input';
 Utils.setWidthPx(numInput.elm, 0);
 
 numInput.elm.addEventListener('input', () => {

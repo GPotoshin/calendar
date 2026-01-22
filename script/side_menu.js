@@ -1,4 +1,4 @@
-import { elms, zones, viewId, zonesId, scopeId, listId, data } from './global_state.js';
+import { elms, zones, viewId, zonesId, scopeId, data } from './global_state.js';
 import { palette } from './color.js';
 import * as DM from './data_manager.js';
 import * as EventInfo from './event_info.js';
@@ -39,11 +39,11 @@ zones[0].eList = bContainer.children;
 lContainer.id = 'button-container';
 lContainer.className = 'v-container grow';
 elms.scope[scopeId.EVENT].className = 'extendable v-container grow';
-elms.scope[scopeId.EVENT]._id = listId.EVENT;
+elms.scope[scopeId.EVENT]._id = zonesId.EVENTLIST;
 elms.scope[scopeId.STAFF].className = 'extendable v-container grow';
-elms.scope[scopeId.STAFF]._id = listId.STAFF;
+elms.scope[scopeId.STAFF]._id = zonesId.STAFFLIST;
 elms.scope[scopeId.VENUE].className = 'extendable v-container grow';
-elms.scope[scopeId.VENUE]._id = listId.VENUE;
+elms.scope[scopeId.VENUE]._id = zonesId.VENUELIST;
 
 hContainer.append(bContainer);
 elms.dataListContainer = lContainer;
@@ -74,35 +74,39 @@ zones[zonesId.DATATYPE].selection = b1;
 elms.sideMenu.replaceChildren(hContainer, elms.dataListContainer);
 elms.dataListContainer.appendChild(elms.scope[scopeId.EVENT]);
 
-export function createButtonTmpl() {
-  let b = document.createElement('button');
-  b.className = 'side-menu-list-button dynamic-bg hover deletable editable';
-  return b;
-}
-
-export function setClickCallback(b, z) {
-  if (z === zonesId.NONE) {
-    return;
-  }
-  b.addEventListener('click', function (){
-    handleClickOnListButton(b, z);
-    if (zones[z].selection &&
+export function sideListButtonClickCallback(event) {
+    const b = event.currentTarget;
+    const zone = zones[Number(b.parentElement._id)];
+    if (zone.selection == b) {
+      Utils.setBgColor(b, 'transparent');
+      b.classList.toggle('hover');
+      zone.selection = null;
+      return;
+    }
+    Utils.setBgColor(b, palette.blue);
+    b.classList.toggle('hover');
+    if (zone.selection) {
+      Utils.setBgColor(zone.selection, 'transparent');
+      zone.selection.classList.toggle('hover');
+    }
+    zone.selection = b;
+    if (zone.selection &&
       zones[zonesId.VIEWTYPE].selection._dataId === viewId.INFORMATION) {
       EventInfo.update();
     }
-  });
 }
 
-function createListButton(z) {
-  let b = createButtonTmpl();
-  setClickCallback(b, z);
+function createListButton() {
+  let b = document.createElement('button');
+  b.className = 'side-menu-list-button hover deletable editable';
+  b.addEventListener('click', sideListButtonClickCallback);
   return b;
 }
 
 export function composeList(m, names, scope_id, zone_id) {
   for (const [id, idx] of m) {
     const name = names[idx];
-    let button = createListButton(zone_id);
+    let button = createListButton();
     Utils.setNameAndId(button, name, id);
     elms.scope[scope_id].appendChild(button);
   }
@@ -122,25 +126,11 @@ export function composeUsersList() {
   for (const [mat, idx] of data.usersId) {
     const name = data.usersName[idx]; // @factorout
     const surname = data.usersSurname[idx];
-    let button = createListButton(zonesId.STAFFLIST);
+    let button = createListButton();
     setUserButton(button, name, surname, mat);
     elms.scope[scopeId.STAFF].appendChild(button);
   }
 }
 
 export function handleClickOnListButton(b, zn) {
-  const z = zones[zn];
-  if (z.selection == b) {
-    Utils.setBgColor(b, 'transparent');
-    b.classList.toggle('hover');
-    z.selection = null;
-    return;
-  }
-  Utils.setBgColor(b, palette.blue);
-  b.classList.toggle('hover');
-  if (z.selection) {
-    Utils.setBgColor(z.selection, 'transparent');
-    z.selection.classList.toggle('hover');
-  }
-  z.selection = b;
 }

@@ -62,10 +62,7 @@ input {
   border: none;
   background-color: transparent;
   outline: none;
-}
-
-.with-width {
-  width: var(--width);
+  padding: 0px;
 }
 
 .l-input {
@@ -139,7 +136,7 @@ button {
 }
 
 .hover:hover {
-  background-color: var(--hover-color);
+  background-color: var(--hover-color) !important;
 }
 
 .clicked {
@@ -156,10 +153,6 @@ button {
 
 .disp-flex {
   display: flex;
-}
-
-.dynamic-bg {
-  background-color: var(--bg-color, transparent);
 }
 
 .disp-block {

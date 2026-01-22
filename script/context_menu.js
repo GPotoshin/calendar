@@ -1,6 +1,6 @@
 import { callbacks, elms } from './global_state.js';
 import { BufferReader, BufferWriter } from './io.js';
-import { zones, zonesId, listId, scopeId } from './global_state.js';
+import { zones, zonesId, scopeId } from './global_state.js';
 import { storageIndex, deleteValue, deleteOccurrences, storeValue } from './data_manager.js';
 import * as Api from './api.js';
 import * as SideMenu from './side_menu.js';
@@ -25,38 +25,12 @@ function handleClickForContextMenu() {
   }
 }
 
-function handleAddToList(target, placeholder, url, storage) { // @nocheckin
-  const button = document.createElement('button');
-  const input = Utils.createTextInput(placeholder);
-  button.appendChild(input);
-  target.appendChild(button);
-  input.focus();
-
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const value = input.value;
-      input.remove();
-      button.textContent = value;
-      storage.push(value);
-      button.addEventListener('click', () => {
-        this.classList.toggle('clicked');
-      });
-
-      button.className = 'hover';
-    } else if (e.key === 'Escape') {
-      input.remove();
-    }
-  });
-}
-
 function createUserDataInputs() {
   const retval = {
     name:      Utils.createTextInput('Prenom'),
     surname:   Utils.createTextInput('Nom'),
     matricule: Utils.createTextInput('Matricule'),
   };
-  retval.matricule.classList = 'dynamic-bg';
   retval.matricule.addEventListener('input', () => {
     retval.matricule.value = Utils.digitise(retval.matricule.value);
   });
@@ -100,6 +74,7 @@ function isEscOrSaveOnEnter(e, b, inputs, op, next = null, old = null) {
         w.writeInt32(old.matricule);
       }
       SideMenu.setUserButton(b, name, surname, matricule);
+      b.addEventListener('click', SideMenu.sideListButtonClickCallback);
       w.writeInt32(matricule);
       w.writeString(name);
       w.writeString(surname);
@@ -107,7 +82,6 @@ function isEscOrSaveOnEnter(e, b, inputs, op, next = null, old = null) {
       inputs.name.remove();
       inputs.surname.remove();
       inputs.matricule.remove();
-      SideMenu.setClickCallback(b, zonesId.STAFFLIST);
       switch (op) {
         case Api.CREATE:
           Api.request(w)
@@ -169,7 +143,8 @@ document.getElementById('edit-button').addEventListener('click', function() {
 
   let w = new BufferWriter();
   switch (state.edit_target.parentElement._id) {
-    case listId.STAFF:
+    case zonesId.STAFFLIST:
+      b.removeEventListener('click', SideMenu.sideListButtonClickCallback);
       const idx = data.usersId.get(id);
       if (idx === undefined) {
         console.error('user index is not found');
@@ -215,25 +190,25 @@ document.getElementById('delete-button').addEventListener('click', function() {
 
   let w = new BufferWriter();
   switch (state.delete_target.parentElement._id) {
-    case listId.STAFF:
+    case zonesId.STAFFLIST:
       Api.writeHeader(w, Api.DELETE, Api.USERS_ID_MAP_ID);
       break;
-    case listId.VENUE:
+    case zonesId.VENUELIST:
       Api.writeHeader(w, Api.DELETE, Api.VENUES_ID_MAP_ID);
       break;
-    case listId.EVENT:
+    case zonesId.EVENTLIST:
       Api.writeHeader(w, Api.DELETE, Api.EVENTS_ID_MAP_ID);
       break;
-    case listId.EVENT_STAFF:
+    case zonesId.EVENTSTAFFLIST:
       Api.writeHeader(w, Api.DELETE, Api.ROLES_ID_MAP_ID);
       break;
-    case listId.NUMMAP:
+    case zonesId.NUMMAPLIST:
       Api.writeHeader(w, Api.DELETE, Api.EVENTS_PERSONAL_NUM_MAP_ID);
       w.writeInt32(zones[zonesId.EVENTLIST].selection._dataId);
       break;
     default:
       state.delete_target.classList.remove('disp-none');
-      throw new Error('delete_target\'s parent should have `_id` property with a value from `listId`');
+      throw new Error('delete_target\'s parent should have `_id` property with a value from `zonesId`');
   }
   w.writeInt32(Number(id));
   Api.request(w)
@@ -242,18 +217,18 @@ document.getElementById('delete-button').addEventListener('click', function() {
       throw new Error(`HTTP error! status: ${resp.status}`);
     }
     switch (state.delete_target.parentElement._id) {
-      case listId.STAFF:
+      case zonesId.STAFFLIST:
         deleteValue(data.usersId, data.usersFreeList, id);
         deleteOccurrences(data.occurrencesParticipant, id);
         break;
-      case listId.VENUE:
+      case zonesId.VENUELIST:
         deleteValue(data.venuesId, data.venuesFreeList, id);
         deleteOccurrences(data.eventsVenues, id);
         break;
-      case listId.EVENT:
+      case zonesId.EVENTLIST:
         deleteValue(data.eventsId, data.eventsFreeList, id);
         break;
-      case listId.EVENT_STAFF: // we should here remove the button from a backing array
+      case zonesId.EVENTSTAFFLIST: // we should here remove the button from a backing array
         EventInfo.elms.event_role_list._btnList =
           EventInfo.elms.event_role_list._btnList.filter(b => b !== state.delete_target);
 
@@ -269,12 +244,12 @@ document.getElementById('delete-button').addEventListener('click', function() {
         }
         EventInfo.update();
         break;
-      case listId.NUMMAP:
+      case zonesId.NUMMAPLIST:
         data.eventsPersonalNumMap[zones[zonesId.EVENTLIST].selection._dataId].splice(Number(id), 1)
         EventInfo.update();
         break;
       default:
-        throw new Error('that listId does not support local storage');
+        throw new Error('that zonesId does not support local storage');
     }
   })
   .catch(e => {
@@ -321,7 +296,6 @@ function setStandardInputCallback(b, input, api, map, arr, freeList, zone_id) {
         b.remove();
         console.error("Could not store ", val, e);
       });
-      SideMenu.setClickCallback(b, zone_id);
     } else if (e.key === 'Escape') {
       e.preventDefault();
       b.remove();
@@ -330,7 +304,7 @@ function setStandardInputCallback(b, input, api, map, arr, freeList, zone_id) {
 }
 
 function createEventOrVenue(placeholder, api, map, arr, freeList, zone_id) {
-  let b = SideMenu.createButtonTmpl();
+  let b = SideMenu.createListButton();
   const input = Utils.createTextInput(placeholder)
   b.appendChild(input);
   state.extend_target.appendChild(b);
@@ -340,7 +314,7 @@ function createEventOrVenue(placeholder, api, map, arr, freeList, zone_id) {
 
 document.getElementById('create-button').addEventListener('click', () => {
   switch (state.extend_target._id) {
-    case listId.EVENT: {
+    case zonesId.EVENTLIST: {
       createEventOrVenue(
         'Nouvel Événement',
         Api.EVENTS_ID_MAP_ID,
@@ -351,9 +325,9 @@ document.getElementById('create-button').addEventListener('click', () => {
       );
       break;
     }
-    case listId.STAFF: {
+    case zonesId.STAFFLIST: {
       const target = elms.scope[scopeId.STAFF];
-      let b = SideMenu.createButtonTmpl(); 
+      let b = SideMenu.createListButton(); 
       const inputs = createUserDataInputs();
       inputs.name.addEventListener('keydown', (e) => {
         if (isEscOrSaveOnEnter(e, b, inputs, Api.CREATE, inputs.surname)) {
@@ -377,7 +351,7 @@ document.getElementById('create-button').addEventListener('click', () => {
       inputs.name.focus();
       break;
     }
-    case listId.VENUE: {
+    case zonesId.VENUELIST: {
       createEventOrVenue(
         'Nouveau Lieu',
         Api.VENUES_ID_MAP_ID,
@@ -388,10 +362,9 @@ document.getElementById('create-button').addEventListener('click', () => {
       );
       break;
     }
-    case listId.EVENT_STAFF: {
+    case zonesId.EVENTSTAFFLIST: {
       let b = SearchDisplay.createButton();
       const input = Utils.createTextInput('Nouveau Rôle');
-      input.className = 'dynamic-bg';
       b.appendChild(input);
       state.extend_target.appendChild(b);
       input.focus();
@@ -416,7 +389,7 @@ document.getElementById('toggle-button').addEventListener('click', () => {
   const target = state.toggle_target;
   const turning_on = target.classList.toggle('clicked');
   switch (state.toggle_target.parentElement._id) { // working
-    case listId.EVENT_STAFF:
+    case zonesId.EVENTSTAFFLIST:
       const event_id = zones[zonesId.EVENTLIST].selection._dataId; 
       const role_id = target._dataId;
       const idx = data.eventsId.get(event_id);

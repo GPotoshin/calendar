@@ -1,4 +1,4 @@
-import { listId } from './global_state.js';
+import { zonesId } from './global_state.js';
 import * as Utils from './utils.js';
 
 function fuzzyMatch(pattern, text) {
@@ -72,10 +72,10 @@ export function createAndReturnListContainer(name, id) {
   menu.className = 'm-box v-container align-items-center';
   menu.innerHTML = `
     <h4 class="js-set txt-center">Personnel</h4>
-    <div class="h-container with-width">
+    <div class="h-container">
       <div class="searching-field h-container disp-flex grow"><div class="arrow">></div><input class="searching-input" type="text" placeholder="Trouver"></input></div>
     </div>
-    <div class="h-container with-width grow">
+    <div class="h-container grow">
     <div class="js-set text-box v-container scrollable-box scroll bordered grow half-wide extendable"></div>
     </div>
     `;
@@ -85,7 +85,7 @@ export function createAndReturnListContainer(name, id) {
   const container = objList[1];
   Utils.setWidthPx(menu.children[1], 200);
   Utils.setWidthPx(menu.children[2], 200);
-  objList[1]._id = listId.EVENT_STAFF
+  objList[1]._id = zonesId.EVENTSTAFFLIST
 
   searchInput.addEventListener('input', () => { updateList(searchInput, container); });
   return [menu, objList[1]];

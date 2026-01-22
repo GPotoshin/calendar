@@ -1,4 +1,4 @@
-import { data, listId, zones, zonesId, tmpls, scopeId } from './global_state.js';
+import { data, zones, zonesId, tmpls, scopeId } from './global_state.js';
 import * as SearchDisplay from './search_display.js';
 import * as Utils from './utils.js';
 import { numInput } from './num_input.js';
@@ -19,16 +19,16 @@ function createStaffTable() {
 
   table.innerHTML = `
     <h3 class="txt-center">Nombre de</h3>
-    <div class="h-container with-width align-items-center">
+    <div class="h-container align-items-center">
     </div>
 
-    <div id="event-staff-number-map" class="m-box with-width v-container scrollable-box disp-flex grow scroll-smooth bordered">
+    <div id="event-staff-number-map" class="m-box v-container scrollable-box disp-flex grow scroll-smooth bordered">
     </div>
     `;
   
   elms.numtab_header_list = table.children[1];
   elms.numtab_content = table.children[2];
-  elms.numtab_content._id = listId.NUMMAP;
+  elms.numtab_content._id = zonesId.NUMMAPLIST;
   return table;
 }
 
@@ -66,7 +66,7 @@ export function loadTemplate() {
     </div>
   `;
 
-  let [sDisplay, container] = SearchDisplay.createAndReturnListContainer('Personel', listId.EVENT_STAFF);
+  let [sDisplay, container] = SearchDisplay.createAndReturnListContainer('Personel', zonesId.EVENTSTAFFLIST);
   container._btnList = [];
 
   for (const [id, idx] of data.rolesId) {
@@ -245,7 +245,7 @@ export function update() { // @working
 
   function createLocalHeader(name) {
     let retval = document.createElement('div');
-    retval.className = 'disp-flex with-width justify-content-center';
+    retval.className = 'disp-flex justify-content-center';
     Utils.setWidthPx(retval, width);
     let header = document.createElement('h4');
     header.className = 'txt-center';
@@ -288,11 +288,11 @@ export function update() { // @working
   elms.numtab_content.replaceChildren(...list);
   addEmptyLine(event_roles.length); // idea is that addEmptyLine will add a line directly to the dom
 
-  list = [SearchDisplay.create('Participant', listId.COMPETENCES)];
+  list = [SearchDisplay.create('Participant', zonesId.COMPETENCESLIST)];
   for (const role_id of event_roles) {
     const role_idx = data.rolesId.get(role_id);
     const name = data.rolesName[role_idx];
-    list.push(SearchDisplay.create(name, listId.COMPETENCES));
+    list.push(SearchDisplay.create(name, zonesId.COMPETENCESLIST));
   }
   elms.comp_tables.replaceChildren(...list);
 

@@ -16,11 +16,11 @@ export function measureText(style, text) {
 }
 
 export function setWidthPx(e, w) {
-  e.style.setProperty('--width', Number(w)+'px');
+  e.style.setProperty('width', Number(w)+'px');
 }
 
 export function setBgColor(e, c) {
-  e.style.setProperty('--bg-color', c);
+  e.style.setProperty('background-color', c);
 }
 
 export function digitise(s) {
