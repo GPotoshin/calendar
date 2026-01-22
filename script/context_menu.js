@@ -1,4 +1,4 @@
-import { callbacks, elms } from './global_state.js';
+import { callbacks, elms, MetaData, data } from './global_state.js';
 import { BufferReader, BufferWriter } from './io.js';
 import { zones, zonesId, scopeId } from './global_state.js';
 import { storageIndex, deleteValue, deleteOccurrences, storeValue } from './data_manager.js';
@@ -37,7 +37,7 @@ function createUserDataInputs() {
   return retval;
 }
 
-function isEscOrSaveOnEnter(e, b, inputs, op, next = null, old = null) {
+function isEscOrCreateOnEnter(e, b, inputs, next = null) {
   if (e.key === 'Enter') {
     if (inputs.name.value !== '' &&
       inputs.surname.value !== '' &&
@@ -47,33 +47,13 @@ function isEscOrSaveOnEnter(e, b, inputs, op, next = null, old = null) {
       const surname = inputs.surname.value;
       const matricule = Number(inputs.matricule.value);
 
-      switch (op) {
-        case Api.CREATE:
-          if (data.usersId.has(matricule)) {
-            Utils.setBgColor(inputs.matricule, palette.red);
-            return;
-          }
-          break;
-        case Api.UPDATE:
-          if (matricule !== old.matricule && data.usersId.has(matricule)) {
-            Utils.setBgColor(inputs.matricule, palette.red);
-            return;
-          }
-          break;
-        default:
-          console.error('unsupported user data save mode');
-          return;
-      }
-
-      let w = Api.createBufferWriter(op, Api.USERS_ID_MAP_ID);
-      if (op === Api.UPDATE) {
-        if (!old || !old.matricule) {
-          console.error('undefined old matricule');
-          return;
-        }
-        w.writeInt32(old.matricule);
+      if (data.usersId.has(matricule)) {
+        Utils.setBgColor(inputs.matricule, palette.red);
+        return;
       }
       SideMenu.setUserButton(b, name, surname, matricule);
+
+      let w = Api.createBufferWriter(Api.CREATE, Api.USERS_ID_MAP_ID);
       b.addEventListener('click', SideMenu.sideListButtonClickCallback);
       w.writeInt32(matricule);
       w.writeString(name);
@@ -82,56 +62,85 @@ function isEscOrSaveOnEnter(e, b, inputs, op, next = null, old = null) {
       inputs.name.remove();
       inputs.surname.remove();
       inputs.matricule.remove();
-      switch (op) {
-        case Api.CREATE:
-          Api.request(w)
-            .then(resp => {
-              if (!resp.ok) {
-                throw new Error(`HTTP error! status: ${resp.status}`);
-                return;
-              }
-              let idx = storageIndex(data.usersId, data.usersFreeList);
-              data.usersId.set(matricule, idx);
-              storeValue(data.usersName, idx, name);
-              storeValue(data.usersSurname, idx, name);
-            })
-            .catch( e => {
-              b.remove();
-              console.error("Could not store ", name, e);
-            });
-          break;
-        case Api.UPDATE:
-          Api.request(w)
-            .then(resp => {
-              if (!resp.ok) {
-                throw new Error(`HTTP error! status: ${resp.status}`);
-                return;
-              }
-              const idx = data.usersId.get(old.matricule);
-              if (!idx) {
-                console.error("old matricule does not exist locally");
-                return
-              }
-              if (old.matricule !== matricule) {
-                data.usersId.delete(old.matricule);
-                data.usersId.set(matricule, idx);
-              }
-              data.usersName[idx] = name;
-              data.usersSurname[idx] = surname;
-            })
-            .catch( e => {
-              SideMenu.setUserButton(b, old.name, old.surname, old.matricule);
-              console.error("Could not store ", name, e);
-            });
-          break;
-      }
+      Api.request(w)
+      .then(resp => {
+        if (!resp.ok) {
+          throw new Error(`HTTP error! status: ${resp.status}`);
+          return;
+        }
+        let idx = storageIndex(data.usersId, data.usersFreeList);
+        data.usersId.set(matricule, idx);
+        storeValue(data.usersName, idx, name);
+        storeValue(data.usersSurname, idx, name);
+      })
+      .catch( e => {
+        b.remove();
+        console.error("Could not store ", name, e);
+      });
     }
     if (next) { next.focus(); }
-    return false;
   } else if (e.key === 'Escape') {
     e.preventDefault();
     return true;
   }
+  return false;
+}
+
+function isEscOrUpdateOnEnter(e, b, inputs, old,) {
+  if (e.key === 'Enter') {
+    if (inputs.name.value !== '' &&
+      inputs.surname.value !== '' &&
+      inputs.matricule.value !== '') {
+      e.preventDefault();
+      const name = inputs.name.value;
+      const surname = inputs.surname.value;
+      const matricule = Number(inputs.matricule.value);
+
+      if (matricule !== old.matricule && data.usersId.has(matricule)) {
+        Utils.setBgColor(inputs.matricule, palette.red);
+        return;
+      }
+      SideMenu.setUserButton(b, name, surname, matricule);
+
+      let w = Api.createBufferWriter(Api.UPDATE, Api.USERS_ID_MAP_ID);
+      w.writeInt32(old.matricule);
+      b.addEventListener('click', SideMenu.sideListButtonClickCallback);
+      w.writeInt32(matricule);
+      w.writeString(name);
+      w.writeString(surname);
+
+      inputs.name.remove();
+      inputs.surname.remove();
+      inputs.matricule.remove();
+      Api.request(w)
+      .then(resp => {
+        if (!resp.ok) {
+          throw new Error(`HTTP error! status: ${resp.status}`);
+          return;
+        }
+        const idx = data.usersId.get(old.matricule);
+        if (!idx) {
+          console.error("old matricule does not exist locally");
+          return
+        }
+        if (old.matricule !== matricule) {
+          data.usersId.delete(old.matricule);
+          data.usersId.set(matricule, idx);
+        }
+        data.usersName[idx] = name;
+        data.usersSurname[idx] = surname;
+      })
+      .catch( e => {
+        SideMenu.setUserButton(b, old.name, old.surname, old.matricule);
+        console.error("Could not store ", name, e);
+      });
+    }
+    if (next) { next.focus(); }
+  } else if (e.key === 'Escape') {
+    e.preventDefault();
+    return true;
+  }
+  return false;
 }
 
 document.getElementById('edit-button').addEventListener('click', function() {
@@ -161,22 +170,39 @@ document.getElementById('edit-button').addEventListener('click', function() {
       inputs.surname.value = old.surname;
       inputs.matricule.value = old.matricule;
       inputs.name.addEventListener('keydown', (e) => {
-        if (isEscOrSaveOnEnter(e, b, inputs, Api.UPDATE, null, old)) {
+        if (isEscOrUpdateOnEnter(e, b, inputs, old)) {
           SideMenu.setUserButton(b, old.name, old.surname, old.matricule);
         }
       });
       inputs.surname.addEventListener('keydown', (e) => {
-        if (isEscOrSaveOnEnter(e, b, inputs, Api.UPDATE, null, old)) {
+        if (isEscOrUpdateOnEnter(e, b, inputs, old)) {
           SideMenu.setUserButton(b, old.name, old.surname, old.matricule);
         }
       });
       inputs.matricule.addEventListener('keydown', (e) => {
-        if (isEscOrSaveOnEnter(e, b, inputs, Api.UPDATE, null, old)) {
+        if (isEscOrUpdateOnEnter(e, b, inputs, old)) {
           SideMenu.setUserButton(b, old.name, old.surname, old.matricule);
         }
       });
       b.replaceChildren(inputs.name, inputs.surname, inputs.matricule);
       break;
+
+    case zonesId.EVENTLIST:
+      b.removeEventListener('click', SideMenu.sideListButtonClickCallback);
+      const idx = data.eventsId.get(id);
+      if (idx === undefined) {
+        console.error('event index is not found');
+        return;
+      }
+      const old_name = data.eventsName[idx];
+      addInputForEventOrVenue(
+        b,
+        null,
+        'Nom d\'Événement',
+        Api.UPDATE,
+        Api.EVENTS_ID_MAP_IS,
+        MetaData.events_name,
+      );
   }
 });
 
@@ -259,12 +285,12 @@ document.getElementById('delete-button').addEventListener('click', function() {
   });
 });
 
-function setStandardInputCallback(b, input, api, map, arr, freeList, zone_id) {
+function setStandardInputCallback(b, input, op, api, meta_data) {
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       const val = input.value;
-      for (const [id, idx] of map) {
-        if (arr[idx] === val) {
+      for (const [id, idx] of meta_data.map) {
+        if (meta_data.arr[idx] === val) {
           setBgColor(input, palette.red);
           return
         }
@@ -285,9 +311,9 @@ function setStandardInputCallback(b, input, api, map, arr, freeList, zone_id) {
         .then(bin => {
           let r = new BufferReader(bin);
           let id = r.readInt32();
-          let idx = storageIndex(map, freeList);
-          map.set(id, idx);
-          arr[idx] = val;
+          let idx = storageIndex(meta_data.map, meta_data.freeList);
+          meta_data.map.set(id, idx);
+          meta_data.arr[idx] = val;
           b.textContent = '';
           Utils.setNameAndId(b, val, id);
         });
@@ -303,13 +329,19 @@ function setStandardInputCallback(b, input, api, map, arr, freeList, zone_id) {
   });
 }
 
-function createEventOrVenue(placeholder, api, map, arr, freeList, zone_id) {
+function createEventOrVenue(placeholder, op, api, meta_data) {
   let b = SideMenu.createListButton();
+  addInputForEventOrVenue(b, state_extend_target, placeholder, api, meta_data);
+}
+
+function addInputForEventOrVenue(b, parent, placeholder, op, api, meta_data) {
   const input = Utils.createTextInput(placeholder)
-  b.appendChild(input);
-  state.extend_target.appendChild(b);
+  b.replaceChildren(input);
+  if (parent) {
+    parent.appendChild(b);
+  }
+  setStandardInputCallback(b, input, op, api, meta_data);
   input.focus();
-  setStandardInputCallback(b, input, api, map, arr, freeList, zone_id);
 }
 
 document.getElementById('create-button').addEventListener('click', () => {
@@ -317,11 +349,9 @@ document.getElementById('create-button').addEventListener('click', () => {
     case zonesId.EVENTLIST: {
       createEventOrVenue(
         'Nouvel Événement',
+        Api.CREATE,
         Api.EVENTS_ID_MAP_ID,
-        data.eventsId,
-        data.eventsName,
-        data.eventsFreeList,
-        zonesId.EVENTLIST,
+        MetaData.events_names,
       );
       break;
     }
@@ -330,17 +360,17 @@ document.getElementById('create-button').addEventListener('click', () => {
       let b = SideMenu.createListButton(); 
       const inputs = createUserDataInputs();
       inputs.name.addEventListener('keydown', (e) => {
-        if (isEscOrSaveOnEnter(e, b, inputs, Api.CREATE, inputs.surname)) {
+        if (isEscOrCreateOnEnter(e, b, inputs, inputs.surname)) {
           b.remove();
         }
       });
       inputs.surname.addEventListener('keydown', (e) => {
-        if (isEscOrSaveOnEnter(e, b, inputs, Api.CREATE, inputs.matricule)) {
+        if (isEscOrCreateOnEnter(e, b, inputs, inputs.matricule)) {
           b.remove();
         }
       });
       inputs.matricule.addEventListener('keydown', (e) => {
-        if (isEscOrSaveOnEnter(e, b, inputs, Api.CREATE)) {
+        if (isEscOrCreateOnEnter(e, b, inputs)) {
           b.remove();
         }
       });
@@ -354,11 +384,9 @@ document.getElementById('create-button').addEventListener('click', () => {
     case zonesId.VENUELIST: {
       createEventOrVenue(
         'Nouveau Lieu',
+        Api.CREATE,
         Api.VENUES_ID_MAP_ID,
-        data.venuesId,
-        data.venuesName,
-        data.venuesFreeList,
-        zonesId.VENUELIST,
+        MetaData.venues_name,
       );
       break;
     }
@@ -372,11 +400,9 @@ document.getElementById('create-button').addEventListener('click', () => {
       setStandardInputCallback(
         b,
         input,
+        Api.CREATE,
         Api.ROLES_ID_MAP_ID,
-        data.rolesId,
-        data.rolesName,
-        data.rolesFreeList,
-        zonesId.NONE,
+        MetaData.roles_name,
       );
       EventInfo.elms.event_role_list._btnList.push(b);
       break;
