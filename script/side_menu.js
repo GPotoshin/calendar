@@ -1,4 +1,4 @@
-import { elms, zones, viewId, zonesId, scopeId, data } from './global_state.js';
+import { elms, tmpls, zones, viewId, zonesId, scopeId, data } from './global_state.js';
 import { palette } from './color.js';
 import * as DM from './data_manager.js';
 import * as EventInfo from './event_info.js';
@@ -93,6 +93,7 @@ export function sideListButtonClickCallback(event) {
     if (zone.selection &&
       zones[zonesId.VIEWTYPE].selection._dataId === viewId.INFORMATION) {
       EventInfo.update();
+      elms.view[viewId.INFORMATION].replaceChildren(tmpls[scopeId.EVENT]);
     }
 }
 
