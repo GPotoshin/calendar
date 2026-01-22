@@ -155,6 +155,7 @@ function isEscOrSaveOnEnter(e, b, inputs, op, next = null, old = null) {
     if (next) { next.focus(); }
     return false;
   } else if (e.key === 'Escape') {
+    e.preventDefault();
     return true;
   }
 }
@@ -183,93 +184,24 @@ document.getElementById('edit-button').addEventListener('click', function() {
       let inputs = createUserDataInputs();
       inputs.name.value = old.name;
       inputs.surname.value = old.surname;
-      inputs.matrucule.value = old.matricule;
+      inputs.matricule.value = old.matricule;
       inputs.name.addEventListener('keydown', (e) => {
-        if (isEscOrSaveOnEnter(e, b, inputs, Api.CREATE, null, old)) {
+        if (isEscOrSaveOnEnter(e, b, inputs, Api.UPDATE, null, old)) {
           SideMenu.setUserButton(b, old.name, old.surname, old.matricule);
         }
       });
       inputs.surname.addEventListener('keydown', (e) => {
-        if (isEscOrSaveOnEnter(e, b, inputs, Api.CREATE, null, old)) {
+        if (isEscOrSaveOnEnter(e, b, inputs, Api.UPDATE, null, old)) {
           SideMenu.setUserButton(b, old.name, old.surname, old.matricule);
         }
       });
       inputs.matricule.addEventListener('keydown', (e) => {
-        if (isEscOrSaveOnEnter(e, b, inputs, Api.CREATE, null, old)) {
+        if (isEscOrSaveOnEnter(e, b, inputs, Api.UPDATE, null, old)) {
           SideMenu.setUserButton(b, old.name, old.surname, old.matricule);
         }
       });
       b.replaceChildren(inputs.name, inputs.surname, inputs.matricule);
       break;
-  }
-  numInput.elm.value = b.textContent;
-  b.replaceWith(numInput.elm);
-  numInput.elm.focus();
-
-  const _eventId = zones[zonesId.EVENTLIST].selection._dataId;
-  let dataArray = null;
-  let idx = -1;
-
-  if (b.id === 'event-duration') {
-    numInput.endOfWriting = () => {
-      const _eventId = zones[zonesId.EVENTLIST].selection._dataId;
-      if (numInput.elm.value === '') {
-        b.textContent = '\u00A0';
-        data.eventDuration[_eventId] = -1;
-        function localCallback() {
-          b.replaceWith(numInput.elm);
-          numInput.elm.focus();
-          numInput.endOfWriting = () => { endOfWriting() };
-        }
-        function endOfWriting() {
-          const _eventId = zones[zonesId.EVENTLIST].selection._dataId;
-          numInput.elm.replaceWith(b);
-          if (numInput.elm.value === '') {
-            data.eventDuration[_eventId] = -1;
-            return;
-          }
-          b.textContent = numInput.elm.value;
-          data.eventDuration[_eventId] = Number(numInput.elm.value);
-          b.classList.add('editable');
-          b.removeEventListener('click', localCallback);
-        }
-        b.addEventListener('click', localCallback);
-      } else {
-        b.textContent = numInput.elm.value;
-        data.eventDuration[_eventId] = Number(b.textContent);
-      }
-      numInput.elm.replaceWith(b);
-    };
-  } else { // @nocheckin: we should probably set a special class on a button or somewhat like that
-    numInput.endOfWriting = () => {
-      const _eventId = zones[zonesId.EVENTLIST].selection._dataId;
-      if (numInput.elm.value === '') {
-        b.textContent = '\u00A0';
-        data.eventPersonalNumMap[_eventId][b._dataId] = -1;
-        function localCallback() {
-          b.replaceWith(numInput.elm);
-          numInput.elm.focus();
-          numInput.endOfWriting = () => { endOfWriting() };
-        }
-        function endOfWriting() {
-          numInput.elm.replaceWith(b);
-          const _eventId = zones[zonesId.EVENTLIST].selection._dataId;
-          if (numInput.elm.value === '') {
-            data.eventPersonalNumMap[_eventId][b._dataId] = -1;
-            return;
-          }
-          b.textContent = numInput.elm.value;
-          data.eventPersonalNumMap[_eventId][b._dataId] = Number(numInput.elm.value);
-          b.classList.add('editable');
-          b.removeEventListener('click', localCallback);
-        }
-        b.addEventListener('click', localCallback);
-      } else {
-        b.textContent = numInput.elm.value;
-        data.eventPersonalNumMap[_eventId][b._dataId] = Number(b.textContent);
-      }
-      numInput.elm.replaceWith(b);
-    };
   }
 });
 
