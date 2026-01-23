@@ -44,3 +44,7 @@ export function setNameAndId(b, name, id) {
   span.textContent = '#'+id;
   b.appendChild(span);
 }
+export function throwIfNotOk(r) {
+  if (!r.ok) { throw new Error(`HTTP error! status: ${r.status}`); }
+}
+

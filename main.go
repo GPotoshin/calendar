@@ -686,7 +686,6 @@ func handleSimpleCreate(
   if readError(w, "handleSimpleCreate", "name", err) {
     return err
   }
-  slog.Info("Input", "string", str)
 
   for _, idx := range m {
     if (*names)[idx] == str {
@@ -699,6 +698,8 @@ func handleSimpleCreate(
   idx := storageIndex(m, freeList)
   m[id] = idx
   storeValue(names, idx, str)
+
+  slog.Info("CREATE", "name", str, "id", id, "idx", idx)
 
   writeInt32(w, id)
   return nil
@@ -777,6 +778,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         state.UsersId[mat] = idx
         storeValue(&state.UsersName, idx, name)
         storeValue(&state.UsersSurname, idx, surname)
+        slog.Info("CREATE:USER_ID_MAP_ID", "name", name, "surname", surname, "mat", mat, "idx", idx)
       case UPDATE:
         if !exists {
           slog.Error("editing an inexisting user")
@@ -793,10 +795,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         }
         state.UsersName[idx] = name
         state.UsersSurname[idx] = surname
-        return
-      case REQUEST:
-        http.Error(w, "we do not support that", http.StatusBadRequest)
-        return
+        slog.Info("CREATE:USER_ID_MAP_ID", "name", name, "surname", surname, "mat", mat, "idx", idx)
       case DELETE:
         if !exists {
           slog.Error("matricule already does not exist")
@@ -812,30 +811,22 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
 
       default:
         noSupport(w, "USERS_ID:default")
-        return 
     }
 
   case USERS_NAME_ID:
     noSupport(w, "USERS_NAME_ID")
-    return
   case USERS_SURNAME_ID:
     noSupport(w, "USERS_SURNAME_ID")
-    return
   case USERS_MAIL_ID:
     noSupport(w, "USERS_MAIL_ID")
-    return
   case USERS_PHONE_ID:
     noSupport(w, "USERS_PHONE_ID")
-    return
   case USERS_COMPETENCES_ID:
     noSupport(w, "USERS_COMPETENCES_ID")
-    return
   case USERS_DUTY_STATION_ID:
     noSupport(w, "USERS_DUTY_STATION_ID")
-    return
   case USERS_PRIVILEGE_LEVEL_ID:
     noSupport(w, "USERS_PRIVILEGE_LEVEL_ID")
-    return
 
   case EVENTS_ID_MAP_ID:
     if !isAdmin(w, p_level) { return }
@@ -876,14 +867,11 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
 
     default:
       noSupport(w, "EVENTS_ID:default")
-      return
     }
   case EVENTS_NAME_ID:
     noSupport(w, "EVENTS_NAME_ID")
-    return
   case EVENTS_VENUE_ID:
     noSupport(w, "EVENTS_VENUE_ID")
-    return
   case EVENTS_ROLE_ID:
     if !isAdmin(w, p_level) { return }
     event_id, err := readInt32(r.Body)
@@ -917,11 +905,9 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         }
       default:
         noSupport(w, "EVENTS_ROLES_REQUIREMENT_ID:default")
-        return
     }
   case EVENTS_ROLES_REQUIREMENT_ID:
     noSupport(w, "EVENTS_ROLES_REQUIREMENT_ID")
-    return
   case EVENTS_PERSONAL_NUM_MAP_ID:
     if !isAdmin(w, p_level) { return }
     event_id, err := readInt32(r.Body)
@@ -953,11 +939,9 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         
       default:
         noSupport(w, "EVENTS_ROLES_REQUIREMENT_ID:default")
-        return
     }
   case EVENTS_DURATION_ID:
     noSupport(w, "EVENTS_DURATION_ID")
-    return
 
   case VENUES_ID_MAP_ID:
     if !isAdmin(w, p_level) { return }
@@ -986,19 +970,14 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
 
     default:
       noSupport(w, "VENUES_ID:default")
-      return
     }
-
   case VENUES_NAME_ID:
     noSupport(w, "VENUES_NAME_ID")
-    return
 
   case COMPETENCES_ID_MAP_ID:
     noSupport(w, "COMPETENCES_ID_MAP_ID")
-    return
   case COMPETENCES_NAME_ID:
     noSupport(w, "COMPETENCES_NAME_ID")
-    return
 
   case ROLES_ID_MAP_ID:
     if !isAdmin(w, p_level) { return }
@@ -1024,29 +1003,21 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       deleteOccurrences(state.EventsRole, id)
     default:
       noSupport(w, "ROLES_ID:default")
-      return
     }
   case ROLES_NAME_ID:
     noSupport(w, "ROLES_NAME_ID")
-    return
 
   case OCCURRENCES_ID_MAP_ID:
     noSupport(w, "OCCURRENCES_ID_MAP_ID")
-    return
   case OCCURRENCES_VENUE_ID:
     noSupport(w, "OCCURRENCES_VENUE_ID")
-    return
   case OCCURRENCES_DATES_ID:
     noSupport(w, "OCCURRENCES_DATES_ID")
-    return
   case OCCURRENCES_PARTICIPANT_ID:
     noSupport(w, "OCCURRENCES_PARTICIPANT_ID")
-    return
   case OCCURRENCES_PARTICIPANTS_ROLE_ID:
     noSupport(w, "OCCURRENCES_PARTICIPANTS_ROLE_ID")
-    return
   default:
     noSupport(w, "default")
-    return
   }
 }

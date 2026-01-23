@@ -145,9 +145,7 @@ export function update() { // @working
       w.writeInt32(n);
       Api.request(w)
       .then(resp => {
-        if (!resp.ok) {
-          throw new Error(`HTTP error! status: ${resp.status}`);
-        }
+        throwIfRespNotOk(resp);
         evolveButton(b);
         num_map[event_idx][line_idx][b._dataId] = n;
       })
@@ -184,9 +182,7 @@ export function update() { // @working
       }
       Api.request(w)
       .then(resp => {
-        if (!resp.ok) {
-          throw new Error(`HTTP error! status: ${resp.status}`);
-        }
+        throwIfRespNotOk(resp);
         num_map[event_idx].push(data);
       })
       .catch(e => {

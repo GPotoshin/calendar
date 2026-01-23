@@ -40,7 +40,7 @@ function createUserDataInputs() {
 
 function endOfUserInputs(b, w, inputs) {
   b.addEventListener('click', SideMenu.sideListButtonClickCallback);
-  w.writeInt32(Number(inputs.matricule.value);
+  w.writeInt32(Number(inputs.matricule.value));
   w.writeString(inputs.name.value);
   w.writeString(inputs.surname.value);
   inputs.name.remove();
@@ -55,10 +55,6 @@ function userInputsAreNotEmpty(inputs) {
   return inputs.name.value !== '' &&
       inputs.surname.value !== '' &&
       inputs.matricule.value !== '';
-}
-
-function throwIfRespNotOk(r) {
-  if (!r.ok) { throw new Error(`HTTP error! status: ${r.status}`); }
 }
 
 function getValuesFromUserInputs(inputs) {
@@ -81,7 +77,7 @@ function isEscOrCreateOnEnter(e, b, inputs, next = null) {
       endOfUserInputs(w, inputs);
       Api.request(w)
       .then(resp => {
-        throwIfRespNotOk(resp);
+        Utils.throwIfNotOk(resp);
 
         let idx = storageIndex(data.usersId, data.usersFreeList);
         data.usersId.set(matricule, idx);
@@ -119,7 +115,7 @@ function isEscOrUpdateOnEnter(e, b, inputs, old) {
       endOfUserInputs(w, inputs);
       Api.request(w)
       .then(resp => {
-        throwIfRespNotOk(resp);
+        Utils.throwIfNotOk(resp);
         const idx = data.usersId.get(old.matricule);
         if (!idx) {
           console.error("old matricule does not exist locally");
@@ -244,9 +240,7 @@ document.getElementById('delete-button').addEventListener('click', function() {
   w.writeInt32(Number(id));
   Api.request(w)
   .then(resp => {
-    if (!resp.ok) {
-      throw new Error(`HTTP error! status: ${resp.status}`);
-    }
+    Utils.throwIfNotOk(resp);
     switch (state.delete_target.parentElement._id) {
       case zonesId.STAFFLIST:
         deleteValue(data.usersId, data.usersFreeList, id);
@@ -309,9 +303,7 @@ function setStandardInputCallback(b, input, op, api, meta_data) {
       w.writeString(val);
       Api.request(w)
       .then(resp => {
-        if (!resp.ok) {
-          throw new Error(`HTTP error! status: ${resp.status}`);
-        }
+        Utils.throwIfNotOk(resp);
         resp.arrayBuffer()
         .then(bin => {
           let r = new BufferReader(bin);
@@ -442,10 +434,7 @@ document.getElementById('toggle-button').addEventListener('click', () => {
 
       Api.request(w)
       .then(resp => {
-        if (!resp.ok) {
-          throw new Error(`HTTP error! status: ${resp.status}`);
-          return;
-        }
+        Utils.throwIfNotOk(resp);
         let num_map = data.eventsPersonalNumMap;
 
         if (turning_on) {

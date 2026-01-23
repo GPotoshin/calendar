@@ -7,7 +7,7 @@ import {
 
 import * as Api from './api.js';
 import * as EventInfo from './event_info.js';
-
+import * as Utils from './utils.js';
 import { palette } from './color.js';
 import { BufferReader, BufferWriter } from './io.js';
 import * as DM from './data_manager.js';
@@ -187,9 +187,7 @@ calendarBody.addEventListener('mousemove', handleMouseMove);
     body: writer.getBuffer(),
   })
     .then(resp => {
-      if (!resp.ok) {
-        throw new Error(`HTTP error! status: ${resp.status}`);
-      }
+      Utils.throwIfNotOk(resp);
       resp.arrayBuffer().then(
         bin => {
           const r = new BufferReader(bin);

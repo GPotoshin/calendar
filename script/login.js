@@ -96,9 +96,7 @@ connectButton.addEventListener('click', async () => {
       body: encryptedData,
     });
 
-    if (!resp.ok) {
-      throw new Error(`HTTP error! status: ${resp.status}`);
-    }
+    Utils.throwIfNotOk(resp);
     const bin = await resp.arrayBuffer();
     const r = new BufferReader(bin);
 
