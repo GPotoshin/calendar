@@ -38,7 +38,8 @@ function createUserDataInputs() {
   return retval;
 }
 
-function endOfUserInputs(w, inputs) {
+function endOfUserInputs(b, w, inputs) {
+  b.addEventListener('click', SideMenu.sideListButtonClickCallback);
   w.writeInt32(Number(inputs.matricule.value);
   w.writeString(inputs.name.value);
   w.writeString(inputs.surname.value);
@@ -50,39 +51,45 @@ function endOfUserInputs(w, inputs) {
   inputs.matricule = null;
 }
 
+function userInputsAreNotEmpty(inputs) {
+  return inputs.name.value !== '' &&
+      inputs.surname.value !== '' &&
+      inputs.matricule.value !== '';
+}
+
+function throwIfRespNotOk(r) {
+  if (!r.ok) { throw new Error(`HTTP error! status: ${r.status}`); }
+}
+
+function getValuesFromUserInputs(inputs) {
+  return [inputs.name.value, inputs.surname.value, Number(inputs.matricule.value)];
+}
+
 function isEscOrCreateOnEnter(e, b, inputs, next = null) {
   if (e.key === 'Enter') {
-    if (inputs.name.value !== '' &&
-      inputs.surname.value !== '' &&
-      inputs.matricule.value !== '') {
+    if (userInputsAreNotEmpty(inputs)) {
       e.preventDefault();
-      const name = inputs.name.value;
-      const surname = inputs.surname.value;
-      const matricule = Number(inputs.matricule.value);
+      [name, surname, matricule] = getValuesFromUserInputs(inputs);
 
       if (data.usersId.has(matricule)) {
         Utils.setBgColor(inputs.matricule, palette.red);
         return;
       }
       SideMenu.setUserButton(b, name, surname, matricule);
-
       let w = Api.createBufferWriter(Api.CREATE, Api.USERS_ID_MAP_ID);
-      b.addEventListener('click', SideMenu.sideListButtonClickCallback);
 
       endOfUserInputs(w, inputs);
       Api.request(w)
       .then(resp => {
-        if (!resp.ok) {
-          throw new Error(`HTTP error! status: ${resp.status}`);
-          return;
-        }
+        throwIfRespNotOk(resp);
+
         let idx = storageIndex(data.usersId, data.usersFreeList);
         data.usersId.set(matricule, idx);
         storeValue(data.usersName, idx, name);
         storeValue(data.usersSurname, idx, surname);
         b._dataId = matricule;
       })
-      .catch( e => {
+      .catch(e => {
         b.remove();
         console.error("Could not store ", name, e);
       });
@@ -97,31 +104,22 @@ function isEscOrCreateOnEnter(e, b, inputs, next = null) {
 
 function isEscOrUpdateOnEnter(e, b, inputs, old) {
   if (e.key === 'Enter') {
-    if (inputs.name.value !== '' &&
-      inputs.surname.value !== '' &&
-      inputs.matricule.value !== '') {
+    if (userInputsAreNotEmpty(inputs)) {
       e.preventDefault();
-      const name = inputs.name.value;
-      const surname = inputs.surname.value;
-      const matricule = Number(inputs.matricule.value);
+      [name, surname, matricule] = getValuesFromUserInputs(inputs);
 
       if (matricule !== old.matricule && data.usersId.has(matricule)) {
         Utils.setBgColor(inputs.matricule, palette.red);
         return;
       }
       SideMenu.setUserButton(b, name, surname, matricule);
-
       let w = Api.createBufferWriter(Api.UPDATE, Api.USERS_ID_MAP_ID);
       w.writeInt32(old.matricule);
-      b.addEventListener('click', SideMenu.sideListButtonClickCallback);
 
       endOfUserInputs(w, inputs);
       Api.request(w)
       .then(resp => {
-        if (!resp.ok) {
-          throw new Error(`HTTP error! status: ${resp.status}`);
-          return;
-        }
+        throwIfRespNotOk(resp);
         const idx = data.usersId.get(old.matricule);
         if (!idx) {
           console.error("old matricule does not exist locally");
