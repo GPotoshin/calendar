@@ -290,9 +290,7 @@ function createEventOrVenue(parent, placeholder, api, meta_data) {
   let b = SideMenu.createListButton();
   const input = Utils.createTextInput(placeholder)
   b.replaceChildren(input);
-  if (parent) {
     parent.appendChild(b);
-  }
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       const val = input.value;
@@ -378,8 +376,8 @@ document.getElementById('create-button').addEventListener('click', () => {
   switch (state.extend_target._id) {
     case zonesId.EVENTLIST: {
       createEventOrVenue(
+        zones[zonesId.EVENTLIST].eList, 
         'Nouvel Événement',
-        Api.CREATE,
         Api.EVENTS_ID_MAP_ID,
         MetaData.events_names,
       );
@@ -407,8 +405,8 @@ document.getElementById('create-button').addEventListener('click', () => {
     }
     case zonesId.VENUELIST: {
       createEventOrVenue(
+        zones[zonesId.VENUELIST].eList, 
         'Nouveau Lieu',
-        Api.CREATE,
         Api.VENUES_ID_MAP_ID,
         MetaData.venues_name,
       );
