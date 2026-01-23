@@ -61,11 +61,11 @@ function getValuesFromUserInputs(inputs) {
   return [inputs.name.value, inputs.surname.value, Number(inputs.matricule.value)];
 }
 
-function isEscOrCreateOnEnter(e, b, inputs, next = null) {
+function escOrCreateOnEnter(e, b, inputs, next = null) {
   if (e.key === 'Enter') {
     if (userInputsAreNotEmpty(inputs)) {
       e.preventDefault();
-      [name, surname, matricule] = getValuesFromUserInputs(inputs);
+      const [name, surname, matricule] = getValuesFromUserInputs(inputs);
 
       if (data.usersId.has(matricule)) {
         Utils.setBgColor(inputs.matricule, palette.red);
@@ -74,7 +74,7 @@ function isEscOrCreateOnEnter(e, b, inputs, next = null) {
       SideMenu.setUserButton(b, name, surname, matricule);
       let w = Api.createBufferWriter(Api.CREATE, Api.USERS_ID_MAP_ID);
 
-      endOfUserInputs(w, inputs);
+      endOfUserInputs(b, w, inputs);
       Api.request(w)
       .then(resp => {
         Utils.throwIfNotOk(resp);
@@ -93,16 +93,15 @@ function isEscOrCreateOnEnter(e, b, inputs, next = null) {
     if (next) { next.focus(); }
   } else if (e.key === 'Escape') {
     e.preventDefault();
-    return true;
+    b.remove();
   }
-  return false;
 }
 
-function isEscOrUpdateOnEnter(e, b, inputs, old) {
+function escOrUpdateOnEnter(e, b, inputs, old) {
   if (e.key === 'Enter') {
     if (userInputsAreNotEmpty(inputs)) {
       e.preventDefault();
-      [name, surname, matricule] = getValuesFromUserInputs(inputs);
+      const [name, surname, matricule] = getValuesFromUserInputs(inputs);
 
       if (matricule !== old.matricule && data.usersId.has(matricule)) {
         Utils.setBgColor(inputs.matricule, palette.red);
@@ -112,7 +111,7 @@ function isEscOrUpdateOnEnter(e, b, inputs, old) {
       let w = Api.createBufferWriter(Api.UPDATE, Api.USERS_ID_MAP_ID);
       w.writeInt32(old.matricule);
 
-      endOfUserInputs(w, inputs);
+      endOfUserInputs(b, w, inputs);
       Api.request(w)
       .then(resp => {
         Utils.throwIfNotOk(resp);
@@ -136,9 +135,8 @@ function isEscOrUpdateOnEnter(e, b, inputs, old) {
     }
   } else if (e.key === 'Escape') {
     e.preventDefault();
-    return true;
+    SideMenu.setUserButton(b, old.name, old.surname, old.matricule);
   }
-  return false;
 }
 
 document.getElementById('edit-button').addEventListener('click', function() {
@@ -168,19 +166,13 @@ document.getElementById('edit-button').addEventListener('click', function() {
       inputs.surname.value = old.surname;
       inputs.matricule.value = old.matricule;
       inputs.name.addEventListener('keydown', (e) => {
-        if (isEscOrUpdateOnEnter(e, b, inputs, old)) {
-          SideMenu.setUserButton(b, old.name, old.surname, old.matricule);
-        }
+        escOrUpdateOnEnter(e, b, inputs, old)
       });
       inputs.surname.addEventListener('keydown', (e) => {
-        if (isEscOrUpdateOnEnter(e, b, inputs, old)) {
-          SideMenu.setUserButton(b, old.name, old.surname, old.matricule);
-        }
+        escOrUpdateOnEnter(e, b, inputs, old)
       });
       inputs.matricule.addEventListener('keydown', (e) => {
-        if (isEscOrUpdateOnEnter(e, b, inputs, old)) {
-          SideMenu.setUserButton(b, old.name, old.surname, old.matricule);
-        }
+        escOrUpdateOnEnter(e, b, inputs, old)
       });
       b.replaceChildren(inputs.name, inputs.surname, inputs.matricule);
       break;
@@ -285,6 +277,22 @@ document.getElementById('delete-button').addEventListener('click', function() {
 });
 
 function setStandardInputCallback(b, input, op, api, meta_data) {
+}
+
+function endOfStandradInput(e, input, b, val) {
+  setBgColor(input, 'transparent');
+  e.preventDefault();
+  input.remove();
+  b.textContent = val;
+}
+
+function createEventOrVenue(parent, placeholder, api, meta_data) {
+  let b = SideMenu.createListButton();
+  const input = Utils.createTextInput(placeholder)
+  b.replaceChildren(input);
+  if (parent) {
+    parent.appendChild(b);
+  }
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       const val = input.value;
@@ -295,10 +303,7 @@ function setStandardInputCallback(b, input, op, api, meta_data) {
         }
       }
 
-      e.preventDefault();
-      input.remove();
-      b.textContent = val;
-
+      endOfStandardInput(e, input, b, val);
       let w = Api.createBufferWriter(Api.CREATE, api);
       w.writeString(val);
       Api.request(w)
@@ -324,20 +329,48 @@ function setStandardInputCallback(b, input, op, api, meta_data) {
       b.remove();
     }
   });
+  input.focus();
 }
 
-function createEventOrVenue(placeholder, op, api, meta_data) {
-  let b = SideMenu.createListButton();
-  addInputForEventOrVenue(b, state_extend_target, placeholder, api, meta_data);
-}
+function updateEventOrVenue(placeholder, api, meta_data) {
+  const id = Number(state.edit_target._dataId);
+  const idx = meta_data.map.get(id);
+  if (!idx) { throw new Error('[updateEventOrVenue]: id does not exist'); }
+  const old_name = mate_data.arr[idx];
 
-function addInputForEventOrVenue(b, parent, placeholder, op, api, meta_data) {
   const input = Utils.createTextInput(placeholder)
   b.replaceChildren(input);
-  if (parent) {
-    parent.appendChild(b);
-  }
-  setStandardInputCallback(b, input, op, api, meta_data);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const val = input.value;
+      for (const [_id, _idx] of meta_data.map) {
+        const name = meta_data.arr[_idx];
+        if (name !== old_name && name === val) {
+          setBgColor(input, palette.red);
+          return
+        }
+      }
+
+      endOfStandardInput(e, input, b, val);
+      let w = Api.createBufferWriter(Api.UPDATE, api);
+      w.writeString(val);
+      Api.request(w)
+      .then(resp => {
+        Utils.throwIfNotOk(resp);
+        meta_data.arr[idx] = val;
+        b.textContent = '';
+        Utils.setNameAndId(b, val, id);
+      })
+      .catch(e => {
+        b.textContent = '';
+        Utils.setNameAndId(b, old_name, id);
+        console.error("Could not store ", val, e);
+      });
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      b.remove();
+    }
+  });
   input.focus();
 }
 
@@ -357,19 +390,13 @@ document.getElementById('create-button').addEventListener('click', () => {
       let b = SideMenu.createTmplButton(); 
       const inputs = createUserDataInputs();
       inputs.name.addEventListener('keydown', (e) => {
-        if (isEscOrCreateOnEnter(e, b, inputs, inputs.surname)) {
-          b.remove();
-        }
+        escOrCreateOnEnter(e, b, inputs, inputs.surname)
       });
       inputs.surname.addEventListener('keydown', (e) => {
-        if (isEscOrCreateOnEnter(e, b, inputs, inputs.matricule)) {
-          b.remove();
-        }
+        escOrCreateOnEnter(e, b, inputs, inputs.matricule)
       });
       inputs.matricule.addEventListener('keydown', (e) => {
-        if (isEscOrCreateOnEnter(e, b, inputs)) {
-          b.remove();
-        }
+        escOrCreateOnEnter(e, b, inputs)
       });
       target.appendChild(b);
       b.appendChild(inputs.name);
