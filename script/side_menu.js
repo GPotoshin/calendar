@@ -97,9 +97,14 @@ export function sideListButtonClickCallback(event) {
     }
 }
 
-function createListButton() {
+export function createTmplButton() {
   let b = document.createElement('button');
   b.className = 'side-menu-list-button hover deletable editable';
+  return b;
+}
+
+export function createListButton() {
+  let b = createTmplButton();
   b.addEventListener('click', sideListButtonClickCallback);
   return b;
 }

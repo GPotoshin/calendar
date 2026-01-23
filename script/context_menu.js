@@ -8,6 +8,7 @@ import * as Utils from './utils.js';
 import * as SearchDisplay from './search_display.js';
 import * as EventInfo from './event_info.js';
 import { numInput } from './num_input.js';
+import { palette } from './color.js';
 
 let state = {
   delete_target: null,
@@ -71,7 +72,8 @@ function isEscOrCreateOnEnter(e, b, inputs, next = null) {
         let idx = storageIndex(data.usersId, data.usersFreeList);
         data.usersId.set(matricule, idx);
         storeValue(data.usersName, idx, name);
-        storeValue(data.usersSurname, idx, name);
+        storeValue(data.usersSurname, idx, surname);
+        b._dataId = matricule;
       })
       .catch( e => {
         b.remove();
@@ -86,7 +88,7 @@ function isEscOrCreateOnEnter(e, b, inputs, next = null) {
   return false;
 }
 
-function isEscOrUpdateOnEnter(e, b, inputs, old,) {
+function isEscOrUpdateOnEnter(e, b, inputs, old) {
   if (e.key === 'Enter') {
     if (inputs.name.value !== '' &&
       inputs.surname.value !== '' &&
@@ -129,13 +131,13 @@ function isEscOrUpdateOnEnter(e, b, inputs, old,) {
         }
         data.usersName[idx] = name;
         data.usersSurname[idx] = surname;
+        b._dataId = matricule;
       })
       .catch( e => {
         SideMenu.setUserButton(b, old.name, old.surname, old.matricule);
         console.error("Could not store ", name, e);
       });
     }
-    if (next) { next.focus(); }
   } else if (e.key === 'Escape') {
     e.preventDefault();
     return true;
@@ -152,7 +154,7 @@ document.getElementById('edit-button').addEventListener('click', function() {
 
   let w = new BufferWriter();
   switch (state.edit_target.parentElement._id) {
-    case zonesId.STAFFLIST:
+    case zonesId.STAFFLIST: {
       b.removeEventListener('click', SideMenu.sideListButtonClickCallback);
       const idx = data.usersId.get(id);
       if (idx === undefined) {
@@ -186,8 +188,9 @@ document.getElementById('edit-button').addEventListener('click', function() {
       });
       b.replaceChildren(inputs.name, inputs.surname, inputs.matricule);
       break;
+    }
 
-    case zonesId.EVENTLIST:
+    case zonesId.EVENTLIST: {
       b.removeEventListener('click', SideMenu.sideListButtonClickCallback);
       const idx = data.eventsId.get(id);
       if (idx === undefined) {
@@ -203,6 +206,8 @@ document.getElementById('edit-button').addEventListener('click', function() {
         Api.EVENTS_ID_MAP_IS,
         MetaData.events_name,
       );
+      break;
+    }
   }
 });
 
@@ -357,7 +362,7 @@ document.getElementById('create-button').addEventListener('click', () => {
     }
     case zonesId.STAFFLIST: {
       const target = elms.scope[scopeId.STAFF];
-      let b = SideMenu.createListButton(); 
+      let b = SideMenu.createTmplButton(); 
       const inputs = createUserDataInputs();
       inputs.name.addEventListener('keydown', (e) => {
         if (isEscOrCreateOnEnter(e, b, inputs, inputs.surname)) {
