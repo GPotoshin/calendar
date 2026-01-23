@@ -38,6 +38,18 @@ function createUserDataInputs() {
   return retval;
 }
 
+function endOfUserInputs(w, inputs) {
+  w.writeInt32(Number(inputs.matricule.value);
+  w.writeString(inputs.name.value);
+  w.writeString(inputs.surname.value);
+  inputs.name.remove();
+  inputs.name = null;
+  inputs.surname.remove();
+  inputs.surname = null;
+  inputs.matricule.remove();
+  inputs.matricule = null;
+}
+
 function isEscOrCreateOnEnter(e, b, inputs, next = null) {
   if (e.key === 'Enter') {
     if (inputs.name.value !== '' &&
@@ -56,13 +68,8 @@ function isEscOrCreateOnEnter(e, b, inputs, next = null) {
 
       let w = Api.createBufferWriter(Api.CREATE, Api.USERS_ID_MAP_ID);
       b.addEventListener('click', SideMenu.sideListButtonClickCallback);
-      w.writeInt32(matricule);
-      w.writeString(name);
-      w.writeString(surname);
 
-      inputs.name.remove();
-      inputs.surname.remove();
-      inputs.matricule.remove();
+      endOfUserInputs(w, inputs);
       Api.request(w)
       .then(resp => {
         if (!resp.ok) {
@@ -107,13 +114,8 @@ function isEscOrUpdateOnEnter(e, b, inputs, old) {
       let w = Api.createBufferWriter(Api.UPDATE, Api.USERS_ID_MAP_ID);
       w.writeInt32(old.matricule);
       b.addEventListener('click', SideMenu.sideListButtonClickCallback);
-      w.writeInt32(matricule);
-      w.writeString(name);
-      w.writeString(surname);
 
-      inputs.name.remove();
-      inputs.surname.remove();
-      inputs.matricule.remove();
+      endOfUserInputs(w, inputs);
       Api.request(w)
       .then(resp => {
         if (!resp.ok) {
