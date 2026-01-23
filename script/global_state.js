@@ -61,21 +61,3 @@ export let zones = [
 
 export const data = new DM.DataManager();
 window.data = data;
-
-export const MetaData = {
-  events_names: {
-    map: data.eventsId,
-    arr: data.eventsName,
-    free_list: data.eventsFreeList,
-  },
-  venues_name: {
-    map: data.venuesId,
-    arr: data.venuesName,
-    free_list: data.venuesFreeList,
-  },
-  roles_name: {
-    map: data.rolesId,
-    arr: data.rolesName,
-    free_list: data.rolesFreeList,
-  }
-}

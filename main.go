@@ -455,8 +455,6 @@ func writeState(w io.Writer, state State, dest int32) error {
 
 func middleware(handler http.Handler) http.Handler {
   return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-    slog.Info("serving", "addr", r.RemoteAddr, "met", r.Method, "url", r.URL)
-    
     csp := []string{
 			"default-src 'self'",
 			"script-src 'self'",

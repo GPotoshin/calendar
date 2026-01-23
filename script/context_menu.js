@@ -1,4 +1,4 @@
-import { callbacks, elms, MetaData, data } from './global_state.js';
+import { callbacks, elms, data } from './global_state.js';
 import { BufferReader, BufferWriter } from './io.js';
 import { zones, zonesId, scopeId } from './global_state.js';
 import { storageIndex, deleteValue, deleteOccurrences, storeValue } from './data_manager.js';
@@ -192,7 +192,7 @@ document.getElementById('edit-button').addEventListener('click', function() {
         'Nom d\'Événement',
         Api.UPDATE,
         Api.EVENTS_ID_MAP_IS,
-        MetaData.events_name,
+        data.bundleEventsNames(),
       );
       break;
     }
@@ -276,27 +276,21 @@ document.getElementById('delete-button').addEventListener('click', function() {
   });
 });
 
-function setStandardInputCallback(b, input, op, api, meta_data) {
-}
-
-function endOfStandradInput(e, input, b, val) {
-  setBgColor(input, 'transparent');
+function endOfStandardInput(e, input, b, val) {
+  Utils.setBgColor(input, 'transparent');
   e.preventDefault();
   input.remove();
   b.textContent = val;
 }
 
-function createEventOrVenue(parent, placeholder, api, meta_data) {
-  let b = SideMenu.createListButton();
-  const input = Utils.createTextInput(placeholder)
-  b.replaceChildren(input);
-    parent.appendChild(b);
+
+function setCreateInput(b, input, api, meta_data) {
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       const val = input.value;
       for (const [id, idx] of meta_data.map) {
         if (meta_data.arr[idx] === val) {
-          setBgColor(input, palette.red);
+          Utils.setBgColor(input, palette.red);
           return
         }
       }
@@ -311,7 +305,7 @@ function createEventOrVenue(parent, placeholder, api, meta_data) {
         .then(bin => {
           let r = new BufferReader(bin);
           let id = r.readInt32();
-          let idx = storageIndex(meta_data.map, meta_data.freeList);
+          let idx = storageIndex(meta_data.map, meta_data.free_list);
           meta_data.map.set(id, idx);
           meta_data.arr[idx] = val;
           b.textContent = '';
@@ -330,6 +324,14 @@ function createEventOrVenue(parent, placeholder, api, meta_data) {
   input.focus();
 }
 
+function createEventOrVenue(parent, placeholder, api, meta_data) {
+  let b = SideMenu.createListButton();
+  const input = Utils.createTextInput(placeholder)
+  b.replaceChildren(input);
+  parent.appendChild(b);
+  setCreateInput(b, input, api, meta_data);
+}
+
 function updateEventOrVenue(placeholder, api, meta_data) {
   const id = Number(state.edit_target._dataId);
   const idx = meta_data.map.get(id);
@@ -344,7 +346,7 @@ function updateEventOrVenue(placeholder, api, meta_data) {
       for (const [_id, _idx] of meta_data.map) {
         const name = meta_data.arr[_idx];
         if (name !== old_name && name === val) {
-          setBgColor(input, palette.red);
+          Utils.setBgColor(input, palette.red);
           return
         }
       }
@@ -376,10 +378,10 @@ document.getElementById('create-button').addEventListener('click', () => {
   switch (state.extend_target._id) {
     case zonesId.EVENTLIST: {
       createEventOrVenue(
-        zones[zonesId.EVENTLIST].eList, 
+        elms.scope[scopeId.EVENT], 
         'Nouvel Événement',
         Api.EVENTS_ID_MAP_ID,
-        MetaData.events_names,
+        data.bundleEventsNames(),
       );
       break;
     }
@@ -405,10 +407,10 @@ document.getElementById('create-button').addEventListener('click', () => {
     }
     case zonesId.VENUELIST: {
       createEventOrVenue(
-        zones[zonesId.VENUELIST].eList, 
+        elms.scope[scopeId.VENUE], 
         'Nouveau Lieu',
         Api.VENUES_ID_MAP_ID,
-        MetaData.venues_name,
+        data.bundleVenuesNames(),
       );
       break;
     }
@@ -419,12 +421,11 @@ document.getElementById('create-button').addEventListener('click', () => {
       state.extend_target.appendChild(b);
       input.focus();
 
-      setStandardInputCallback(
+      setCreateInput(
         b,
         input,
-        Api.CREATE,
         Api.ROLES_ID_MAP_ID,
-        MetaData.roles_name,
+        data.bundleRolesNames(),
       );
       EventInfo.elms.event_role_list._btnList.push(b);
       break;

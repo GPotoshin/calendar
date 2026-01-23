@@ -139,4 +139,26 @@ export class DataManager {
     this.occurrencesParticipant = r.readArrayOfInt32Arrays();
     this.occurrencesParticipantsRole = r.readArrayOfInt32Arrays();
   }
+
+  bundleEventsNames() {
+    return {
+      map: this.eventsId,
+      arr: this.eventsName,
+      free_list: this.eventsFreeList,
+    };
+  }
+  bundleVenuesNames() {
+    return {
+      map: this.venuesId,
+      arr: this.venuesName,
+      free_list: this.venuesFreeList,
+    };
+  }
+  bundleRolesNames() {
+    return {
+      map: this.rolesId,
+      arr: this.rolesName,
+      free_list: this.rolesFreeList,
+    };
+  }
 }
