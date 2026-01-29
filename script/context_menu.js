@@ -179,19 +179,19 @@ document.getElementById('edit-button').addEventListener('click', function() {
     }
 
     case zonesId.EVENTLIST: {
-      b.removeEventListener('click', SideMenu.sideListButtonClickCallback);
-      const idx = data.eventsId.get(id);
-      if (idx === undefined) {
-        console.error('event index is not found');
-        return;
-      }
-      const old_name = data.eventsName[idx];
-      addInputForEventOrVenue(
+      updateEventOrVenue(
         b,
-        null,
         'Nom d\'Événement',
-        Api.UPDATE,
-        Api.EVENTS_ID_MAP_IS,
+        Api.EVENTS_ID_MAP_ID,
+        data.bundleEventsNames(),
+      );
+      break;
+    }
+    case zonesId.VENUELIST: {
+      updateEventOrVenue(
+        b,
+        'Nom d\'Événement',
+        Api.EVENTS_ID_MAP_ID,
         data.bundleEventsNames(),
       );
       break;
@@ -283,7 +283,6 @@ function endOfStandardInput(e, input, b, val) {
   b.textContent = val;
 }
 
-
 function setCreateInput(b, input, api, meta_data) {
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
@@ -332,11 +331,13 @@ function createEventOrVenue(parent, placeholder, api, meta_data) {
   setCreateInput(b, input, api, meta_data);
 }
 
-function updateEventOrVenue(placeholder, api, meta_data) {
+function updateEventOrVenue(b, placeholder, api, meta_data) {
   const id = Number(state.edit_target._dataId);
   const idx = meta_data.map.get(id);
   if (!idx) { throw new Error('[updateEventOrVenue]: id does not exist'); }
   const old_name = mate_data.arr[idx];
+
+  b.removeEventListener('click', SideMenu.sideListButtonClickCallback);
 
   const input = Utils.createTextInput(placeholder)
   b.replaceChildren(input);
@@ -376,15 +377,6 @@ function updateEventOrVenue(placeholder, api, meta_data) {
 
 document.getElementById('create-button').addEventListener('click', () => {
   switch (state.extend_target._id) {
-    case zonesId.EVENTLIST: {
-      createEventOrVenue(
-        elms.scope[scopeId.EVENT], 
-        'Nouvel Événement',
-        Api.EVENTS_ID_MAP_ID,
-        data.bundleEventsNames(),
-      );
-      break;
-    }
     case zonesId.STAFFLIST: {
       const target = elms.scope[scopeId.STAFF];
       let b = SideMenu.createTmplButton(); 
@@ -403,6 +395,15 @@ document.getElementById('create-button').addEventListener('click', () => {
       b.appendChild(inputs.surname);
       b.appendChild(inputs.matricule);
       inputs.name.focus();
+      break;
+    }
+    case zonesId.EVENTLIST: {
+      createEventOrVenue(
+        elms.scope[scopeId.EVENT], 
+        'Nouvel Événement',
+        Api.EVENTS_ID_MAP_ID,
+        data.bundleEventsNames(),
+      );
       break;
     }
     case zonesId.VENUELIST: {
