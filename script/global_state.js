@@ -48,6 +48,7 @@ export const zonesId = {
   EVENTSTAFFLIST: 6,
   COMPETENCESLIST: 7,
   NUMMAPLIST: 8,
+  DURATION: 9,
 };
 
 // eList is the list of buttons, that way we have a direct access to it

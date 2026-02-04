@@ -1,7 +1,7 @@
 import { data, zones, zonesId, tmpls, scopeId } from './global_state.js';
 import * as SearchDisplay from './search_display.js';
 import * as Utils from './utils.js';
-import { numInput } from './num_input.js';
+import { numeric_input } from './num_input.js';
 import { BufferWriter } from './io.js';
 import * as Api from './api.js';
 
@@ -57,6 +57,7 @@ function createFooterOptions() {
     Durée: <button id="event-duration" class="hover std-min no-padding txt-center tiny-button">\u00A0</button>d
     </div>
     `;
+  footer.children[0]._id = zonesId.DURATION;
   return footer;
 }
 
@@ -66,7 +67,7 @@ export function loadTemplate() {
     </div>
   `;
 
-  let [sDisplay, container] = SearchDisplay.createAndReturnListContainer('Personel', zonesId.EVENTSTAFFLIST);
+  let [sDisplay, container] = SearchDisplay.createAndReturnListContainer('Personnel', zonesId.EVENTSTAFFLIST);
   container._btnList = [];
 
   for (const [id, idx] of data.rolesId) {
@@ -106,6 +107,7 @@ export function update() { // @working
   }
   const event_id = zone.selection._dataId;
   const event_idx = data.eventsId.get(event_id);
+  if (event_idx === undefined) { throw new Error("[update] no entry for event_id"); }
   const event_roles = data.eventsRole[event_idx];
   const num_map = data.eventsPersonalNumMap;
 
@@ -119,10 +121,6 @@ export function update() { // @working
     return line;
   }
 
-  function swapButtonBack(b) {
-    b.textContent = numInput.elm.value || '\u00A0';
-    numInput.elm.replaceWith(b);
-  }
 
   function evolveButton(b) {
     b.classList.add('editable');
@@ -135,7 +133,7 @@ export function update() { // @working
   }
 
   function endOfButtonWriting(b, line_idx) {
-    swapButtonBack(b);
+    numeric_input.swapBackAndSetContent(b);
     if (b.textContent !== '\u00A0') {
       const n = getNumVal(b);
       let w = Api.createBufferWriter(Api.UPDATE, Api.EVENTS_PERSONAL_NUM_MAP_ID);
@@ -156,16 +154,16 @@ export function update() { // @working
   }
 
   function endOfLineWriting(staff_num, b, line, btns) {
-    swapButtonBack(b);
+    numeric_input.swapBackAndSetContent(b);
 
-    let dataIsSet = true;
-    for (let _b of btns) {
-      if (_b.textContent == '\u00A0') {
-        dataIsSet = false;
+    let data_is_set = true;
+    for (let button of btns) {
+      if (button.textContent == '\u00A0') {
+        data_is_set = false;
         break;
       }
     };
-    if (dataIsSet) {
+    if (data_is_set) {
       line.classList.add('deletable');
       line._dataId = num_map[event_idx].length;
       // we need to make an API store request here
@@ -200,11 +198,6 @@ export function update() { // @working
     b.addEventListener('click', clickCallback)
   }
 
-  function swapBtn(b) {
-    b.replaceWith(numInput.elm);
-    numInput.elm.focus();
-  }
-
   function setClickCallback(b, callback) {
     b._clickCallback = callback;
     b.addEventListener('click', callback)
@@ -215,8 +208,8 @@ export function update() { // @working
     const btns = line.querySelectorAll('button');
     for (const b of btns) {
       setEmptyBtn(b, () => {
-        swapBtn(b);
-        numInput.endOfWriting = () => {
+        numeric_input.replace(b);
+        numeric_input.endOfWriting = () => {
           endOfLineWriting(staff_num, b, line, btns)
         };
       });
@@ -250,9 +243,10 @@ export function update() { // @working
     return retval;
   }
   // @nocheckin: we will need to merge all those iterations together
-  let list = [createLocalHeader('Participant')];
+  let list = [createLocalHeader('Participants')];
   for (const role_id of event_roles) {
     const role_idx = data.rolesId.get(role_id);
+    if (role_idx === undefined) { throw new Error('Can find role_id') }
     const name = data.rolesName[role_idx];
     list.push(createLocalHeader(name));
   }
@@ -270,8 +264,8 @@ export function update() { // @working
       const val = num_map[event_idx][i][j];
       if (val === -1) {
         setEmptyBtn(b, () => {
-          swapBtn(b);
-          numInput.endOfWriting = () => {
+          numeric_input.replace(b);
+          numeric_input.endOfWriting = () => {
             endOfButtonWriting(b, i);
           }
         }); 
@@ -284,10 +278,11 @@ export function update() { // @working
   elms.numtab_content.replaceChildren(...list);
   addEmptyLine(event_roles.length); // idea is that addEmptyLine will add a line directly to the dom
 
-  list = [SearchDisplay.create('Participant', zonesId.COMPETENCESLIST)];
+  list = [SearchDisplay.create('Participants', zonesId.COMPETENCESLIST)];
   for (const role_id of event_roles) {
-    const role_idx = data.rolesId.get(role_id);
-    const name = data.rolesName[role_idx];
+    const role_index = data.rolesId.get(role_id);
+    if (role_index === undefined) { throw new Error("Can't find role_id") }; 
+    const name = data.rolesName[role_index];
     list.push(SearchDisplay.create(name, zonesId.COMPETENCESLIST));
   }
   elms.comp_tables.replaceChildren(...list);
@@ -303,20 +298,20 @@ export function update() { // @working
     b.textContent = '\u00A0';
 
     function localCallback() {
-      b.replaceWith(numInput.elm);
-      numInput.elm.focus();
-      numInput.endOfWriting = () => { endOfWriting() };
+      b.replaceWith(numeric_input.elm);
+      numeric_input.elm.focus();
+      numeric_input.endOfWriting = () => { endOfWriting() };
     }
 
     function endOfWriting() {
-      numInput.elm.replaceWith(b);
+      numeric_input.elm.replaceWith(b);
       const _eventId = zones[zonesId.EVENTLIST].selection._dataId;
-      if (numInput.elm.value === '') {
+      if (numeric_input.elm.value === '') {
         data.eventsDuration[_eventId] = -1;
         return;
       }
-      b.textContent = numInput.elm.value;
-      data.eventsDuration[_eventId] = Number(numInput.elm.value);
+      b.textContent = numeric_input.elm.value;
+      data.eventsDuration[_eventId] = Number(numeric_input.elm.value);
       b.classList.add('editable');
       b.removeEventListener('click', localCallback);
     }

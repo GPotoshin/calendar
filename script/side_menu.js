@@ -74,7 +74,7 @@ zones[zonesId.DATATYPE].selection = b1;
 elms.sideMenu.replaceChildren(hContainer, elms.dataListContainer);
 elms.dataListContainer.appendChild(elms.scope[scopeId.EVENT]);
 
-export function sideListButtonClickCallback(event) {
+export function buttonClickCallback(event) {
     const b = event.currentTarget;
     const zone = zones[Number(b.parentElement._id)];
     if (zone.selection == b) {
@@ -103,16 +103,16 @@ export function createTmplButton() {
   return b;
 }
 
-export function createListButton() {
+export function createListButtonAndSetToggleCallback() {
   let b = createTmplButton();
-  b.addEventListener('click', sideListButtonClickCallback);
+  b.addEventListener('click', buttonClickCallback);
   return b;
 }
 
 export function composeList(m, names, scope_id, zone_id) {
   for (const [id, idx] of m) {
     const name = names[idx];
-    let button = createListButton();
+    let button = createListButtonAndSetToggleCallback();
     Utils.setNameAndId(button, name, id);
     elms.scope[scope_id].appendChild(button);
   }
@@ -132,7 +132,7 @@ export function composeUsersList() {
   for (const [mat, idx] of data.usersId) {
     const name = data.usersName[idx]; // @factorout
     const surname = data.usersSurname[idx];
-    let button = createListButton();
+    let button = createListButtonAndSetToggleCallback();
     setUserButton(button, name, surname, mat);
     elms.scope[scopeId.STAFF].appendChild(button);
   }

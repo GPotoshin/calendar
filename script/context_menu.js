@@ -7,7 +7,7 @@ import * as SideMenu from './side_menu.js';
 import * as Utils from './utils.js';
 import * as SearchDisplay from './search_display.js';
 import * as EventInfo from './event_info.js';
-import { numInput } from './num_input.js';
+import { numeric_input } from './num_input.js';
 import { palette } from './color.js';
 
 let state = {
@@ -39,7 +39,7 @@ function createUserDataInputs() {
 }
 
 function endOfUserInputs(b, w, inputs) {
-  b.addEventListener('click', SideMenu.sideListButtonClickCallback);
+  b.addEventListener('click', SideMenu.buttonClickCallback);
   w.writeInt32(Number(inputs.matricule.value));
   w.writeString(inputs.name.value);
   w.writeString(inputs.surname.value);
@@ -116,7 +116,7 @@ function escOrUpdateOnEnter(e, b, inputs, old) {
       .then(resp => {
         Utils.throwIfNotOk(resp);
         const idx = data.usersId.get(old.matricule);
-        if (!idx) {
+        if (idx === undefined) {
           console.error("old matricule does not exist locally");
           return
         }
@@ -149,7 +149,7 @@ document.getElementById('edit-button').addEventListener('click', function() {
   let w = new BufferWriter();
   switch (state.edit_target.parentElement._id) {
     case zonesId.STAFFLIST: {
-      b.removeEventListener('click', SideMenu.sideListButtonClickCallback);
+      b.removeEventListener('click', SideMenu.buttonClickCallback);
       const idx = data.usersId.get(id);
       if (idx === undefined) {
         console.error('user index is not found');
@@ -187,13 +187,46 @@ document.getElementById('edit-button').addEventListener('click', function() {
       );
       break;
     }
-    case zonesId.EVENTLIST: {
+    case zonesId.VENUELIST: {
       updateEventOrVenue(
         b,
-        'Nom d\'Événement',
-        Api.EVENTS_ID_MAP_ID,
-        data.bundleEventsNames(),
+        'Nom de Lieu',
+        Api.VENUES_ID_MAP_ID,
+        data.bundleVenuesNames(),
       );
+      break;
+    }
+    case zonesId.DURATION: {
+      const event_id = zones[zonesId.EVENTLIST].selection._dataId;
+      const event_index = data.eventsId.get(event_id);
+      if (event_index === undefined) { throw new Error('[updating duration]: event_id does not exist'); }
+      const old_duration = data.eventsDuration[event_index];
+
+      numeric_input.endOfWriting = () => {
+        const duration = Number(numeric_input.elm.value);
+        if (duration < 0 || duration > 1024) {
+          console.error("value of duration should be in 1..1024"); 
+          return;
+        }
+        let w = Api.createBufferWriter(Api.UPDATE, Api.EVENTS_DURATION_ID);
+        w.writeInt32(event_id);
+        w.writeInt32(duration);
+        Api.request(w)
+        .then(resp => {
+          Utils.throwIfNotOk(resp);
+          data.eventsDuration[event_index] = duration;
+          // @nocheckin: because we are in a fucking callback, numeric_input value is cleared. So we need to manually change it
+          numeric_input.swapBackAndSetContent(b);
+        })
+        .catch(e => {
+          if (old_duration < 0) {
+            b.textContent = '\u00A0';
+          } else {
+            b.textContent = old_duration;
+          }
+        });
+      };
+      numeric_input.replace(b);
       break;
     }
   }
@@ -203,7 +236,7 @@ document.getElementById('edit-button').addEventListener('click', function() {
 document.getElementById('delete-button').addEventListener('click', function() {
   const id = state.delete_target._dataId;
   if (id == undefined) {
-    throw new Error('delete-target should have a property `_dataId` which infers to which piece of data the element is associated with');
+    throw new Error('delete-target should have a property `_dataId` which infers with which piece of data the element is associated');
   }
   state.delete_target.classList.add('disp-none');
 
@@ -309,6 +342,7 @@ function setCreateInput(b, input, api, meta_data) {
           meta_data.arr[idx] = val;
           b.textContent = '';
           Utils.setNameAndId(b, val, id);
+          b.addEventListener('click', SideMenu.buttonClickCallback);
         });
       })
       .catch(e => {
@@ -324,7 +358,7 @@ function setCreateInput(b, input, api, meta_data) {
 }
 
 function createEventOrVenue(parent, placeholder, api, meta_data) {
-  let b = SideMenu.createListButton();
+  let b = SideMenu.createTmplButton();
   const input = Utils.createTextInput(placeholder)
   b.replaceChildren(input);
   parent.appendChild(b);
@@ -334,10 +368,10 @@ function createEventOrVenue(parent, placeholder, api, meta_data) {
 function updateEventOrVenue(b, placeholder, api, meta_data) {
   const id = Number(state.edit_target._dataId);
   const idx = meta_data.map.get(id);
-  if (!idx) { throw new Error('[updateEventOrVenue]: id does not exist'); }
+  if (idx === undefined) { throw new Error('[updateEventOrVenue]: id does not exist'); }
   const old_name = meta_data.arr[idx];
 
-  b.removeEventListener('click', SideMenu.sideListButtonClickCallback);
+  b.removeEventListener('click', SideMenu.buttonClickCallback);
 
   const input = Utils.createTextInput(placeholder)
   input.value = old_name;
@@ -362,15 +396,19 @@ function updateEventOrVenue(b, placeholder, api, meta_data) {
         Utils.throwIfNotOk(resp);
         meta_data.arr[idx] = val;
         b.textContent = '';
+        b.addEventListener('click', SideMenu.buttonClickCallback);
         Utils.setNameAndId(b, val, id);
       })
       .catch(e => {
         b.textContent = '';
         Utils.setNameAndId(b, old_name, id);
+        b.addEventListener('click', SideMenu.buttonClickCallback);
         console.error("Could not store ", val, e);
       });
     } else if (e.key === 'Escape') {
-      e.preventDefault();
+      b.textContent = '';
+      b.addEventListener('click', SideMenu.buttonClickCallback);
+      Utils.setNameAndId(b, old_name, id);
       b.remove();
     }
   });
