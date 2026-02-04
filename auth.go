@@ -77,7 +77,7 @@ func (s *State) startKeyRotation() {
 		for range ticker.C {
 			slog.Info("rotating rsa keys...")
 			if err := s.generateKeys(); err != nil {
-				slog.Error("failed to rotate keys: %v\n", err)
+				slog.Error("failed to rotate keys", "cause", err)
 			} else { // we need to send new key to open connections
 				slog.Info("keys rotated successfully")
 			}

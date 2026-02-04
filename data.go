@@ -70,20 +70,31 @@ func rebaseMap[K comparable](m map[K]int, freeList []int) {
   }
 }
 
-func shrinkArray[K any](a *[]K, freeList []int) {
-  for i := 0; i < len(freeList); i++ {
-    var limit int
-    if i == len(freeList)-1 {
-      limit = len(*a)-1-i
+func shrinkArray[T any](array_p *[]T, free_list []int) {
+  number_of_items_freed := 0
+  for ;number_of_items_freed < len(free_list); number_of_items_freed++ {
+    var shift_region_limit int
+    free_index := free_list[number_of_items_freed]
+    if free_index >= len(*array_p) {
+      break
+    }
+    shift_by := number_of_items_freed+1
+    shift_target_index := free_list[number_of_items_freed]-number_of_items_freed
+
+    if number_of_items_freed == len(free_list)-1 {
+      shift_region_limit = len(*array_p)-shift_by
     } else {
-      limit = min(len(*a)-1-i, freeList[i+1]-1-i)
+      shift_region_limit = min(
+        len(*array_p)-shift_by,
+        free_list[number_of_items_freed+1]-shift_by,
+      )
     }
 
-    for j := freeList[i]-i; j < limit; j++ {
-      (*a)[j] = (*a)[j+1+i]
+    for ; shift_target_index < shift_region_limit; shift_target_index++ {
+      (*array_p)[shift_target_index] = (*array_p)[shift_target_index+shift_by]
     }
   }
-  *a = (*a)[:max(len(*a)-len(freeList),0)]
+  *array_p = (*array_p)[:len(*array_p)-number_of_items_freed]
 }
 
 func getById[K, T comparable](id K, m map[K]int, a []T) (T, bool) {

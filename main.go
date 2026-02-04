@@ -398,7 +398,7 @@ func main() {
       slog.Error("Failed to get current position", "cause", err)
     }
     if err = file.Truncate(currentPos); err != nil {
-      slog.Error("Failed to truncate file: %v\n", err)
+      slog.Error("Failed to truncate file", "cause", err)
     }
     file.Close()
     slog.Info("Database connection closed.")
@@ -476,10 +476,7 @@ func handleData(w http.ResponseWriter, r *http.Request) {
   token, err := readHash(r.Body) 
   
   idx, exists := state.ConnectionsToken[token]
-  if !exists {
-    http.Error(w, "Invalid token", http.StatusBadRequest)
-    return 
-  }
+  if doesNotExistError(w, "handleData", "token", exists) { return }
   idx, exists = state.UsersId[state.ConnectionsUser[idx]]
   if !exists {
     slog.Error("Incorrect user id", "We have a token", token, "which corresponds to a not existing user", state.ConnectionsUser[idx])
@@ -528,6 +525,15 @@ func readError(w http.ResponseWriter, loc string, name string, err error) bool {
   return false
 }
 
+func doesNotExistError(w http.ResponseWriter, loc string, name string, exists bool) bool{
+  if !exists {
+      slog.Error("["+loc+"] "+name+" does not exist")
+      http.Error(w, "incorrect request", http.StatusBadRequest)
+      return true
+  }
+  return false
+}
+
 func noSupport(w http.ResponseWriter, loc string) {
   slog.Error("["+loc+"]: no support")
   http.Error(w, "we do not support that", http.StatusBadRequest)
@@ -540,17 +546,15 @@ func handleSimpleCreate(
   names *[]string,
   freeId *[]int32,
   freeList *[]int,
-) error {
-  str, err := readString(r)
-  if readError(w, "handleSimpleCreate", "name", err) {
-    return err
-  }
+) bool {
+  str, err := readStringWithLimits(r, []int32{128})
+  if readError(w, "handleSimpleCreate", "name", err) { return false }
 
   for _, idx := range m {
     if (*names)[idx] == str {
       slog.Error("collision in names")
       http.Error(w, "collision in names", http.StatusBadRequest)
-      return err
+      return false
     }
   }
   id := newId(m, freeId)
@@ -561,16 +565,40 @@ func handleSimpleCreate(
   slog.Info("DATA", "name", str, "id", id, "idx", idx)
 
   writeInt32(w, id)
-  return nil
+  return true
 }
 
-func readNameAndSurname(w http.ResponseWriter, r *http.Request, op_name string) (string, string, bool) {
-  name, err := readString(r.Body)
-  if readError(w, "USERS_ID_MAP:"+op_name, "name", err) {
+func handleSimpleUpdate(
+  r io.Reader,
+  w http.ResponseWriter,
+  m map[int32]int,
+  names *[]string,
+) bool {
+  id, err := readInt32(r)
+  if readError(w, "handleSimpleUpdate", "id", err) { return false }
+  storage_idx, exists := m[id]
+  if doesNotExistError(w, "handleSimpleUpdate", "id", exists) { return false } 
+  new_name, err := readStringWithLimits(r, []int32{128})
+  if readError(w, "handleSimpleUpdate", "name", err) { return false }
+
+  for _, idx := range m {
+    if (*names)[idx] == new_name && storage_idx != idx {
+      slog.Error("collision in names")
+      http.Error(w, "collision in names", http.StatusBadRequest)
+      return false
+    }
+  }
+  storeValue(names, storage_idx, new_name)
+  return true
+}
+
+func readNameAndSurname(w http.ResponseWriter, r *http.Request) (string, string, bool) {
+  name, err := readStringWithLimits(r.Body, []int32{128})
+  if readError(w, "USERS_ID_MAP", "name", err) {
     return "", "", false
   }
-  surname, err := readString(r.Body)
-  if readError(w, "USERS_ID_MAP:"+op_name, "surname", err) {
+  surname, err := readStringWithLimits(r.Body, []int32{128})
+  if readError(w, "USERS_ID_MAP", "surname", err) {
     return "", "", false
   }
   return name, surname, true
@@ -583,7 +611,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     http.Error(w, "Method not allowed. Only POST is supported.", http.StatusMethodNotAllowed)
     return
   }
-  api_version, err := readString(r.Body)
+  api_version, err := readStringWithLimits(r.Body, []int32{20})
   if readError(w, "handleApi", "api_version", err) { return }
   if api_version != "bin_api.v0.0.0" {
     slog.Error("API version is incorrect", "We are getting", api_version)
@@ -627,7 +655,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     switch mode {
       case CREATE:
         slog.Info("CREATE")
-        name, surname, success := readNameAndSurname(w, r, "CREATE")
+        name, surname, success := readNameAndSurname(w, r)
         if !success { return }
 
         if exists {
@@ -649,7 +677,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         }
         new_id, err := readInt32(r.Body)
         if readError(w, "USERS_ID_MAP:UPDATE", "new_id", err) { return }
-        name, surname, success := readNameAndSurname(w, r, "CREATE")
+        name, surname, success := readNameAndSurname(w, r)
         if !success { return }
         if new_id != mat {
           delete(state.UsersId, mat)
@@ -699,16 +727,14 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     switch mode {
     case CREATE:
       slog.Info("CREATE")
-      if handleSimpleCreate(
+      if !handleSimpleCreate(
         r.Body,
         w,
         state.EventsId,
         &state.EventsName,
         &state.EventsFreeId,
         &state.EventsFreeList,
-      ) != nil {
-        return
-      }
+      ) { return }
 
       state.EventsVenues = append(state.EventsVenues, []int32{})
       state.EventsRole = append(state.EventsRole, []int32{})
@@ -727,7 +753,14 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       deleteValue(state.EventsId, &state.EventsFreeId, &state.EventsFreeList, id)
       slog.Info("DATA", "id", id)
 
-    case UDATE:
+    case UPDATE:
+      slog.Info("UPDATE")
+      _ = handleSimpleUpdate(
+        r.Body,
+        w,
+        state.EventsId,
+        &state.EventsName,
+      )
 
     default:
       noSupport(w, "EVENTS_ID:default")
@@ -783,16 +816,12 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     event_id, err := readInt32(r.Body)
     if readError(w, "NUM_MAP", "event_id", err) { return }
     event_idx, exists := state.EventsId[event_id];
-    if !exists {
-      slog.Error("[NUM_MAP:CREATE] event does not exist")
-      http.Error(w, "incorrect request", http.StatusBadRequest)
-      return
-    }
+    if doesNotExistError(w, "NUM_MAP:CREATE", "event", exists) { return }
     num_map := state.EventsPersonalNumMap
     switch mode {
     case CREATE:
       slog.Info("CREATE")
-      data, err := readInt32Array(r.Body)
+      data, err := readInt32ArrayWithLimits(r.Body, []int32{64})
       if readError(w, "NUM_MAP:CREATE", "data", err) { return }
       num_map[event_idx] = append(num_map[event_idx], data)
       slog.Info("DATA", "event_id", event_id)
@@ -811,7 +840,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       val, err := readInt32(r.Body)
       if readError(w, "NUM_MAP:UPDATE", "num_idx", err) { return }
       num_map[event_idx][line_idx][num_idx] = val
-      slog.Info("DATA", "event_id", event_id, "line_idx", line_idx, "num_idx", num_idx, val)
+      slog.Info("DATA", "event_id", event_id, "line_idx", line_idx, "num_idx", num_idx, "value", val)
 
     default:
       noSupport(w, "EVENTS_ROLES_REQUIREMENT_ID:default")
@@ -825,7 +854,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     switch mode {
     case CREATE:
       slog.Info("CREATE")
-      handleSimpleCreate(
+      _ = handleSimpleCreate(
         r.Body,
         w,
         state.VenuesId,
@@ -839,13 +868,19 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       id, err := readInt32(r.Body)
       if readError(w, "VENUES_ID:DELETE", "id", err) { return }
       _, exists := state.EventsId[id]
-      if !exists {
-        slog.Error("matricule already does not exist")
-        return
-      }
+      if doesNotExistError(w, "VENUES_ID:DELETE", "idx", exists) { return }
       deleteValue(state.VenuesId, &state.VenuesFreeId, &state.VenuesFreeList, id)
       deleteOccurrences(state.EventsVenues, id);
       slog.Info("DATA", "venue_id", id)
+
+    case UPDATE:
+      slog.Info("UPDATE")
+      _ = handleSimpleUpdate(
+        r.Body,
+        w,
+        state.VenuesId,
+        &state.VenuesName,
+      )
 
     default:
       noSupport(w, "VENUES_ID:default")
@@ -864,7 +899,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     switch mode {
     case CREATE:
       slog.Info("CREATE")
-      handleSimpleCreate(
+      _ = handleSimpleCreate(
         r.Body,
         w,
         state.RolesId,
@@ -877,10 +912,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       id, err := readInt32(r.Body)
       if readError(w, "ROLES_ID:DELETE", "id", err) { return }
       _, exists := state.EventsId[id]
-      if !exists {
-        slog.Error("matricule already does not exist")
-        return
-      }
+      if doesNotExistError(w, "ROLES_ID:DELETE", "idx", exists) { return }
       deleteValue(state.RolesId, &state.RolesFreeId, &state.RolesFreeList, id)
       deleteOccurrences(state.EventsRole, id)
       slog.Info("DATA", "role_id", id)

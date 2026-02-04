@@ -156,7 +156,7 @@ func readBytes(r io.Reader) ([]byte, error) {
   return buffer, nil
 }
 
-func readStringWithLimit(r io.Reader, limits []int32) (string, error) {
+func readStringWithLimits(r io.Reader, limits []int32) (string, error) {
   l, err := readInt32(r)
   if err != nil {
     return "", fmt.Errorf("failed to read string length: %w", err)
@@ -227,8 +227,8 @@ func readMapInt32Int(r io.Reader) (map[int32]int, error) {
 // the indices and also and at the last position the total length in bytes. Every
 // thing is in bytes, so that we don't really depend on types and indices. We
 // just later as the date being read reinterpet it a the new type.
-type ChildRead func(io.Reader) (T, error)
-func readArray[T any](r io.Reader, readT ChildRead) ([]T, error) {
+
+func readArray[T any](r io.Reader, readT func(io.Reader) (T, error)) ([]T, error) {
   var n int32
   if err := binary.Read(r, binary.LittleEndian, &n); err != nil {
     return nil, fmt.Errorf("failed to read array length: %w", err)
@@ -251,8 +251,7 @@ func readArray[T any](r io.Reader, readT ChildRead) ([]T, error) {
   return retval, nil
 }
 
-type ChildReadWithLimit func(io.Reader, []int32) (T, error)
-func readArrayWithLimits[T any](r io.Reader, readT ChildReadWithLimit, limits []int32) ([]T, error) {
+func readArrayWithLimits[T any](r io.Reader, readT func(io.Reader, []int32) (T, error), limits []int32) ([]T, error) {
   if len(limits) < 2 { return nil, fmt.Errorf("array of limits is to short") }
   var n int32
   if err := binary.Read(r, binary.LittleEndian, &n); err != nil {
@@ -274,8 +273,30 @@ func readArrayWithLimits[T any](r io.Reader, readT ChildReadWithLimit, limits []
   return retval, nil
 }
 
+func readWithLimitsArray[T any](r io.Reader, readT func(io.Reader) (T, error), limits []int32) ([]T, error) {
+  if len(limits) < 1 { return nil, fmt.Errorf("array of limits is to short") }
+  var n int32
+  if err := binary.Read(r, binary.LittleEndian, &n); err != nil {
+    return nil, fmt.Errorf("failed to read array length: %w", err)
+  }
+  if n < 0 {
+    return nil, fmt.Errorf("array length is negative: %d", n)
+  }
+  if n > limits[0] { fmt.Errorf("data length: %d exceded the limit: %d", n, limits[0]) }
+  N := int(n)
+  retval := make([]T, N)
+  for i := 0; i < N; i++ {
+    item, err := readT(r)
+    if err != nil {
+      return nil, fmt.Errorf("failed to read element %d: %w", i, err)
+    }
+    retval[i] = item
+  }
+  return retval, nil
+}
+
 func readStringArrayWithLimits(r io.Reader, limits []int32) ([]string, error) {
-  return readArray(r, readStringWithLimits)
+  return readArrayWithLimits(r, readStringWithLimits, limits)
 }
 
 func readStringArray(r io.Reader) ([]string, error) {
@@ -292,6 +313,10 @@ func readBytesArray(r io.Reader) ([][]byte, error) {
 
 func readInt32Array(r io.Reader) ([]int32, error) {
   return readArray(r, readInt32)
+}
+
+func readInt32ArrayWithLimits(r io.Reader, limits []int32) ([]int32, error) {
+  return readWithLimitsArray(r, readInt32, limits)
 }
 
 func readArrayOfInt32Arrays(r io.Reader) ([][]int32, error) {

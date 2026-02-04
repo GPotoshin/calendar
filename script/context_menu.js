@@ -187,7 +187,7 @@ document.getElementById('edit-button').addEventListener('click', function() {
       );
       break;
     }
-    case zonesId.VENUELIST: {
+    case zonesId.EVENTLIST: {
       updateEventOrVenue(
         b,
         'Nom d\'Événement',
@@ -335,11 +335,12 @@ function updateEventOrVenue(b, placeholder, api, meta_data) {
   const id = Number(state.edit_target._dataId);
   const idx = meta_data.map.get(id);
   if (!idx) { throw new Error('[updateEventOrVenue]: id does not exist'); }
-  const old_name = mate_data.arr[idx];
+  const old_name = meta_data.arr[idx];
 
   b.removeEventListener('click', SideMenu.sideListButtonClickCallback);
 
   const input = Utils.createTextInput(placeholder)
+  input.value = old_name;
   b.replaceChildren(input);
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
@@ -354,6 +355,7 @@ function updateEventOrVenue(b, placeholder, api, meta_data) {
 
       endOfStandardInput(e, input, b, val);
       let w = Api.createBufferWriter(Api.UPDATE, api);
+      w.writeInt32(id);
       w.writeString(val);
       Api.request(w)
       .then(resp => {
