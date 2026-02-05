@@ -851,22 +851,27 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     switch mode {
     case UPDATE:
       slog.Info("UPDATE")
-      event_id, err := readInt32(r.Body)
-      if readError(w, "EVENTS_DURATION:UPDATE", "event_id", err) { return }
-      event_index, exists := state.EventsId[event_id];
-      if doesNotExistError(w, "EVENTS_DURATION_ID:UPDATE", "event_index", exists) { return }
-      duration, err := readInt32(r.Body)
-      if readError(w, "EVENTS_DURATION:UPDATE", "duration", err) { return }
-      if duration < 0 || duration > 1024 {
-        slog.Error("incorrect request data")
-        http.Error(w, "incorrect request data", http.StatusBadRequest)
-        return
-      }
-      state.EventsDuration[event_index] = duration;
+
+    case CREATE:
+      slog.Info("CREATE")
 
     default:
       noSupport(w, "EVENTS_DURATION:default")
+      return
     }
+    event_id, err := readInt32(r.Body)
+    if readError(w, "EVENTS_DURATION", "event_id", err) { return }
+    event_index, exists := state.EventsId[event_id];
+    if doesNotExistError(w, "EVENTS_DURATION_ID", "event_index", exists) { return }
+    duration, err := readInt32(r.Body)
+    if readError(w, "EVENTS_DURATION", "duration", err) { return }
+    if duration < 0 || duration > 1024 {
+      slog.Error("incorrect request data")
+      http.Error(w, "incorrect request data", http.StatusBadRequest)
+      return
+    }
+    state.EventsDuration[event_index] = duration;
+
 
   case VENUES_ID_MAP_ID:
     slog.Info("VENUES_ID_MAP_ID")

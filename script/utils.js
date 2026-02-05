@@ -1,37 +1,43 @@
 // Here we have functions shared between most modules
 
+// A hack to measure text, since web is bloody bad
 const measure = document.createElement('span');
 measure.style.cssText = `
 position: absolute;
-visibility: hidden;
+left: -9999px;
 white-space: pre;
 `;
-document.body.appendChild(measure);
+
+export function appendMeasure() {
+  document.body.appendChild(measure);
+}
 
 export function measureText(style, text) {
   measure.style.font = style.font;
   measure.style.padding = style.padding;
   measure.textContent = text;
-  return measure.offsetWidth;
+  measure.offsetHeight;
+  
+  return measure.getBoundingClientRect().width;
 }
 
-export function setWidthPx(e, w) {
-  e.style.setProperty('width', Number(w)+'px');
+export function setWidthPx(element, width) {
+  element.style.setProperty('width', Number(width)+'px');
 }
 
-export function setBgColor(e, c) {
-  e.style.setProperty('background-color', c);
+export function setBgColor(element, color) {
+  element.style.setProperty('background-color', color);
 }
 
-export function digitise(s) {
-  return s.replace(/\D/g, '');
+export function digitise(string) {
+  return string.replace(/\D/g, '');
 }
 
 export function createTextInput(placeholder) {
-  const i = document.createElement('input');
-  i.type = 'text';
-  i.placeholder = placeholder;
-  return i;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.placeholder = placeholder;
+  return input;
 }
 
 export function setNameAndId(b, name, id) {

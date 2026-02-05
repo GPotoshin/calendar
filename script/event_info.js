@@ -54,7 +54,7 @@ function createFooterOptions() {
   footer.className = 'h-container';
   footer.innerHTML = `
     <div class="row-selection">
-    Durée: <button id="event-duration" class="hover std-min no-padding txt-center tiny-button">\u00A0</button>d
+    Durée: <button id="event-duration" class="hover std-min no-padding txt-center tiny-button">\u00A0</button>j
     </div>
     `;
   footer.children[0]._id = zonesId.DURATION;
@@ -293,31 +293,55 @@ export function update() { // @working
     duration = -1;
   }
 
-  let b = tmpls[scopeId.EVENT].querySelector('#event-duration');
-  if (duration === -1) {
-    b.textContent = '\u00A0';
-
-    function localCallback() {
-      b.replaceWith(numeric_input.elm);
-      numeric_input.elm.focus();
-      numeric_input.endOfWriting = () => { endOfWriting() };
-    }
-
-    function endOfWriting() {
-      numeric_input.elm.replaceWith(b);
-      const _eventId = zones[zonesId.EVENTLIST].selection._dataId;
-      if (numeric_input.elm.value === '') {
-        data.eventsDuration[_eventId] = -1;
-        return;
-      }
-      b.textContent = numeric_input.elm.value;
-      data.eventsDuration[_eventId] = Number(numeric_input.elm.value);
-      b.classList.add('editable');
-      b.removeEventListener('click', localCallback);
-    }
-    b.addEventListener('click', localCallback);
-  } else {
-    b.textContent = duration;
-    b.classList.add('editable');
+  let button = tmpls[scopeId.EVENT].querySelector('#event-duration');
+  function localCallback() {
+    button.replaceWith(numeric_input.elm);
+    numeric_input.elm.focus();
+    numeric_input.endOfWriting = endOfWriting;
   }
+
+  function endOfWriting() {
+    const new_duration = Number(numeric_input.elm.value);
+    button.textContent = numeric_input.elm.value | '\u00A0';
+    numeric_input.elm.replaceWith(button);
+    const event_id = zones[zonesId.EVENTLIST].selection._dataId;
+    const event_index = data.eventsId.get(event_id);
+    if (event_index === undefined) { throw new Error('[updating duration]: event_id does not exist'); }
+    if (numeric_input.elm.value === '') {
+      data.eventsDuration[event_id] = -1;
+      return;
+    }
+    let buffer_writer = createDurationBuffer(new_duration, Api.CREATE, event_id);
+    Api.request(buffer_writer)
+    .then(response => {
+      Utils.throwIfNotOk(response);
+      data.eventsDuration[event_index] = duration;
+      button.classList.add('editable');
+      button.removeEventListener('click', localCallback);
+    })
+    .catch(e => {
+      button.textContent = '\u00A0'
+    });
+  };
+
+  if (duration === -1) {
+    button.textContent = '\u00A0';
+    button.classList.remove('editable');
+    button.addEventListener('click', localCallback);
+  } else {
+    button.removeEventListener('click', localCallback);
+    button.textContent = duration;
+    button.classList.add('editable');
+  }
+}
+
+export function createDurationBuffer(duration, mode, event_id) {
+  if (duration < 0 || duration > 1024) {
+    console.error("value of duration should be in 1..1024"); 
+    return;
+  }
+  let w = Api.createBufferWriter(Api.UPDATE, Api.EVENTS_DURATION_ID);
+  w.writeInt32(event_id);
+  w.writeInt32(duration);
+  return w;
 }

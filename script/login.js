@@ -118,6 +118,7 @@ connectButton.addEventListener('click', async () => {
     passwordInput.value = '';
     document.body.innerHTML = html;
     document.body.className = "";
+    Utils.appendMeasure();
 
     import(entrypoint)
     .catch((err) => {

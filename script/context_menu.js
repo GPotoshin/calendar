@@ -203,29 +203,26 @@ document.getElementById('edit-button').addEventListener('click', function() {
       const old_duration = data.eventsDuration[event_index];
 
       numeric_input.endOfWriting = () => {
-        const duration = Number(numeric_input.elm.value);
-        if (duration < 0 || duration > 1024) {
-          console.error("value of duration should be in 1..1024"); 
+        if (numeric_input.elm.value === '') {
+          numeric_input.elm.replaceWith(b);
           return;
         }
-        let w = Api.createBufferWriter(Api.UPDATE, Api.EVENTS_DURATION_ID);
-        w.writeInt32(event_id);
-        w.writeInt32(duration);
+        const duration = Number(numeric_input.elm.value);
+        b.textContent = numeric_input.elm.value;
+        numeric_input.elm.replaceWith(b);
+        const w = EventInfo.createDurationBuffer(duration, Api.UPDATE, event_id);
         Api.request(w)
-        .then(resp => {
-          Utils.throwIfNotOk(resp);
+        .then(response => {
+          Utils.throwIfNotOk(response);
           data.eventsDuration[event_index] = duration;
-          // @nocheckin: because we are in a fucking callback, numeric_input value is cleared. So we need to manually change it
-          numeric_input.swapBackAndSetContent(b);
         })
         .catch(e => {
-          if (old_duration < 0) {
-            b.textContent = '\u00A0';
-          } else {
-            b.textContent = old_duration;
-          }
+          b.textContent = old_duration;
         });
       };
+      numeric_input.elm.value = old_duration;
+      const width = Utils.measureText(window.getComputedStyle(numeric_input.elm), numeric_input.elm.value)+2;
+      Utils.setWidthPx(numeric_input.elm, width);
       numeric_input.replace(b);
       break;
     }
