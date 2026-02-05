@@ -134,7 +134,7 @@ export function handleMouseMove(e) {
     state.bar.classList.add('event-single');
     state.bar.classList.add('no-select');
     
-    const event_selection = Glob.zones[Glob.zonesId.EVENTLIST].selection;
+    const event_selection = Glob.zones[Glob.zonesId.EVENT].selection;
     if (event_selection != null) {
       const ev_id = event_selection._dataId;
       const idx = Glob.data.eventsId.get(ev_id);

@@ -85,7 +85,7 @@ export function createAndReturnListContainer(name, id) {
   const container = objList[1];
   Utils.setWidthPx(menu.children[1], 200);
   Utils.setWidthPx(menu.children[2], 200);
-  objList[1]._id = zonesId.EVENTSTAFFLIST
+  objList[1]._id = zonesId.EVENTSTAFF;
 
   searchInput.addEventListener('input', () => { updateList(searchInput, container); });
   return [menu, objList[1]];

@@ -1,12 +1,12 @@
-import { elms, tmpls, zones, viewId, zonesId, scopeId, data } from './global_state.js';
+import { elms, zones, viewId, zonesId, data } from './global_state.js';
 import { palette } from './color.js';
 import * as DM from './data_manager.js';
 import * as EventInfo from './event_info.js';
 import * as Utils from './utils.js';
 import { BufferWriter } from './io.js';
 
-function handleClickOnViewButton(b, scope_id) {
-  elms.dataListContainer.replaceChildren(elms.scope[scope_id]); 
+function handleClickOnViewButton(b, zones_id) {
+  elms.dataListContainer.replaceChildren(zones[zones_id].eList); 
   zones[zonesId.DATATYPE].selection = b;
 }
 
@@ -38,12 +38,12 @@ let lContainer = document.createElement('div');
 zones[0].eList = bContainer.children;
 lContainer.id = 'button-container';
 lContainer.className = 'v-container grow';
-elms.scope[scopeId.EVENT].className = 'extendable v-container grow';
-elms.scope[scopeId.EVENT]._id = zonesId.EVENTLIST;
-elms.scope[scopeId.STAFF].className = 'extendable v-container grow';
-elms.scope[scopeId.STAFF]._id = zonesId.STAFFLIST;
-elms.scope[scopeId.VENUE].className = 'extendable v-container grow';
-elms.scope[scopeId.VENUE]._id = zonesId.VENUELIST;
+zones[zonesId.EVENT].eList.className = 'extendable v-container grow';
+zones[zonesId.EVENT].eList._id = zonesId.EVENT;
+zones[zonesId.STAFF].eList.className = 'extendable v-container grow';
+zones[zonesId.STAFF].eList._id = zonesId.STAFF;
+zones[zonesId.VENUE].eList.className = 'extendable v-container grow';
+zones[zonesId.VENUE].eList._id = zonesId.VENUE;
 
 hContainer.append(bContainer);
 elms.dataListContainer = lContainer;
@@ -51,28 +51,28 @@ elms.dataListContainer = lContainer;
 // this should be factored out
 let b1 = document.createElement('button');
 b1.addEventListener('click', () => {
-  handleClickOnViewButton(b1, scopeId.EVENT);
+  handleClickOnViewButton(b1, zonesId.EVENT);
 });
 b1.textContent = 'Événements';
-b1._dataId = 0;
+b1._dataId = zonesId.EVENT;
 let b2 = document.createElement('button');
 b2.addEventListener('click', () => {
-  handleClickOnViewButton(b2, scopeId.STAFF);
+  handleClickOnViewButton(b2, zonesId.STAFF);
 });
 b2.textContent = 'Personnel';
-b2._dataId = 1;
+b2._dataId = zonesId.STAFF;
 let b3 = document.createElement('button');
 b3.addEventListener('click', () => {
-  handleClickOnViewButton(b3, scopeId.VENUE);
+  handleClickOnViewButton(b3, zonesId.VENUE);
 });
 b3.textContent = 'Lieux';
-b3._dataId = 2;
+b3._dataId = zonesId.VENUE;
 bContainer.append(b1, b2, b3);
 
 zones[zonesId.DATATYPE].selection = b1;
 
 elms.sideMenu.replaceChildren(hContainer, elms.dataListContainer);
-elms.dataListContainer.appendChild(elms.scope[scopeId.EVENT]);
+elms.dataListContainer.appendChild(zones[zonesId.EVENT].eList);
 
 export function buttonClickCallback(event) {
     const b = event.currentTarget;
@@ -93,7 +93,7 @@ export function buttonClickCallback(event) {
     if (zone.selection &&
       zones[zonesId.VIEWTYPE].selection._dataId === viewId.INFORMATION) {
       EventInfo.update();
-      elms.view[viewId.INFORMATION].replaceChildren(tmpls[scopeId.EVENT]);
+      elms.view[viewId.INFORMATION].replaceChildren(EventInfo.dom);
     }
 }
 
@@ -109,12 +109,12 @@ export function createListButtonAndSetToggleCallback() {
   return b;
 }
 
-export function composeList(m, names, scope_id, zone_id) {
+export function composeList(m, names, zone_id) {
   for (const [id, idx] of m) {
     const name = names[idx];
     let button = createListButtonAndSetToggleCallback();
     Utils.setNameAndId(button, name, id);
-    elms.scope[scope_id].appendChild(button);
+    zones[zone_id].eList.appendChild(button);
   }
 }
 
@@ -134,7 +134,7 @@ export function composeUsersList() {
     const surname = data.usersSurname[idx];
     let button = createListButtonAndSetToggleCallback();
     setUserButton(button, name, surname, mat);
-    elms.scope[scopeId.STAFF].appendChild(button);
+    zones[zonesId.STAFF].eList.appendChild(button);
   }
 }
 

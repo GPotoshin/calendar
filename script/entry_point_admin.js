@@ -18,13 +18,12 @@ import {
   elms,
   zonesId,
   viewId,
-  scopeId,
   zones,
   data,
-  tmpls,
 } from './global_state.js';
 import { token } from './login.js';
 import { composeList, composeUsersList } from './side_menu.js';
+import * as CalendarInfo from './calendar_info.js'
 
 const MS_IN_DAY = 86400000;
 
@@ -192,10 +191,11 @@ calendarBody.addEventListener('mousemove', handleMouseMove);
         bin => {
           const r = new BufferReader(bin);
           data.read(r)
-          composeList(data.eventsId, data.eventsName, scopeId.EVENT, zonesId.EVENTLIST);
+          composeList(data.eventsId, data.eventsName, zonesId.EVENT);
           composeUsersList();
-          composeList(data.venuesId, data.venuesName, scopeId.VENUE, zonesId.VENUELIST);
+          composeList(data.venuesId, data.venuesName, zonesId.VENUE);
           EventInfo.loadTemplate();
+          CalendarInfo.loadTemplate();
         });
     })
     .catch(e => {
@@ -226,10 +226,13 @@ calendarBody.addEventListener('mousemove', handleMouseMove);
       state.scrollPosSave = elms.calendarBody.scrollTop;
       elms.bodyContainer.replaceChild(elms.view[viewId.INFORMATION], elms.bodyContainer.children[1]);
       zones[zonesId.VIEWTYPE].selection = b2;
-      if (zones[zonesId.DATATYPE].selection._dataId === scopeId.EVENT) {
+      const zone_selection = zones[zonesId.DATATYPE].selection._dataId;
+      if (zones[zone_selection].selection === null) {
+        elms.view[viewId.INFORMATION].replaceChildren(CalendarInfo.dom);
+      } else if (zone_selection === zonesId.EVENT) {
         EventInfo.update(); // in that function we are searching for an element
         // in the dom, but we are adding them just bellow
-        elms.view[viewId.INFORMATION].replaceChildren(tmpls[scopeId.EVENT]);
+        elms.view[viewId.INFORMATION].replaceChildren(EventInfo.dom);
       }
     }
   });

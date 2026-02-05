@@ -423,6 +423,7 @@ func main() {
     "entry_point_admin.js",
     "entry_point_user.js",
     "entry_point_chef.js",
+    "calendar_info.js",
   }
   jsHeaders := []HeaderPair{{Key: "Content-Type", Value: "text/javascript"}}
   for _, file := range jsFiles {

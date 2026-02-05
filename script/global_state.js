@@ -1,7 +1,5 @@
 import * as DM from './data_manager.js';
 
-export let tmpls = [ document.createElement('div'), null, null, null ];
-
 export let elms = {
   calendarBody: null,
   calendarContent: null,
@@ -15,11 +13,6 @@ export let elms = {
   dataListContainer: null,
 
   view: [null, null],
-  scope: [
-    document.createElement('div'),
-    document.createElement('div'),
-    document.createElement('div'),
-  ],
 }
 
 export let callbacks = {
@@ -31,23 +24,17 @@ export const viewId = {
   INFORMATION: 1,
 };
 
-export const scopeId = {
-  EVENT: 0,
-  STAFF: 1,
-  VENUE: 2,
-};
-
 export const zonesId = {
   NONE: -1,
   DATATYPE: 0,
   VIEWTYPE: 1,
-  EVENTLIST: 2,
-  STAFFLIST: 3,
-  VENUELIST: 4,
+  EVENT: 2,
+  STAFF: 3,
+  VENUE: 4,
   SELECTABLE: 5,
-  EVENTSTAFFLIST: 6,
-  COMPETENCESLIST: 7,
-  NUMMAPLIST: 8,
+  EVENTSTAFF: 6,
+  COMPETENCES: 7,
+  NUMMAP: 8,
   DURATION: 9,
 };
 
@@ -55,9 +42,9 @@ export const zonesId = {
 export let zones = [
   { selection: null, eList: null },
   { selection: null, eList: null },
-  { selection: null, eList: elms.scope[scopeId.EVENT].children },
-  { selection: null, eList: elms.scope[scopeId.STAFF].children },
-  { selection: null, eList: elms.scope[scopeId.VENUE].children },
+  { selection: null, eList: document.createElement('div') },
+  { selection: null, eList: document.createElement('div') },
+  { selection: null, eList: document.createElement('div') },
 ];
 
 export const data = new DM.DataManager();

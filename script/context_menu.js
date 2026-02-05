@@ -1,6 +1,6 @@
 import { callbacks, elms, data } from './global_state.js';
 import { BufferReader, BufferWriter } from './io.js';
-import { zones, zonesId, scopeId } from './global_state.js';
+import { zones, zonesId } from './global_state.js';
 import { storageIndex, deleteValue, deleteOccurrences, storeValue } from './data_manager.js';
 import * as Api from './api.js';
 import * as SideMenu from './side_menu.js';
@@ -148,7 +148,7 @@ document.getElementById('edit-button').addEventListener('click', function() {
 
   let w = new BufferWriter();
   switch (state.edit_target.parentElement._id) {
-    case zonesId.STAFFLIST: {
+    case zonesId.STAFF: {
       b.removeEventListener('click', SideMenu.buttonClickCallback);
       const idx = data.usersId.get(id);
       if (idx === undefined) {
@@ -178,7 +178,7 @@ document.getElementById('edit-button').addEventListener('click', function() {
       break;
     }
 
-    case zonesId.EVENTLIST: {
+    case zonesId.EVENT: {
       updateEventOrVenue(
         b,
         'Nom d\'Événement',
@@ -187,7 +187,7 @@ document.getElementById('edit-button').addEventListener('click', function() {
       );
       break;
     }
-    case zonesId.VENUELIST: {
+    case zonesId.VENUE: {
       updateEventOrVenue(
         b,
         'Nom de Lieu',
@@ -197,7 +197,7 @@ document.getElementById('edit-button').addEventListener('click', function() {
       break;
     }
     case zonesId.DURATION: {
-      const event_id = zones[zonesId.EVENTLIST].selection._dataId;
+      const event_id = zones[zonesId.EVENT].selection._dataId;
       const event_index = data.eventsId.get(event_id);
       if (event_index === undefined) { throw new Error('[updating duration]: event_id does not exist'); }
       const old_duration = data.eventsDuration[event_index];
@@ -239,21 +239,21 @@ document.getElementById('delete-button').addEventListener('click', function() {
 
   let w = new BufferWriter();
   switch (state.delete_target.parentElement._id) {
-    case zonesId.STAFFLIST:
+    case zonesId.STAFF:
       Api.writeHeader(w, Api.DELETE, Api.USERS_ID_MAP_ID);
       break;
-    case zonesId.VENUELIST:
+    case zonesId.VENUE:
       Api.writeHeader(w, Api.DELETE, Api.VENUES_ID_MAP_ID);
       break;
-    case zonesId.EVENTLIST:
+    case zonesId.EVENT:
       Api.writeHeader(w, Api.DELETE, Api.EVENTS_ID_MAP_ID);
       break;
-    case zonesId.EVENTSTAFFLIST:
+    case zonesId.EVENTSTAFF:
       Api.writeHeader(w, Api.DELETE, Api.ROLES_ID_MAP_ID);
       break;
-    case zonesId.NUMMAPLIST:
+    case zonesId.NUMMAP:
       Api.writeHeader(w, Api.DELETE, Api.EVENTS_PERSONAL_NUM_MAP_ID);
-      w.writeInt32(zones[zonesId.EVENTLIST].selection._dataId);
+      w.writeInt32(zones[zonesId.EVENT].selection._dataId);
       break;
     default:
       state.delete_target.classList.remove('disp-none');
@@ -264,18 +264,18 @@ document.getElementById('delete-button').addEventListener('click', function() {
   .then(resp => {
     Utils.throwIfNotOk(resp);
     switch (state.delete_target.parentElement._id) {
-      case zonesId.STAFFLIST:
+      case zonesId.STAFF:
         deleteValue(data.usersId, data.usersFreeList, id);
         deleteOccurrences(data.occurrencesParticipant, id);
         break;
-      case zonesId.VENUELIST:
+      case zonesId.VENUE:
         deleteValue(data.venuesId, data.venuesFreeList, id);
         deleteOccurrences(data.eventsVenues, id);
         break;
-      case zonesId.EVENTLIST:
+      case zonesId.EVENT:
         deleteValue(data.eventsId, data.eventsFreeList, id);
         break;
-      case zonesId.EVENTSTAFFLIST: // we should here remove the button from a backing array
+      case zonesId.EVENTSTAFF: // we should here remove the button from a backing array
         EventInfo.elms.event_role_list._btnList =
           EventInfo.elms.event_role_list._btnList.filter(b => b !== state.delete_target);
 
@@ -291,8 +291,8 @@ document.getElementById('delete-button').addEventListener('click', function() {
         }
         EventInfo.update();
         break;
-      case zonesId.NUMMAPLIST:
-        data.eventsPersonalNumMap[zones[zonesId.EVENTLIST].selection._dataId].splice(Number(id), 1)
+      case zonesId.NUMMAP:
+        data.eventsPersonalNumMap[zones[zonesId.EVENT].selection._dataId].splice(Number(id), 1)
         EventInfo.update();
         break;
       default:
@@ -414,8 +414,8 @@ function updateEventOrVenue(b, placeholder, api, meta_data) {
 
 document.getElementById('create-button').addEventListener('click', () => {
   switch (state.extend_target._id) {
-    case zonesId.STAFFLIST: {
-      const target = elms.scope[scopeId.STAFF];
+    case zonesId.STAFF: {
+      const target = zones[zonesId.STAFF].eList;
       let b = SideMenu.createTmplButton(); 
       const inputs = createUserDataInputs();
       inputs.name.addEventListener('keydown', (e) => {
@@ -434,25 +434,25 @@ document.getElementById('create-button').addEventListener('click', () => {
       inputs.name.focus();
       break;
     }
-    case zonesId.EVENTLIST: {
+    case zonesId.EVENT: {
       createEventOrVenue(
-        elms.scope[scopeId.EVENT], 
+        zones[zonesId.EVENT].eList, 
         'Nouvel Événement',
         Api.EVENTS_ID_MAP_ID,
         data.bundleEventsNames(),
       );
       break;
     }
-    case zonesId.VENUELIST: {
+    case zonesId.VENUE: {
       createEventOrVenue(
-        elms.scope[scopeId.VENUE], 
+        zones[zonesId.VENUE].eList, 
         'Nouveau Lieu',
         Api.VENUES_ID_MAP_ID,
         data.bundleVenuesNames(),
       );
       break;
     }
-    case zonesId.EVENTSTAFFLIST: {
+    case zonesId.EVENTSTAFF: {
       let b = SearchDisplay.createButton();
       const input = Utils.createTextInput('Nouveau Rôle');
       b.appendChild(input);
@@ -476,8 +476,8 @@ document.getElementById('toggle-button').addEventListener('click', () => {
   const target = state.toggle_target;
   const turning_on = target.classList.toggle('clicked');
   switch (state.toggle_target.parentElement._id) { // working
-    case zonesId.EVENTSTAFFLIST:
-      const event_id = zones[zonesId.EVENTLIST].selection._dataId; 
+    case zonesId.EVENTSTAFF:
+      const event_id = zones[zonesId.EVENT].selection._dataId; 
       const role_id = target._dataId;
       const idx = data.eventsId.get(event_id);
       const role_idx = data.rolesId.get(role_id);

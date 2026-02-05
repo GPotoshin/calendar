@@ -1,9 +1,12 @@
-import { data, zones, zonesId, tmpls, scopeId } from './global_state.js';
+import { data, zones, zonesId } from './global_state.js';
 import * as SearchDisplay from './search_display.js';
 import * as Utils from './utils.js';
 import { numeric_input } from './num_input.js';
 import { BufferWriter } from './io.js';
 import * as Api from './api.js';
+import * as EventInfo from './event_info.js';
+
+export let dom = document.createElement('div');
 
 export const elms = {
   event_role_list: null,
@@ -28,7 +31,7 @@ function createStaffTable() {
   
   elms.numtab_header_list = table.children[1];
   elms.numtab_content = table.children[2];
-  elms.numtab_content._id = zonesId.NUMMAPLIST;
+  elms.numtab_content._id = zonesId.NUMMAP;
   return table;
 }
 
@@ -62,12 +65,12 @@ function createFooterOptions() {
 }
 
 export function loadTemplate() {
-  tmpls[scopeId.EVENT].innerHTML = `
+  EventInfo.dom.innerHTML = `
     <div class="v-container">
     </div>
   `;
 
-  let [sDisplay, container] = SearchDisplay.createAndReturnListContainer('Personnel', zonesId.EVENTSTAFFLIST);
+  let [sDisplay, container] = SearchDisplay.createAndReturnListContainer('Personnel', zonesId.EVENTSTAFF);
   container._btnList = [];
 
   for (const [id, idx] of data.rolesId) {
@@ -79,7 +82,7 @@ export function loadTemplate() {
   }
   elms.event_role_list = container;
 
-  tmpls[scopeId.EVENT].children[0].append(
+  EventInfo.dom.children[0].append(
     sDisplay,
     createStaffTable(),
     createCompetencesTable(),
@@ -101,7 +104,7 @@ export function update() { // @working
     </div>
     `;
 
-  const zone = zones[zonesId.EVENTLIST];
+  const zone = zones[zonesId.EVENT];
   if (zone.selection == null) { // we need to show general setting
     return;
   }
@@ -278,12 +281,12 @@ export function update() { // @working
   elms.numtab_content.replaceChildren(...list);
   addEmptyLine(event_roles.length); // idea is that addEmptyLine will add a line directly to the dom
 
-  list = [SearchDisplay.create('Participants', zonesId.COMPETENCESLIST)];
+  list = [SearchDisplay.create('Participants', zonesId.COMPETENCES)];
   for (const role_id of event_roles) {
     const role_index = data.rolesId.get(role_id);
     if (role_index === undefined) { throw new Error("Can't find role_id") }; 
     const name = data.rolesName[role_index];
-    list.push(SearchDisplay.create(name, zonesId.COMPETENCESLIST));
+    list.push(SearchDisplay.create(name, zonesId.COMPETENCES));
   }
   elms.comp_tables.replaceChildren(...list);
 
@@ -293,7 +296,7 @@ export function update() { // @working
     duration = -1;
   }
 
-  let button = tmpls[scopeId.EVENT].querySelector('#event-duration');
+  let button = EventInfo.dom.querySelector('#event-duration');
   function localCallback() {
     button.replaceWith(numeric_input.elm);
     numeric_input.elm.focus();
@@ -304,7 +307,7 @@ export function update() { // @working
     const new_duration = Number(numeric_input.elm.value);
     button.textContent = numeric_input.elm.value | '\u00A0';
     numeric_input.elm.replaceWith(button);
-    const event_id = zones[zonesId.EVENTLIST].selection._dataId;
+    const event_id = zones[zonesId.EVENT].selection._dataId;
     const event_index = data.eventsId.get(event_id);
     if (event_index === undefined) { throw new Error('[updating duration]: event_id does not exist'); }
     if (numeric_input.elm.value === '') {
