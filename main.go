@@ -65,6 +65,8 @@ const (
 	OCCURRENCES_PARTICIPANT_ID
 	OCCURRENCES_PARTICIPANTS_ROLE_ID
 
+  EMPLOYEES_LIMIT_ID
+
 	STATE_FIELD_COUNT
 )
 
@@ -133,6 +135,8 @@ type State struct {
   ConnectionsChannel []chan []byte
   ConnectionsFreeList []int // we need to recalculate everything once free list reaches a certain size (like 128 entries)
 
+  EmployeesLimit int32
+
   privateKey *rsa.PrivateKey
   publicKey []byte
   keyGeneratedAt time.Time
@@ -186,10 +190,10 @@ func rebaseState() {
 
 func readState(r io.Reader) (State, error) {
   var state State
-  version := "bin_state.v0.0.7"
+  version := "bin_state.v0.0.8"
   format, err := readString(r)
   if err != nil { return state, fmt.Errorf("Can't verify file format: %w", err) }
-  if format != version { return state, fmt.Errorf("The file format `%s` is outdated. the current format is `%s`. State is zero", format, version) }
+  if format != version { return state, fmt.Errorf("The file format `%s` is outdated. the current format is `%s`. State is zero. If you don't want to have state beeing overwritten, please kill the process or save a copy of db", format, version) }
 
   // because this code does not carry a lot of complex information we let it exceed width limit
   if state.UsersId,             err = readMapInt32Int(r); err != nil { return state, fmt.Errorf("failed to read UsersId: %w", err) }
@@ -229,6 +233,7 @@ func readState(r io.Reader) (State, error) {
   if state.OccurrencesParticipant,      err = readArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesParticipant: %w", err) }
   if state.OccurrencesParticipantsRole, err = readArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesParticipantsRole: %w", err) }
   if state.OccurrencesFreeId,           err = readInt32Array(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesFreeId: %w", err) }
+  if state.EmployeesLimit,              err = readInt32(r); err != nil { return state, fmt.Errorf("failed to read EmployeesLimit: %w", err) }
 
   return state, nil
 }
@@ -241,9 +246,9 @@ func writeState(w io.Writer, state State, dest int32) error {
   var version string
   switch dest {
   case DEST_DISK:
-    version = "bin_state.v0.0.7"
+    version = "bin_state.v0.0.8"
   case DEST_ADMIN:
-    version = "admin_data.v0.0.3"
+    version = "admin_data.v0.0.4"
   default:
     return fmt.Errorf("Unsupported destination\n")
   }
@@ -310,6 +315,7 @@ func writeState(w io.Writer, state State, dest int32) error {
   if dest == DEST_DISK {
     if err := writeInt32Array(w, state.OccurrencesFreeId); err != nil { return fmt.Errorf("failed to write OccurrencesFreeId: %w", err) }
   }
+  if err := writeInt32(w, state.EmployeesLimit); err != nil { return fmt.Errorf("failed to write EmployeesLimit: %w", err) }
 
   return nil
 }
@@ -958,6 +964,24 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     noSupport(w, "OCCURRENCES_PARTICIPANT_ID")
   case OCCURRENCES_PARTICIPANTS_ROLE_ID:
     noSupport(w, "OCCURRENCES_PARTICIPANTS_ROLE_ID")
+  case EMPLOYEES_LIMIT_ID:
+    slog.Info("EMPLOYEES_LIMIT_ID");
+    if !isAdmin(w, p_level) { return }
+    switch mode {
+    case UPDATE:
+      slog.Info("UPDATE");
+      new_limit, err := readInt32(r.Body)
+      if readError(w, "ROLES_ID:UPDATE", "new_limit", err) { return }
+      if new_limit > 1000 || new_limit < 0 {
+        slog.Error("new_limit is not in 0..1000")
+        http.Error(w, "incorrect request", http.StatusBadRequest)
+        return
+      }
+      state.EmployeesLimit = new_limit;
+
+    default:
+      noSupport(w, "EMPLOYEES_LIMIT_ID:default")
+    }
   default:
     noSupport(w, "default")
   }

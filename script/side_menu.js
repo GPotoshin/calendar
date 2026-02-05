@@ -2,6 +2,7 @@ import { elms, zones, viewId, zonesId, data } from './global_state.js';
 import { palette } from './color.js';
 import * as DM from './data_manager.js';
 import * as EventInfo from './event_info.js';
+import * as CalendarInfo from './calendar_info.js';
 import * as Utils from './utils.js';
 import { BufferWriter } from './io.js';
 
@@ -81,6 +82,9 @@ export function buttonClickCallback(event) {
       Utils.setBgColor(b, 'transparent');
       b.classList.toggle('hover');
       zone.selection = null;
+      if (zones[zonesId.VIEWTYPE].selection._dataId === viewId.INFORMATION) {
+        elms.view[viewId.INFORMATION].replaceChildren(CalendarInfo.dom);
+      }
       return;
     }
     Utils.setBgColor(b, palette.blue);

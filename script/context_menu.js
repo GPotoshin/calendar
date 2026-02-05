@@ -203,13 +203,8 @@ document.getElementById('edit-button').addEventListener('click', function() {
       const old_duration = data.eventsDuration[event_index];
 
       numeric_input.endOfWriting = () => {
-        if (numeric_input.elm.value === '') {
-          numeric_input.elm.replaceWith(b);
-          return;
-        }
-        const duration = Number(numeric_input.elm.value);
-        b.textContent = numeric_input.elm.value;
-        numeric_input.elm.replaceWith(b);
+        const duration = swapBackNumberButtonAndReturnNewValue(b);
+        if (duration === undefined) { return; }
         const w = EventInfo.createDurationBuffer(duration, Api.UPDATE, event_id);
         Api.request(w)
         .then(response => {
@@ -220,15 +215,50 @@ document.getElementById('edit-button').addEventListener('click', function() {
           b.textContent = old_duration;
         });
       };
-      numeric_input.elm.value = old_duration;
-      const width = Utils.measureText(window.getComputedStyle(numeric_input.elm), numeric_input.elm.value)+2;
-      Utils.setWidthPx(numeric_input.elm, width);
-      numeric_input.replace(b);
+      swapNumberButtonToInputAndLatterToOldValue(b, old_duration);
+      break;
+    }
+    case zonesId.EMPLOYEESLIMIT: {
+      const old_limit = data.employeesLimit;
+
+      numeric_input.endOfWriting = () => {
+        const new_limit = swapBackNumberButtonAndReturnNewValue(b);
+        if (new_limit === undefined) { return; }
+
+        const w = Api.createBufferWriter(Api.UPDATE, Api.EMPLOYEES_LIMIT_ID);
+        w.writeInt32(new_limit);
+        Api.request(w)
+        .then(response => {
+          Utils.throwIfNotOk(response);
+          data.employeesLimit = new_limit;
+        })
+        .catch(e => {
+          b.textContent = old_limit;
+        });
+      };
+      swapNumberButtonToInputAndSetLatterToOldValue(b, old_limit);
       break;
     }
   }
 });
 
+function swapNumberButtonToInputAndSetLatterToOldValue(button, old_value) {
+  numeric_input.elm.value = old_value;
+  const width = Utils.measureText(window.getComputedStyle(numeric_input.elm), old_value)+2;
+  Utils.setWidthPx(numeric_input.elm, width);
+  numeric_input.replace(button);
+}
+
+function swapBackNumberButtonAndReturnNewValue(button) {
+  if (numeric_input.elm.value === '') {
+    numeric_input.elm.replaceWith(button);
+    return undefined;
+  }
+
+  button.textContent = numeric_input.elm.value;
+  numeric_input.elm.replaceWith(button);
+  return Number(numeric_input.elm.value);
+}
 
 document.getElementById('delete-button').addEventListener('click', function() {
   const id = state.delete_target._dataId;

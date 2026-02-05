@@ -38,7 +38,9 @@ export const OCCURRENCES_DATES_ID             = 23;
 export const OCCURRENCES_PARTICIPANT_ID       = 24;
 export const OCCURRENCES_PARTICIPANTS_ROLE_ID = 25;
 
-export const STATE_FIELD_COUNT = 26;
+export const EMPLOYEES_LIMIT_ID = 26;
+
+export const STATE_FIELD_COUNT = 27;
 
 export function writeHeader(w, op, stateField) {
   w.writeString("bin_api.v0.0.0");

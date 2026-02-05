@@ -36,6 +36,7 @@ export const zonesId = {
   COMPETENCES: 7,
   NUMMAP: 8,
   DURATION: 9,
+  EMPLOYEESLIMIT: 10,
 };
 
 // eList is the list of buttons, that way we have a direct access to it
@@ -48,4 +49,4 @@ export let zones = [
 ];
 
 export const data = new DM.DataManager();
-window.data = data;
+window.data = data; // @nocheckin: only in dev

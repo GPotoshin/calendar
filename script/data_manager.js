@@ -97,10 +97,12 @@ export class DataManager {
     this.occurrencesParticipant = [];
     this.occurrencesParticipantsRole = [];
     this.occurrencesFreeList = [];
+
+    this.employeesLimit = -1;
   }
 
   read(r) {
-    const expectedVersion = "admin_data.v0.0.3";
+    const expectedVersion = "admin_data.v0.0.4";
     const actualVersion = r.readString();
     
     if (expectedVersion !== actualVersion) {
@@ -138,6 +140,8 @@ export class DataManager {
     this.occurrencesDates = r.readArrayOfInt32PairArrays(); 
     this.occurrencesParticipant = r.readArrayOfInt32Arrays();
     this.occurrencesParticipantsRole = r.readArrayOfInt32Arrays();
+
+    this.employeesLimit = r.readInt32();
   }
 
   bundleEventsNames() {

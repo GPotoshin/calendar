@@ -226,15 +226,15 @@ calendarBody.addEventListener('mousemove', handleMouseMove);
       state.scrollPosSave = elms.calendarBody.scrollTop;
       elms.bodyContainer.replaceChild(elms.view[viewId.INFORMATION], elms.bodyContainer.children[1]);
       zones[zonesId.VIEWTYPE].selection = b2;
-      const zone_selection = zones[zonesId.DATATYPE].selection._dataId;
-      if (zones[zone_selection].selection === null) {
-        elms.view[viewId.INFORMATION].replaceChildren(CalendarInfo.dom);
-      } else if (zone_selection === zonesId.EVENT) {
-        EventInfo.update(); // in that function we are searching for an element
-        // in the dom, but we are adding them just bellow
-        elms.view[viewId.INFORMATION].replaceChildren(EventInfo.dom);
-      }
     }
+    const data_selection = zones[zonesId.DATATYPE].selection._dataId;
+    if (zones[data_selection].selection === null) {
+      elms.view[viewId.INFORMATION].replaceChildren(CalendarInfo.dom);
+    } else if (data_selection === zonesId.EVENT) {
+      EventInfo.update();
+      elms.view[viewId.INFORMATION].replaceChildren(EventInfo.dom);
+    }
+    
   });
   viewType.append(b1,b2);
   zones[zonesId.VIEWTYPE].selection = b1;
