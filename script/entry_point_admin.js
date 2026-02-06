@@ -1,9 +1,6 @@
 import {
   setMonthScrollPosition,
-  handleMouseDown,
-  handleMouseMove,
-  handleMouseUp,
-} from './scrollable_calendar.js';
+} from './calendar.js';
 
 import * as Api from './api.js';
 import * as EventInfo from './event_info.js';
@@ -11,7 +8,7 @@ import * as Utils from './utils.js';
 import { palette } from './color.js';
 import { BufferReader, BufferWriter } from './io.js';
 import * as DM from './data_manager.js';
-import { numeric_input } from './num_input.js';
+import { numeric_input } from './numeric_input.js';
 import {} from './context_menu.js'; // we need it
 import {
   callbacks,

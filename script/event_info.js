@@ -1,7 +1,7 @@
 import { data, zones, zonesId } from './global_state.js';
 import * as SearchDisplay from './search_display.js';
 import * as Utils from './utils.js';
-import { numeric_input } from './num_input.js';
+import { numeric_input } from './numeric_input.js';
 import { BufferWriter } from './io.js';
 import * as Api from './api.js';
 import * as EventInfo from './event_info.js';

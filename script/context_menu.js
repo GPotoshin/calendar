@@ -7,7 +7,7 @@ import * as SideMenu from './side_menu.js';
 import * as Utils from './utils.js';
 import * as SearchDisplay from './search_display.js';
 import * as EventInfo from './event_info.js';
-import { numeric_input } from './num_input.js';
+import { numeric_input } from './numeric_input.js';
 import { palette } from './color.js';
 
 let state = {
