@@ -1,4 +1,4 @@
-import { elms, zones, viewId, zonesId, data } from './global_state.js';
+import { elements, zones, viewId, zonesId, data } from './global_state.js';
 import { palette } from './color.js';
 import * as DM from './data_manager.js';
 import * as EventInfo from './event_info.js';
@@ -7,7 +7,7 @@ import * as Utils from './utils.js';
 import { BufferWriter } from './io.js';
 
 function handleClickOnViewButton(b, zones_id) {
-  elms.dataListContainer.replaceChildren(zones[zones_id].eList); 
+  elements.dataListContainer.replaceChildren(zones[zones_id].eList); 
   zones[zonesId.DATATYPE].selection = b;
 }
 
@@ -15,21 +15,21 @@ let state = {
   sideMenuIsOpen: false,
 };
 
-elms.sideMenuContainer = document.getElementById('side-menu-container');
+elements.sideMenuContainer = document.getElementById('side-menu-container');
 document.getElementById('side-menu-button').addEventListener('click', 
   function(button) {
-    let sideMenuContainer = elms.sideMenuContainer;
+    let sideMenuContainer = elements.sideMenuContainer;
     if (state.sideMenuIsOpen) {
-      sideMenuContainer.removeChild(elms.sideMenu);
+      sideMenuContainer.removeChild(elements.sideMenu);
     } else {
-      sideMenuContainer.appendChild(elms.sideMenu);
+      sideMenuContainer.appendChild(elements.sideMenu);
     }
     state.sideMenuIsOpen ^= true;
   }
 );
 
-elms.sideMenu.classList.add('v-container');
-elms.sideMenu.id = 'side-menu';
+elements.sideMenu.classList.add('v-container');
+elements.sideMenu.id = 'side-menu';
 let hContainer = document.createElement('div');
 hContainer.className = 'header-container';
 let bContainer = document.createElement('div');
@@ -47,7 +47,7 @@ zones[zonesId.VENUE].eList.className = 'extendable v-container grow';
 zones[zonesId.VENUE].eList._id = zonesId.VENUE;
 
 hContainer.append(bContainer);
-elms.dataListContainer = lContainer;
+elements.dataListContainer = lContainer;
 
 // this should be factored out
 let b1 = document.createElement('button');
@@ -72,33 +72,52 @@ bContainer.append(b1, b2, b3);
 
 zones[zonesId.DATATYPE].selection = b1;
 
-elms.sideMenu.replaceChildren(hContainer, elms.dataListContainer);
-elms.dataListContainer.appendChild(zones[zonesId.EVENT].eList);
+elements.sideMenu.replaceChildren(hContainer, elements.dataListContainer);
+elements.dataListContainer.appendChild(zones[zonesId.EVENT].eList);
 
 export function buttonClickCallback(event) {
-    const b = event.currentTarget;
-    const zone = zones[Number(b.parentElement._id)];
-    if (zone.selection == b) {
-      Utils.setBgColor(b, 'transparent');
-      b.classList.toggle('hover');
-      zone.selection = null;
-      if (zones[zonesId.VIEWTYPE].selection._dataId === viewId.INFORMATION) {
-        elms.view[viewId.INFORMATION].replaceChildren(CalendarInfo.dom);
-      }
-      return;
+  const current_button = event.currentTarget;
+  const zone = zones[Number(current_button.parentElement._id)];
+  const previous_button = zone.selection;
+
+  current_button.classList.toggle('hover');
+  if (previous_button === current_button) {
+    Utils.setBgColor(current_button, 'transparent');
+    zone.selection = null;
+    if (zones[zonesId.VIEWTYPE].selection._dataId === viewId.INFORMATION) {
+      elements.view[viewId.INFORMATION].replaceChildren(CalendarInfo.dom);
+    } else {
+
     }
-    Utils.setBgColor(b, palette.blue);
-    b.classList.toggle('hover');
-    if (zone.selection) {
-      Utils.setBgColor(zone.selection, 'transparent');
-      zone.selection.classList.toggle('hover');
+    return;
+  } else {
+    if (previous_button) {
+      Utils.setBgColor(previous_button, 'transparent');
+      previous_button.classList.toggle('hover');
     }
-    zone.selection = b;
-    if (zone.selection &&
-      zones[zonesId.VIEWTYPE].selection._dataId === viewId.INFORMATION) {
+    Utils.setBgColor(current_button, palette.blue);
+    zone.selection = current_button;
+    if (zones[zonesId.VIEWTYPE].selection._dataId === viewId.INFORMATION) {
       EventInfo.update();
-      elms.view[viewId.INFORMATION].replaceChildren(EventInfo.dom);
+      elements.view[viewId.INFORMATION].replaceChildren(EventInfo.dom);
+    } else {
+      const list = elements.calendarContent.children;
+      for (let i = 0; i < list.length; i++) {
+        let el = list[i];
+        if (el.classList.contains('block-marker')) {
+          continue;
+        }
+        let line = document.createElement('div');
+        line.classList = 'event-occurence event-single no-select';
+        line.style.top = '0%';
+        Utils.setBgColor(line, palette.green);
+        let newWidth = el.children[6].getBoundingClientRect().right-
+          el.children[0].getBoundingClientRect().left-1;
+        line.style.width = newWidth+'px';
+        el.children[0].getElementsByClassName('bar-holder')[0].prepend(line);
+      }
     }
+  }
 }
 
 export function createTmplButton() {

@@ -98,11 +98,14 @@ export class DataManager {
     this.occurrencesParticipantsRole = [];
     this.occurrencesFreeList = [];
 
+    this.baseDayNumber = [];
+    this.dayOccurrences = [];
+
     this.employeesLimit = -1;
   }
 
   read(r) {
-    const expectedVersion = "admin_data.v0.0.4";
+    const expectedVersion = "admin_data.v0.0.5";
     const actualVersion = r.readString();
     
     if (expectedVersion !== actualVersion) {
@@ -140,6 +143,9 @@ export class DataManager {
     this.occurrencesDates = r.readArrayOfInt32PairArrays(); 
     this.occurrencesParticipant = r.readArrayOfInt32Arrays();
     this.occurrencesParticipantsRole = r.readArrayOfInt32Arrays();
+
+    this.baseDayNumber = r.readInt32();
+    this.dayOccurrences = r.readArrayOfInt32Arrays();
 
     this.employeesLimit = r.readInt32();
   }

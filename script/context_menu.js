@@ -1,4 +1,4 @@
-import { callbacks, elms, data } from './global_state.js';
+import { callbacks, elements, data } from './global_state.js';
 import { BufferReader, BufferWriter } from './io.js';
 import { zones, zonesId } from './global_state.js';
 import { storageIndex, deleteValue, deleteOccurrences, storeValue } from './data_manager.js';
@@ -18,7 +18,7 @@ let state = {
 };
 
 function handleClickForContextMenu() {
-  let menu = elms.rightClickMenu;
+  let menu = elements.rightClickMenu;
   menu.classList.replace('disp-flex', 'disp-none');
   document.removeEventListener('click', handleClickForContextMenu);
   for (const child of menu.children) {
@@ -306,8 +306,8 @@ document.getElementById('delete-button').addEventListener('click', function() {
         deleteValue(data.eventsId, data.eventsFreeList, id);
         break;
       case zonesId.EVENTSTAFF: // we should here remove the button from a backing array
-        EventInfo.elms.event_role_list._btnList =
-          EventInfo.elms.event_role_list._btnList.filter(b => b !== state.delete_target);
+        EventInfo.elements.event_role_list._btnList =
+          EventInfo.elements.event_role_list._btnList.filter(b => b !== state.delete_target);
 
         deleteValue(data.rolesId, data.rolesFreeList, id);
         for (let i = 0; i < data.eventsRole.length; i++) {
@@ -495,7 +495,7 @@ document.getElementById('create-button').addEventListener('click', () => {
         Api.ROLES_ID_MAP_ID,
         data.bundleRolesNames(),
       );
-      EventInfo.elms.event_role_list._btnList.push(b);
+      EventInfo.elements.event_role_list._btnList.push(b);
       break;
     }
     default:
@@ -561,7 +561,7 @@ function display(s, btn_name) {
 
 document.addEventListener('contextmenu', function(e) {
   const s = { show: false };
-  const menu = elms.rightClickMenu;
+  const menu = elements.rightClickMenu;
   const target = e.target;
 
   if (state.delete_target = target.closest('.deletable')) {

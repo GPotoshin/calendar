@@ -30,3 +30,8 @@ libraries. All those approaches increases perforamance and reduces surface area.
 === Event Info
 
 === Calendar View
+
+==== Event Bars
+Event bars are attached to days and grow in the left direction. For consistency,
+their size is calculated on the fly from information recieved from
+getBoundingRectangle() called on day cells.

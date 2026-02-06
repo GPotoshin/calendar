@@ -1,18 +1,18 @@
 import * as DM from './data_manager.js';
 
-export let elms = {
-  calendarBody: null,
-  calendarContent: null,
-  markerBlocks: null,
-  monthDisplay: null,
-  rightClickMenu: null,
+export let elements = {
+  calendarBody: document.getElementById('calendar-body'),
+  calendarContent: document.getElementById('calendar-content'),
+  markerBlocks: document.getElementsByClassName('block-marker'),
+  monthDisplay: document.getElementById('month-display'),
+  rightClickMenu: document.getElementById('right-click-menu'),
   sideMenu: document.createElement('div'),
-  bodyContainer: null,
+  bodyContainer: document.getElementById('body-container'),
   sideMenuContainer: null,
   todayFrame: null,
   dataListContainer: null,
 
-  view: [null, null],
+  view: [document.getElementsByClassName('view-content')[0], null],
 }
 
 export let callbacks = {
@@ -42,7 +42,7 @@ export const zonesId = {
 // eList is the list of buttons, that way we have a direct access to it
 export let zones = [
   { selection: null, eList: null },
-  { selection: null, eList: null },
+  { selection: null, eList: document.getElementById("view-type").children },
   { selection: null, eList: document.createElement('div') },
   { selection: null, eList: document.createElement('div') },
   { selection: null, eList: document.createElement('div') },

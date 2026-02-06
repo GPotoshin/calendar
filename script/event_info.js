@@ -8,7 +8,7 @@ import * as EventInfo from './event_info.js';
 
 export let dom = document.createElement('div');
 
-export const elms = {
+export const elements = {
   event_role_list: null,
   comp_tables: null,
   numtab_header_list: null,
@@ -29,9 +29,9 @@ function createStaffTable() {
     </div>
     `;
   
-  elms.numtab_header_list = table.children[1];
-  elms.numtab_content = table.children[2];
-  elms.numtab_content._id = zonesId.NUMMAP;
+  elements.numtab_header_list = table.children[1];
+  elements.numtab_content = table.children[2];
+  elements.numtab_content._id = zonesId.NUMMAP;
   return table;
 }
 
@@ -47,7 +47,7 @@ function createCompetencesTable() {
     `;
 
   const container = table.querySelector('.js-set');
-  elms.comp_tables = container;
+  elements.comp_tables = container;
 
   return table;
 }
@@ -80,7 +80,7 @@ export function loadTemplate() {
     container.appendChild(b);
     container._btnList.push(b);
   }
-  elms.event_role_list = container;
+  elements.event_role_list = container;
 
   EventInfo.dom.children[0].append(
     sDisplay,
@@ -217,11 +217,11 @@ export function update() { // @working
         };
       });
     };
-    elms.numtab_content.appendChild(line);
+    elements.numtab_content.appendChild(line);
   }
 
   // actual function code
-  for (const b of elms.event_role_list._btnList) {
+  for (const b of elements.event_role_list._btnList) {
     if (event_roles.includes(b._dataId)) {
       b.classList.add('clicked');
     } else {
@@ -232,8 +232,8 @@ export function update() { // @working
   // nummap
   const base_width = 125;
   let width = base_width*(event_roles.length+1);
-  Utils.setWidthPx(elms.numtab_header_list, width);
-  Utils.setWidthPx(elms.numtab_content, width);
+  Utils.setWidthPx(elements.numtab_header_list, width);
+  Utils.setWidthPx(elements.numtab_content, width);
 
   function createLocalHeader(name) {
     let retval = document.createElement('div');
@@ -253,7 +253,7 @@ export function update() { // @working
     const name = data.rolesName[role_idx];
     list.push(createLocalHeader(name));
   }
-  elms.numtab_header_list.replaceChildren(...list);
+  elements.numtab_header_list.replaceChildren(...list);
 
   list = [];
   for (let i = 0; i < num_map[event_idx].length; i++) {
@@ -278,7 +278,7 @@ export function update() { // @working
     };
     list.push(line);
   }
-  elms.numtab_content.replaceChildren(...list);
+  elements.numtab_content.replaceChildren(...list);
   addEmptyLine(event_roles.length); // idea is that addEmptyLine will add a line directly to the dom
 
   list = [SearchDisplay.create('Participants', zonesId.COMPETENCES)];
@@ -288,7 +288,7 @@ export function update() { // @working
     const name = data.rolesName[role_index];
     list.push(SearchDisplay.create(name, zonesId.COMPETENCES));
   }
-  elms.comp_tables.replaceChildren(...list);
+  elements.comp_tables.replaceChildren(...list);
 
   let duration = data.eventsDuration[event_idx];
   if (duration === undefined) {

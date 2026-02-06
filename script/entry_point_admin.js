@@ -15,7 +15,7 @@ import { numeric_input } from './num_input.js';
 import {} from './context_menu.js'; // we need it
 import {
   callbacks,
-  elms,
+  elements,
   zonesId,
   viewId,
   zones,
@@ -40,10 +40,9 @@ let state = {
 };
 
 {
-  elms.view[viewId.INFORMATION] = document.createElement('div');
-  elms.view[viewId.INFORMATION].classList.add('view-content');
-  elms.view[viewId.INFORMATION].classList.add('v-container');
-  elms.view[viewId.INFORMATION].classList.add('align-items-center');
+  elements.view[viewId.INFORMATION] = document.createElement('div');
+  elements.view[viewId.INFORMATION].classList =
+    'view-content v-container align-items-center';
 }
 
 const months = [
@@ -61,11 +60,13 @@ const months = [
   'Décembre',
 ];
 
+
+// sets year and month from `data` as a header
 function setMonthDisplay(date) {
   let monthHolder = document.createElement('strong');
   monthHolder.textContent = months[date.getMonth()];
   let year = document.createTextNode(" " + date.getFullYear());
-  elms.monthDisplay.replaceChildren(monthHolder, year);
+  elements.monthDisplay.replaceChildren(monthHolder, year);
 }
 
 let observers = {
@@ -92,8 +93,10 @@ function setUiList(ui, list) {
   }
 }
 
+
+// runs a callback over all days in the displayed buffer
 function iterateOverDays(dayCallback) {
-  const list = elms.calendarContent.children;
+  const list = elements.calendarContent.children;
   for (let i = 0; i < list.length; i++) {
     var el = list[i];
     if (el.classList.contains('block-marker')) {
@@ -108,7 +111,7 @@ function iterateOverDays(dayCallback) {
 function refocusMonth() {
   setMonthDisplay(focus.date);
   let date = new Date();
-  date.setTime(Number(elms.calendarContent.children[0].children[0]._dayNum)*MS_IN_DAY)
+  date.setTime(Number(elements.calendarContent.children[0].children[0]._dayNum)*MS_IN_DAY)
   const focusMonth = focus.date.getMonth();
   iterateOverDays((day) => {
     if (date.getMonth() == focusMonth) {
@@ -128,7 +131,7 @@ function dateFromDayNum(n) {
 function setMonthObserver() {
   observers.topWeek.disconnect();
   observers.bottomWeek.disconnect();
-  const weeks = elms.calendarContent.children;
+  const weeks = elements.calendarContent.children;
   const month = focus.date.getMonth();
 
   let testDate = new Date();
@@ -158,21 +161,7 @@ function setMonthObserver() {
   }
 }
 
-elms.bodyContainer = document.getElementById('body-container');
-elms.markerBlocks = document.getElementsByClassName('block-marker');
-elms.calendarBody = document.getElementById('calendar-body');
-elms.calendarContent = document.getElementById('calendar-content');
-elms.monthDisplay = document.getElementById('month-display');
-elms.rightClickMenu = document.getElementById('right-click-menu');
-elms.view[viewId.CALENDER] = document.getElementsByClassName('view-content')[0];
-
-zones[1].eList = document.getElementById("view-type").children;
-
 setMonthScrollPosition();
-const calendarBody = document.getElementById('calendar-body');
-calendarBody.addEventListener('mousedown', handleMouseDown);
-calendarBody.addEventListener('mouseup', handleMouseUp);
-calendarBody.addEventListener('mousemove', handleMouseMove);
 
 {
   const writer = new BufferWriter();
@@ -210,29 +199,29 @@ calendarBody.addEventListener('mousemove', handleMouseMove);
   b1.textContent = 'Calendrier';
   b1._dataId = viewId.CALENDAR;
   b1.addEventListener('click' ,()=>{
-    elms.bodyContainer.replaceChild(elms.view[viewId.CALENDER], elms.bodyContainer.children[1]);
+    elements.bodyContainer.replaceChild(elements.view[viewId.CALENDER], elements.bodyContainer.children[1]);
     if (zones[zonesId.VIEWTYPE].selection === b2) {
       // probably we don't need to swap styles, if we do it before rendering
-      elms.calendarBody.classList.replace('scroll-smooth', 'scroll-auto');
-      elms.calendarBody.scrollTop = state.scrollPosSave;
-      elms.calendarBody.classList.replace('scroll-auto', 'scroll-smooth');
+      elements.calendarBody.classList.replace('scroll-smooth', 'scroll-auto');
+      elements.calendarBody.scrollTop = state.scrollPosSave;
+      elements.calendarBody.classList.replace('scroll-auto', 'scroll-smooth');
     }
     zones[zonesId.VIEWTYPE].selection = b1;
   });
   b2.textContent = 'Information';
   b2._dataId = viewId.INFORMATION;
-  b2.addEventListener('click' ,()=>{ // @nocheckin: we have a bug here
+  b2.addEventListener('click' ,()=>{
     if (zones[zonesId.VIEWTYPE].selection === b1) {
-      state.scrollPosSave = elms.calendarBody.scrollTop;
-      elms.bodyContainer.replaceChild(elms.view[viewId.INFORMATION], elms.bodyContainer.children[1]);
+      state.scrollPosSave = elements.calendarBody.scrollTop;
+      elements.bodyContainer.replaceChild(elements.view[viewId.INFORMATION], elements.bodyContainer.children[1]);
       zones[zonesId.VIEWTYPE].selection = b2;
     }
     const data_selection = zones[zonesId.DATATYPE].selection._dataId;
     if (zones[data_selection].selection === null) {
-      elms.view[viewId.INFORMATION].replaceChildren(CalendarInfo.dom);
+      elements.view[viewId.INFORMATION].replaceChildren(CalendarInfo.dom);
     } else if (data_selection === zonesId.EVENT) {
       EventInfo.update();
-      elms.view[viewId.INFORMATION].replaceChildren(EventInfo.dom);
+      elements.view[viewId.INFORMATION].replaceChildren(EventInfo.dom);
     }
     
   });
@@ -249,7 +238,7 @@ observers.topWeek = new IntersectionObserver((entries) => {
     }
   });
 }, {
-  root: calendarBody,
+  root: elements.calendarBody,
   threshold: [1],
   rootMargin: '-66% 0px 0px 0px'
 });
@@ -262,7 +251,7 @@ observers.bottomWeek = new IntersectionObserver((entries) => {
     }
   });
 }, {
-  root: calendarBody,
+  root: elements.calendarBody,
   threshold: [1],
   rootMargin: '0px 0px -66% 0px'
 });
@@ -271,18 +260,18 @@ observers.calendarScrolling = new IntersectionObserver((entries) => {
     if (entry.isIntersecting) {
       if (state.isUpdating) return;
       state.isUpdating = true;
-      elms.todayFrame.classList.remove('today');
+      elements.todayFrame.classList.remove('today');
       const SHIFTING_BY = 5;
       let shiftingBy = SHIFTING_BY;
-      if (entry.target === elms.markerBlocks[0]) {
+      if (entry.target === elements.markerBlocks[0]) {
         shiftingBy = -SHIFTING_BY;
       }
-      const week = elms.calendarContent.querySelectorAll('.week-row')[0];
-      elms.calendarBody.classList.replace('scroll-smooth', 'scroll-auto');
+      const week = elements.calendarContent.querySelectorAll('.week-row')[0];
+      elements.calendarBody.classList.replace('scroll-smooth', 'scroll-auto');
       // @nocheckin: We should scroll by a variable offset determined after
       // dom content modification.
-      elms.calendarBody.scrollTop -= shiftingBy*week.offsetHeight;
-      elms.calendarBody.classList.replace('scroll-auto', 'scroll-smooth');
+      elements.calendarBody.scrollTop -= shiftingBy*week.offsetHeight;
+      elements.calendarBody.classList.replace('scroll-auto', 'scroll-smooth');
       requestAnimationFrame(() => {
         state.baseDayNumber += shiftingBy*7;
         let date = new Date();
@@ -296,7 +285,7 @@ observers.calendarScrolling = new IntersectionObserver((entries) => {
           day._dayNum = Math.floor(date.getTime() / MS_IN_DAY);
           if (day._dayNum == today) {
             day.classList.add('today');
-            elms.todayFrame = day;
+            elements.todayFrame = day;
           }
           date.setDate(date.getDate() + 1);
         });
@@ -309,17 +298,16 @@ observers.calendarScrolling = new IntersectionObserver((entries) => {
     }
   });
 }, {
-  root: calendarBody,
+  root: elements.calendarBody,
 });
-observers.calendarScrolling.observe(elms.markerBlocks[0]);
-observers.calendarScrolling.observe(elms.markerBlocks[1]);
-
+observers.calendarScrolling.observe(elements.markerBlocks[0]);
+observers.calendarScrolling.observe(elements.markerBlocks[1]);
 let date = new Date();
 focus.date = new Date();
 const today_epoch = Math.floor(date.getTime() / MS_IN_DAY);
 const today_weekday = (date.getDay()+6)%7;
-elms.todayFrame = elms.calendarContent.children[8].children[today_weekday];
-elms.todayFrame.classList.add('today');
+elements.todayFrame = elements.calendarContent.children[8].children[today_weekday];
+elements.todayFrame.classList.add('today');
 
 state.baseDayNumber = today_epoch-today_weekday-7*7;
 date.setTime(state.baseDayNumber*MS_IN_DAY);
@@ -335,13 +323,3 @@ iterateOverDays((day) => {
   date.setDate(date.getDate() + 1);
 });
 setMonthObserver(focus.month);
-
-const weekRows = document.querySelectorAll('.week-row');
-
-function switchToCalendarView() {
-  elms.bodyContainer.replaceChild(elms.view[viewId.CALENDER], elms.bodyContainer.children[1]);
-}
-
-function switchToInformationView() {
-  elms.bodyContainer.replaceChild(elms.view[viewId.INFORMATION], elms.bodyContainer.children[1]);
-}

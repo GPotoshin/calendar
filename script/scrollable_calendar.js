@@ -12,7 +12,38 @@ let state = {
   bar_holder: null,
   bar: null,
   prev_focus_num: 0,
+  focused_day_date: null,
+  base_day_number: 0,
 };
+
+export function init() {
+
+}
+
+// @working: update function should update the calendar content with the
+// new information. We had day number generation, now we need to have 
+// a generation of evenents and hints. Plus we need to move all the code
+// related to calendar rendering here and refactor and compress it if
+// possible
+export function update() {
+  setMonthDisplay(focused_day_date);
+  let date = new Date();
+  const today = Math.floor(date.getTime()/MS_IN_DAY);
+  const offset = today - state.base_day_number;
+  date.setTime(state.baseDayNumber*MS_IN_DAY);
+  const focusMonth = focus.date.getMonth();
+  iterateOverDays((day) => {
+    day.children[0].textContent = date.getDate();
+    day._dayNum = Math.floor(date.getTime() / MS_IN_DAY);
+    if (day._dayNum == today) {
+      day.classList.add('today');
+      elements.todayFrame = day;
+    }
+    date.setDate(date.getDate() + 1);
+  });
+  refocusMonth();
+  setMonthObserver();
+}
 
 // @nocheckin: We should actually try to rerender the view and swap only
 // when it is done and be at the correct scrollTop offset. Because that
@@ -39,7 +70,7 @@ function getCellNum(pos_x) {
   return Math.floor(rel_pos_x/(week_rect.width/7.0));
 }
 
-export function handleMouseDown(e) {
+elements.calendarBody.addEventListener('mousedown', e => {
   if (e.button !== 0) return;
 
   state.isDragging = true;
@@ -52,12 +83,12 @@ export function handleMouseDown(e) {
   state.cells = state.week.getElementsByClassName('day-cell');
   state.start_cell_num = getCellNum(e.clientX);
   state.prev_focus_num = state.start_cell_num;
-}
+});
 
-export function handleMouseUp(e) {
+elements.calendarBody.addEventListener('mouseup', e => {
   state.isCreated = false;
   state.isDragging = false;
-}
+});
 
 function shiftBarBy(bar, n) {
   bar.dataset.top = Number(bar.dataset.top)+n;
@@ -75,13 +106,7 @@ function getEvents(cell) {
 function addBarToCell(state) {
   let cell = state.cells[state.bar.dataset.leftCellNum];
   let list = cell.getElementsByClassName('bar-holder');
-  if (list.length == 0) {
-    state.bar_holder = document.createElement('div');
-    state.bar_holder.classList.add('bar-holder');
-    cell.appendChild(state.bar_holder);
-  } else {
-    state.bar_holder = list[0];
-  }
+  state.bar_holder = list[0];
 
   let i = 0;
   let rightMax = -1;
@@ -122,7 +147,7 @@ function addBarToCell(state) {
 
 let event_counter = 1;
 
-export function handleMouseMove(e) {
+elements.calendarBody.addEventListener('mousemove', e => {
   if (!state.isDragging) return;
 
   const d = 50;
@@ -181,4 +206,4 @@ export function handleMouseMove(e) {
       state.bar.style.width = newWidth+'px';
     }
   }
-}
+});

@@ -135,6 +135,9 @@ type State struct {
   ConnectionsChannel []chan []byte
   ConnectionsFreeList []int // we need to recalculate everything once free list reaches a certain size (like 128 entries)
 
+  BaseDayNumber int32
+  DayOccurrences [][]int32
+
   EmployeesLimit int32
 
   privateKey *rsa.PrivateKey
@@ -233,7 +236,11 @@ func readState(r io.Reader) (State, error) {
   if state.OccurrencesParticipant,      err = readArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesParticipant: %w", err) }
   if state.OccurrencesParticipantsRole, err = readArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesParticipantsRole: %w", err) }
   if state.OccurrencesFreeId,           err = readInt32Array(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesFreeId: %w", err) }
-  if state.EmployeesLimit,              err = readInt32(r); err != nil { return state, fmt.Errorf("failed to read EmployeesLimit: %w", err) }
+
+  if state.BaseDayNumber,  err = readInt32(r); err != nil { return state, fmt.Errorf("failed to read BaseDayNumber: %w", err) }
+  if state.DayOccurrences, err = readArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read DayOccurrences: %w", err) }
+
+  if state.EmployeesLimit, err = readInt32(r); err != nil { return state, fmt.Errorf("failed to read EmployeesLimit: %w", err) }
 
   return state, nil
 }
@@ -248,7 +255,7 @@ func writeState(w io.Writer, state State, dest int32) error {
   case DEST_DISK:
     version = "bin_state.v0.0.8"
   case DEST_ADMIN:
-    version = "admin_data.v0.0.4"
+    version = "admin_data.v0.0.5"
   default:
     return fmt.Errorf("Unsupported destination\n")
   }
@@ -270,18 +277,18 @@ func writeState(w io.Writer, state State, dest int32) error {
   if dest == DEST_DISK {
     if err := writeHashArray(w, state.UsersPassword); err != nil { return fmt.Errorf("failed to write UsersPassword: %w", err) }
   }
-  if err := writeStringArray(w,        state.UsersName); err != nil { return fmt.Errorf("failed to write UsersName: %w", err) }
-  if err := writeStringArray(w,        state.UsersSurname); err != nil { return fmt.Errorf("failed to write UsersSurname: %w", err) }
-  if err := writeStringArray(w,        state.UsersMail); err != nil { return fmt.Errorf("failed to write UsersMail: %w", err) }
-  if err := writeInt32Array(w,         state.UsersPhone); err != nil { return fmt.Errorf("failed to write UsersPhone: %w", err) }
+  if err := writeStringArray(w, state.UsersName); err != nil { return fmt.Errorf("failed to write UsersName: %w", err) }
+  if err := writeStringArray(w, state.UsersSurname); err != nil { return fmt.Errorf("failed to write UsersSurname: %w", err) }
+  if err := writeStringArray(w, state.UsersMail); err != nil { return fmt.Errorf("failed to write UsersMail: %w", err) }
+  if err := writeInt32Array(w, state.UsersPhone); err != nil { return fmt.Errorf("failed to write UsersPhone: %w", err) }
   if err := writeArrayOfInt32Arrays(w, state.UsersCompetences); err != nil { return fmt.Errorf("failed to write UsersCompetences: %w", err) }
-  if err := writeInt32Array(w,         state.UsersDutyStation); err != nil { return fmt.Errorf("failed to write UsersDutyStation: %w", err) }
-  if err := writeInt32Array(w,         state.UsersPrivilegeLevel); err != nil { return fmt.Errorf("failed to write UsersPrivilegeLevel: %w", err) }
+  if err := writeInt32Array(w, state.UsersDutyStation); err != nil { return fmt.Errorf("failed to write UsersDutyStation: %w", err) }
+  if err := writeInt32Array(w, state.UsersPrivilegeLevel); err != nil { return fmt.Errorf("failed to write UsersPrivilegeLevel: %w", err) }
 
-  if err := writeMapInt32Int(w,               state.EventsId); err != nil { return fmt.Errorf("failed to write EventsId: %w", err) }
-  if err := writeStringArray(w,               state.EventsName); err != nil { return fmt.Errorf("failed to write EventsName: %w", err) }
-  if err := writeArrayOfInt32Arrays(w,        state.EventsVenues); err != nil { return fmt.Errorf("failed to write EventsVenues: %w", err) }
-  if err := writeArrayOfInt32Arrays(w,        state.EventsRole); err != nil { return fmt.Errorf("failed to write EventsRole: %w", err) }
+  if err := writeMapInt32Int(w, state.EventsId); err != nil { return fmt.Errorf("failed to write EventsId: %w", err) }
+  if err := writeStringArray(w, state.EventsName); err != nil { return fmt.Errorf("failed to write EventsName: %w", err) }
+  if err := writeArrayOfInt32Arrays(w, state.EventsVenues); err != nil { return fmt.Errorf("failed to write EventsVenues: %w", err) }
+  if err := writeArrayOfInt32Arrays(w, state.EventsRole); err != nil { return fmt.Errorf("failed to write EventsRole: %w", err) }
   if err := writeArrayOfArrayOfInt32Arrays(w, state.EventsRolesRequirement); err != nil { return fmt.Errorf("failed to write EventsRolesRequirement: %w", err) }
   if err := writeArrayOfArrayOfInt32Arrays(w, state.EventsPersonalNumMap); err != nil { return fmt.Errorf("failed to write EventsPresonalNumMap: %w", err) }
   if err := writeInt32Array(w, state.EventsDuration); err != nil { return fmt.Errorf("failed to write EventsDuration: %w", err) }
@@ -307,14 +314,18 @@ func writeState(w io.Writer, state State, dest int32) error {
     if err := writeInt32Array(w, state.RolesFreeId); err != nil { return fmt.Errorf("failed to write RolesFreeId: %w", err) }
   }
 
-  if err := writeMapInt32Int(w,            state.OccurrencesId); err != nil { return fmt.Errorf("failed to write OccerencesId: %w", err) }
-  if err := writeInt32Array(w,             state.OccurrencesVenue); err != nil { return fmt.Errorf("failed to write OccurrencesVenue: %w", err) }
+  if err := writeMapInt32Int(w, state.OccurrencesId); err != nil { return fmt.Errorf("failed to write OccerencesId: %w", err) }
+  if err := writeInt32Array(w, state.OccurrencesVenue); err != nil { return fmt.Errorf("failed to write OccurrencesVenue: %w", err) }
   if err := writeArrayOfInt32PairArrays(w, state.OccurrencesDates); err != nil { return fmt.Errorf("failed to write OccurrencesDate: %w", err) }
-  if err := writeArrayOfInt32Arrays(w,     state.OccurrencesParticipant); err != nil { return fmt.Errorf("failed to write OccurrencesParticipant: %w", err) }
-  if err := writeArrayOfInt32Arrays(w,     state.OccurrencesParticipantsRole); err != nil { return fmt.Errorf("failed to write OccurrencesParticipantsRole: %w", err) }
+  if err := writeArrayOfInt32Arrays(w, state.OccurrencesParticipant); err != nil { return fmt.Errorf("failed to write OccurrencesParticipant: %w", err) }
+  if err := writeArrayOfInt32Arrays(w, state.OccurrencesParticipantsRole); err != nil { return fmt.Errorf("failed to write OccurrencesParticipantsRole: %w", err) }
   if dest == DEST_DISK {
     if err := writeInt32Array(w, state.OccurrencesFreeId); err != nil { return fmt.Errorf("failed to write OccurrencesFreeId: %w", err) }
   }
+
+  if err := writeInt32(w, state.BaseDayNumber); err != nil { return fmt.Errorf("failed to write BaseDayNumber: %w", err) }
+  if err := writeArrayOfInt32Arrays(w, state.DayOccurrences); err != nil { return fmt.Errorf("failed to write DayOccurrences: %w", err) }
+
   if err := writeInt32(w, state.EmployeesLimit); err != nil { return fmt.Errorf("failed to write EmployeesLimit: %w", err) }
 
   return nil
