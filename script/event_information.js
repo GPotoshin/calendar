@@ -1,10 +1,10 @@
-import { data, zones, zonesId } from './global_state.js';
+import { data, zones, zones_identifier } from './global_state.js';
 import * as SearchDisplay from './search_display.js';
 import * as Utils from './utils.js';
 import { numeric_input } from './numeric_input.js';
 import { BufferWriter } from './io.js';
 import * as Api from './api.js';
-import * as EventInfo from './event_info.js';
+import * as EventInformation from './event_info.js';
 
 export let dom = document.createElement('div');
 
@@ -31,7 +31,7 @@ function createStaffTable() {
   
   elements.numtab_header_list = table.children[1];
   elements.numtab_content = table.children[2];
-  elements.numtab_content._id = zonesId.NUMMAP;
+  elements.numtab_content._identifier = zones_identifier.PERSONAL_NUMBER_MAP;
   return table;
 }
 
@@ -60,29 +60,29 @@ function createFooterOptions() {
     Durée: <button id="event-duration" class="hover std-min no-padding txt-center tiny-button">\u00A0</button>j
     </div>
     `;
-  footer.children[0]._id = zonesId.DURATION;
+  footer.children[0]._identifier = zones_identifier.DURATION;
   return footer;
 }
 
 export function loadTemplate() {
-  EventInfo.dom.innerHTML = `
+  EventInformation.dom.innerHTML = `
     <div class="v-container">
     </div>
   `;
 
-  let [sDisplay, container] = SearchDisplay.createAndReturnListContainer('Personnel', zonesId.EVENTSTAFF);
-  container._btnList = [];
+  let [sDisplay, container] = SearchDisplay.createAndReturnListContainer('Personnel', zones_identifier.EVENT_STAFF);
+  container._btn_list = [];
 
-  for (const [id, idx] of data.rolesId) {
-    const name = data.rolesName[idx];
+  for (const [id, idx] of data.roles_idetifier) {
+    const name = data.roles_name[idx];
     const b = SearchDisplay.createButton(); 
     Utils.setNameAndId(b, name, id);
     container.appendChild(b);
-    container._btnList.push(b);
+    container._btn_list.push(b);
   }
   elements.event_role_list = container;
 
-  EventInfo.dom.children[0].append(
+  EventInformation.dom.children[0].append(
     sDisplay,
     createStaffTable(),
     createCompetencesTable(),
@@ -104,15 +104,15 @@ export function update() { // @working
     </div>
     `;
 
-  const zone = zones[zonesId.EVENT];
+  const zone = zones[zones_identifier.EVENT];
   if (zone.selection == null) { // we need to show general setting
     return;
   }
-  const event_id = zone.selection._dataId;
-  const event_idx = data.eventsId.get(event_id);
-  if (event_idx === undefined) { throw new Error("[update] no entry for event_id"); }
-  const event_roles = data.eventsRole[event_idx];
-  const num_map = data.eventsPersonalNumMap;
+  const event_identifier = zone.selection._data_id;
+  const event_index = data.events_identifier.get(event_id);
+  if (event_index === undefined) { throw new Error("[update] no entry for event_id"); }
+  const event_roles = data.events_roles[event_index];
+  const num_map = data.events_staff_numeric_map;
 
   function createTemplateLine(staff_num) {
     let line = document.createElement('div');
@@ -135,20 +135,20 @@ export function update() { // @working
     return Number(b.textContent);
   }
 
-  function endOfButtonWriting(b, line_idx) {
+  function endOfButtonWriting(b, line_index) {
     numeric_input.swapBackAndSetContent(b);
     if (b.textContent !== '\u00A0') {
       const n = getNumVal(b);
       let w = Api.createBufferWriter(Api.UPDATE, Api.EVENTS_PERSONAL_NUM_MAP_ID);
       w.writeInt32(event_id);
-      w.writeInt32(line_idx);
-      w.writeInt32(b._dataId);
+      w.writeInt32(line_index);
+      w.writeInt32(b._data_id);
       w.writeInt32(n);
       Api.request(w)
       .then(resp => {
         throwIfRespNotOk(resp);
         evolveButton(b);
-        num_map[event_idx][line_idx][b._dataId] = n;
+        num_map[event_index][line_index][b._data_id] = n;
       })
       .catch(e => {
         console.error('Could not store num_map button');
@@ -168,14 +168,14 @@ export function update() { // @working
     };
     if (data_is_set) {
       line.classList.add('deletable');
-      line._dataId = num_map[event_idx].length;
+      line._data_id = num_map[event_index].length;
       // we need to make an API store request here
       let w = Api.createBufferWriter(Api.CREATE, Api.EVENTS_PERSONAL_NUM_MAP_ID);
       w.writeInt32(event_id);
       w.writeInt32(btns.length);
       let data = [];
       for (let j = 0; j < btns.length; j++) {
-        btns[j]._dataId = j;
+        btns[j]._data_id = j;
         evolveButton(btns[j]);
         const n = getNumVal(btns[j]);
         w.writeInt32(n);
@@ -184,7 +184,7 @@ export function update() { // @working
       Api.request(w)
       .then(resp => {
         throwIfRespNotOk(resp);
-        num_map[event_idx].push(data);
+        num_map[event_index].push(data);
       })
       .catch(e => {
         line.remove();
@@ -221,8 +221,8 @@ export function update() { // @working
   }
 
   // actual function code
-  for (const b of elements.event_role_list._btnList) {
-    if (event_roles.includes(b._dataId)) {
+  for (const b of elements.event_role_list._btn_list) {
+    if (event_roles.includes(b._data_id)) {
       b.classList.add('clicked');
     } else {
       b.classList.remove('clicked');
@@ -232,13 +232,13 @@ export function update() { // @working
   // nummap
   const base_width = 125;
   let width = base_width*(event_roles.length+1);
-  Utils.setWidthPx(elements.numtab_header_list, width);
-  Utils.setWidthPx(elements.numtab_content, width);
+  Utils.setWidthInPixels(elements.numtab_header_list, width);
+  Utils.setWidthInPixels(elements.numtab_content, width);
 
   function createLocalHeader(name) {
     let retval = document.createElement('div');
     retval.className = 'disp-flex justify-content-center';
-    Utils.setWidthPx(retval, width);
+    Utils.setWidthInPixels(retval, width);
     let header = document.createElement('h4');
     header.className = 'txt-center';
     header.textContent = name;
@@ -247,24 +247,24 @@ export function update() { // @working
   }
   // @nocheckin: we will need to merge all those iterations together
   let list = [createLocalHeader('Participants')];
-  for (const role_id of event_roles) {
-    const role_idx = data.rolesId.get(role_id);
-    if (role_idx === undefined) { throw new Error('Can find role_id') }
-    const name = data.rolesName[role_idx];
+  for (const role_identifier of event_roles) {
+    const role_index = data.roles_idetifier.get(role_id);
+    if (role_index === undefined) { throw new Error('Can find role_id') }
+    const name = data.roles_name[role_index];
     list.push(createLocalHeader(name));
   }
   elements.numtab_header_list.replaceChildren(...list);
 
   list = [];
-  for (let i = 0; i < num_map[event_idx].length; i++) {
+  for (let i = 0; i < num_map[event_index].length; i++) {
     let line = createTemplateLine(event_roles.length);
     line.classList.add('deletable');
     const btns = line.querySelectorAll('button');
-    line._dataId = i;
+    line._data_id = i;
     for (let j = 0; j < btns.length; j++) {
       let b = btns[j];
-      b._dataId = j;
-      const val = num_map[event_idx][i][j];
+      b._data_id = j;
+      const val = num_map[event_index][i][j];
       if (val === -1) {
         setEmptyBtn(b, () => {
           numeric_input.replace(b);
@@ -281,44 +281,44 @@ export function update() { // @working
   elements.numtab_content.replaceChildren(...list);
   addEmptyLine(event_roles.length); // idea is that addEmptyLine will add a line directly to the dom
 
-  list = [SearchDisplay.create('Participants', zonesId.COMPETENCES)];
-  for (const role_id of event_roles) {
-    const role_index = data.rolesId.get(role_id);
+  list = [SearchDisplay.create('Participants', zones_identifier.COMPETENCES)];
+  for (const role_identifier of event_roles) {
+    const role_index = data.roles_idetifier.get(role_id);
     if (role_index === undefined) { throw new Error("Can't find role_id") }; 
-    const name = data.rolesName[role_index];
-    list.push(SearchDisplay.create(name, zonesId.COMPETENCES));
+    const name = data.roles_name[role_index];
+    list.push(SearchDisplay.create(name, zones_identifier.COMPETENCES));
   }
   elements.comp_tables.replaceChildren(...list);
 
-  let duration = data.eventsDuration[event_idx];
+  let duration = data.events_duration[event_index];
   if (duration === undefined) {
-    data.eventsDuration[_eventId] = -1;
+    data.events_duration[_eventId] = -1;
     duration = -1;
   }
 
-  let button = EventInfo.dom.querySelector('#event-duration');
+  let button = EventInformation.dom.querySelector('#event-duration');
   function localCallback() {
-    button.replaceWith(numeric_input.elm);
-    numeric_input.elm.focus();
+    button.replaceWith(numeric_input.element);
+    numeric_input.element.focus();
     numeric_input.endOfWriting = endOfWriting;
   }
 
   function endOfWriting() {
-    const new_duration = Number(numeric_input.elm.value);
-    button.textContent = numeric_input.elm.value | '\u00A0';
-    numeric_input.elm.replaceWith(button);
-    const event_id = zones[zonesId.EVENT].selection._dataId;
-    const event_index = data.eventsId.get(event_id);
-    if (event_index === undefined) { throw new Error('[updating duration]: event_id does not exist'); }
-    if (numeric_input.elm.value === '') {
-      data.eventsDuration[event_id] = -1;
+    const new_duration = Number(numeric_input.element.value);
+    button.textContent = numeric_input.element.value | '\u00A0';
+    numeric_input.element.replaceWith(button);
+    const event_identifier = zones[zones_identifier.EVENT].selection._data_id;
+    const event_index = data.events_identifier.get(event_id);
+    if (event_index === undefined) { throw new Error('[updating duration]: event_identifier does not exist'); }
+    if (numeric_input.element.value === '') {
+      data.events_duration[event_id] = -1;
       return;
     }
     let buffer_writer = createDurationBuffer(new_duration, Api.CREATE, event_id);
     Api.request(buffer_writer)
     .then(response => {
       Utils.throwIfNotOk(response);
-      data.eventsDuration[event_index] = duration;
+      data.events_duration[event_index] = duration;
       button.classList.add('editable');
       button.removeEventListener('click', localCallback);
     })

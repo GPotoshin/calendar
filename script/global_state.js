@@ -1,14 +1,14 @@
 import * as DM from './data_manager.js';
 
 export let elements = {
-  calendarBody: document.getElementById('calendar-body'),
-  calendarContent: document.getElementById('calendar-content'),
-  markerBlocks: document.getElementsByClassName('block-marker'),
-  monthDisplay: document.getElementById('month-display'),
-  rightClickMenu: document.getElementById('right-click-menu'),
-  sideMenu: document.createElement('div'),
-  bodyContainer: document.getElementById('body-container'),
-  sideMenuContainer: null,
+  calendar_body: document.getElementById('calendar-body'),
+  calendar_content: document.getElementById('calendar-content'),
+  marker_blocks: document.getElementsByClassName('block-marker'),
+  month_display: document.getElementById('month-display'),
+  right_click_menu: document.getElementById('right-click-menu'),
+  side_menu: document.createElement('div'),
+  body_container: document.getElementById('body-container'),
+  side_menu_container: null,
   todayFrame: null,
   dataListContainer: null,
 
@@ -19,33 +19,33 @@ export let callbacks = {
   handleTyping: {func: null, obj: null},
 }
 
-export const viewId = {
+export const view_identifier = {
   CALENDER: 0,
   INFORMATION: 1,
 };
 
-export const zonesId = {
+export const zones_identifier = {
   NONE: -1,
-  DATATYPE: 0,
-  VIEWTYPE: 1,
+  DATA_TYPE: 0,
+  VIEW_TYPE: 1,
   EVENT: 2,
   STAFF: 3,
   VENUE: 4,
   SELECTABLE: 5,
-  EVENTSTAFF: 6,
+  EVENT_STAFF: 6,
   COMPETENCES: 7,
-  NUMMAP: 8,
+  PERSONAL_NUMBER_MAP: 8,
   DURATION: 9,
-  EMPLOYEESLIMIT: 10,
+  EMPLOYEES_LIMIT: 10,
 };
 
 // eList is the list of buttons, that way we have a direct access to it
 export let zones = [
-  { selection: null, eList: null },
-  { selection: null, eList: document.getElementById("view-type").children },
-  { selection: null, eList: document.createElement('div') },
-  { selection: null, eList: document.createElement('div') },
-  { selection: null, eList: document.createElement('div') },
+  { selection: null, element_list: null },
+  { selection: null, element_list: document.getElementById("view-type").children },
+  { selection: null, element_list: document.createElement('div') },
+  { selection: null, element_list: document.createElement('div') },
+  { selection: null, element_list: document.createElement('div') },
 ];
 
 export const data = new DM.DataManager();

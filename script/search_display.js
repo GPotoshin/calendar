@@ -4,32 +4,32 @@ import * as Utils from './utils.js';
 function fuzzyMatch(pattern, text) {
   pattern = pattern.toLowerCase();
   text = text.toLowerCase();
-  let patternIdx = 0;
-  let textIdx = 0;
+  let pattern_index = 0;
+  let text_index = 0;
   let score = 0;
   let consecutiveMatches = 0;
   const matches = [];
-  while (patternIdx < pattern.length && textIdx < text.length) {
-    if (pattern[patternIdx] === text[textIdx]) {
-      matches.push(textIdx);
-      if (patternIdx > 0 && matches[patternIdx - 1] === textIdx - 1) {
+  while (pattern_index < pattern.length && text_index < text.length) {
+    if (pattern[pattern_index] === text[text_index]) {
+      matches.push(text_index);
+      if (pattern_index > 0 && matches[patternIdx - 1] === text_index - 1) {
         consecutiveMatches++;
         score += 5 + consecutiveMatches;
       } else {
         consecutiveMatches = 0;
         score += 1;
       }
-      if (textIdx === 0 || text[textIdx - 1] === ' ') {
+      if (text_index === 0 || text[textIdx - 1] === ' ') {
         score += 10;
       }
-      if (text[textIdx] === text[textIdx].toUpperCase() && text[textIdx] !== ' ') {
+      if (text[text_index] === text[textIdx].toUpperCase() && text[textIdx] !== ' ') {
         score += 5;
       }
-      patternIdx++;
+      pattern_index++;
     }
-    textIdx++;
+    text_index++;
   }
-  if (patternIdx !== pattern.length) {
+  if (pattern_index !== pattern.length) {
     return null;
   }
   score -= (text.length - pattern.length) * 0.5;
@@ -40,13 +40,13 @@ function updateList(input, container) {
   const query = input.value;
   if (!query) {
     container.innerHTML = '';
-    for (const b of container._btnList) {
+    for (const b of container._btn_list) {
       container.append(b);
     }
     return;
   }
   const scored = [];
-  for (const b of container._btnList) {
+  for (const b of container._btn_list) {
     const score = fuzzyMatch(query, b.textContent);
     if (score !== null) {
       scored.push({ btn: b, score: score });

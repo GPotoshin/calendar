@@ -1,4 +1,4 @@
-import { data, zonesId } from './global_state.js';
+import * as Global from './global_state.js';
 
 export let dom = document.createElement('div');
 
@@ -8,12 +8,15 @@ export function loadTemplate() {
   dom.innerHTML = `
     <div class="v-container">
     <div class="js-select row-selection">
-    Nombre maximal d'employés impliqués par jour: <button class="editable hover std-min no-padding txt-center tiny-button">${data.employeesLimit}</button>
+    Nombre maximal d'employés impliqués par jour:
+      <button class="editable hover std-min no-padding txt-center tiny-button">
+      ${Global.data.employees_limit}
+      </button>
     <div>
     </div>
   `;
 
   let row = dom.querySelector('.js-select');
   row.classList.remove('js-select');
-  row._id = zonesId.EMPLOYEESLIMIT;
+  row._identifier = Global.zones_identifier.EMPLOYEES_LIMIT;
 }

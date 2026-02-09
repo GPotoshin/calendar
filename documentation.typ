@@ -19,6 +19,11 @@ if the same code repeats twice, its beeing put in a function. The project uses
 no dependencies except for languages its written in go and js and their standart
 libraries. All those approaches increases perforamance and reduces surface area.
 
+=== Style
+Names are never abriviated. Variable are snake_case, function are camelCase,
+types and namespaces are BigCamelCase, additional dynamic properties start with
+_ and are _camel_case.
+
 === Architecture
 
 === Server API

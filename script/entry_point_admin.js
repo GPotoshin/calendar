@@ -1,9 +1,6 @@
-import {
-  setMonthScrollPosition,
-} from './calendar.js';
-
+import * as Calendar from './calendar.js';
 import * as Api from './api.js';
-import * as EventInfo from './event_info.js';
+import * as EventInformation from './event_information.js';
 import * as Utils from './utils.js';
 import { palette } from './color.js';
 import { BufferReader, BufferWriter } from './io.js';
@@ -13,152 +10,28 @@ import {} from './context_menu.js'; // we need it
 import {
   callbacks,
   elements,
-  zonesId,
-  viewId,
+  zones_identifier,
+  view_identifier,
   zones,
   data,
 } from './global_state.js';
 import { token } from './login.js';
-import { composeList, composeUsersList } from './side_menu.js';
-import * as CalendarInfo from './calendar_info.js'
+import * as SideMenu from './side_menu.js';
+import * as CalendarInformation from './calendar_information.js'
 
 const MS_IN_DAY = 86400000;
 
 let state = {
-  viewSelection: 0,
-  datasetSelection: 0,
-  eventsSelection: -1,
-  staffSelection: -1,
-  venueSelection: -1,
-  focusedElement: null,
-  baseDayNumber: 0,
-  isUpdating: false,
   scrollPosSave: 0,
 };
 
+Calendar.init();
+
 {
-  elements.view[viewId.INFORMATION] = document.createElement('div');
-  elements.view[viewId.INFORMATION].classList =
+  elements.veiws[view_identifier.INFORMATION] = document.createElement('div');
+  elements.veiws[view_identifier.INFORMATION].classList =
     'view-content v-container align-items-center';
 }
-
-const months = [
-  'Janvier',
-  'Février',
-  'Mars',
-  'Avril',
-  'Mai',
-  'Juin',
-  'Juillet',
-  'Août',
-  'Septembre',
-  'Octobre',
-  'Novembre',
-  'Décembre',
-];
-
-
-// sets year and month from `data` as a header
-function setMonthDisplay(date) {
-  let monthHolder = document.createElement('strong');
-  monthHolder.textContent = months[date.getMonth()];
-  let year = document.createTextNode(" " + date.getFullYear());
-  elements.monthDisplay.replaceChildren(monthHolder, year);
-}
-
-let observers = {
-  topMonthWeek: null,
-  bottumMonthWeek: null,
-  calendarScrolling: null,
-};
-
-let focus = {
-  date: null,
-};
-
-function setUiList(ui, list) {
-  for (let i = 0; i < list.length; i++) {
-    var button = document.createElement('button');
-    button.addEventListener('click', () => {
-      this.classList.toggle('clicked');
-    });
-
-    button.className = 'hover';
-    button.textContent = list[i];
-    button._idx = i;
-    ui.appendChild(button);
-  }
-}
-
-
-// runs a callback over all days in the displayed buffer
-function iterateOverDays(dayCallback) {
-  const list = elements.calendarContent.children;
-  for (let i = 0; i < list.length; i++) {
-    var el = list[i];
-    if (el.classList.contains('block-marker')) {
-      continue;
-    }
-    for (let j = 0; j < el.children.length; j++) {
-      dayCallback(el.children[j]);
-    }
-  }
-}
-
-function refocusMonth() {
-  setMonthDisplay(focus.date);
-  let date = new Date();
-  date.setTime(Number(elements.calendarContent.children[0].children[0]._dayNum)*MS_IN_DAY)
-  const focusMonth = focus.date.getMonth();
-  iterateOverDays((day) => {
-    if (date.getMonth() == focusMonth) {
-      day.classList.add('focused-month');
-    } else {
-      day.classList.remove('focused-month');
-    }
-    date.setDate(date.getDate() + 1);
-  });
-}
-
-function dateFromDayNum(n) {
-  let date = new Date();
-  date.setTime(Number(n)*MS_IN_DAY);
-}
-
-function setMonthObserver() {
-  observers.topWeek.disconnect();
-  observers.bottomWeek.disconnect();
-  const weeks = elements.calendarContent.children;
-  const month = focus.date.getMonth();
-
-  let testDate = new Date();
-  for (let i = 0; i < weeks.length; i++) {
-    var el = weeks[i];
-    if (el.classList.contains('block-marker')) {
-      continue;
-    }
-    const day = el.children[6];
-    testDate.setTime(Number(day._dayNum)*MS_IN_DAY);
-    if (testDate.getMonth() == month) {
-      observers.topWeek.observe(el);
-      break;
-    }
-  }
-  for (let i = weeks.length-1; i >= 0; i--) {
-    var el = weeks[i];
-    if (el.classList.contains('block-marker')) {
-      continue;
-    }
-    const day = el.children[0];
-    testDate.setTime(Number(day._dayNum)*MS_IN_DAY);
-    if (testDate.getMonth() == month) {
-      observers.bottomWeek.observe(el);
-      break;
-    }
-  }
-}
-
-setMonthScrollPosition();
 
 {
   const writer = new BufferWriter();
@@ -171,17 +44,17 @@ setMonthScrollPosition();
     },
     body: writer.getBuffer(),
   })
-    .then(resp => {
+    .then(response => {
       Utils.throwIfNotOk(resp);
-      resp.arrayBuffer().then(
-        bin => {
-          const r = new BufferReader(bin);
-          data.read(r)
-          composeList(data.eventsId, data.eventsName, zonesId.EVENT);
-          composeUsersList();
-          composeList(data.venuesId, data.venuesName, zonesId.VENUE);
-          EventInfo.loadTemplate();
-          CalendarInfo.loadTemplate();
+      response.arrayBuffer().then(
+        binary => {
+          const reader = new BufferReader(binary);
+          data.read(reader)
+          SideMenu.composeList(data.events_identifier, data.events_name, zones_identifier.EVENT);
+          SideMenu.composeUsersList();
+          SideMenu.composeList(data.venues_identifier, data.venues_name, zones_identifier.VENUE);
+          EventInformation.loadTemplate();
+          CalendarInformation.loadTemplate();
         });
     })
     .catch(e => {
@@ -190,133 +63,38 @@ setMonthScrollPosition();
 }
 
 {
-  let viewType = document.getElementById('view-type');
-  let b1 = document.createElement('button');
-  let b2 = document.createElement('button');
-  b1.textContent = 'Calendrier';
-  b1._dataId = viewId.CALENDAR;
-  b1.addEventListener('click' ,()=>{
-    elements.bodyContainer.replaceChild(elements.view[viewId.CALENDER], elements.bodyContainer.children[1]);
-    if (zones[zonesId.VIEWTYPE].selection === b2) {
+  let view_type = document.getElementById('view-type');
+  let calendar_button = document.createElement('button');
+  let information_button = document.createElement('button');
+  calendar_button.textContent = 'Calendrier';
+  calendar_button._data_identifier = view_identifier.CALENDAR;
+  calendar_button.addEventListener('click' ,()=>{
+    elements.body_container.replaceChild(elements.veiws[view_identifier.CALENDER], elements.body_container.children[1]);
+    if (zones[zones_identifier.VIEW_TYPE].selection === information_button) {
       // probably we don't need to swap styles, if we do it before rendering
-      elements.calendarBody.classList.replace('scroll-smooth', 'scroll-auto');
-      elements.calendarBody.scrollTop = state.scrollPosSave;
-      elements.calendarBody.classList.replace('scroll-auto', 'scroll-smooth');
+      elements.calendar_body.classList.replace('scroll-smooth', 'scroll-auto');
+      elements.calendar_body.scrollTop = state.scrollPosSave;
+      elements.calendar_body.classList.replace('scroll-auto', 'scroll-smooth');
     }
-    zones[zonesId.VIEWTYPE].selection = b1;
+    zones[zones_identifier.VIEW_TYPE].selection = calendar_button;
   });
-  b2.textContent = 'Information';
-  b2._dataId = viewId.INFORMATION;
-  b2.addEventListener('click' ,()=>{
-    if (zones[zonesId.VIEWTYPE].selection === b1) {
-      state.scrollPosSave = elements.calendarBody.scrollTop;
-      elements.bodyContainer.replaceChild(elements.view[viewId.INFORMATION], elements.bodyContainer.children[1]);
-      zones[zonesId.VIEWTYPE].selection = b2;
+  information_button.textContent = 'Informationrmation';
+  information_button._data_identifier = view_identifier.INFORMATION;
+  information_button.addEventListener('click' ,()=>{
+    if (zones[zones_identifier.VIEW_TYPE].selection === calendar_button) {
+      state.scrollPosSave = elements.calendar_body.scrollTop;
+      elements.body_container.replaceChild(elements.veiws[view_identifier.INFORMATION], elements.body_container.children[1]);
+      zones[zones_identifier.VIEW_TYPE].selection = information_button;
     }
-    const data_selection = zones[zonesId.DATATYPE].selection._dataId;
+    const data_selection = zones[zones_identifier.DATA_TYPE].selection._data_id;
     if (zones[data_selection].selection === null) {
-      elements.view[viewId.INFORMATION].replaceChildren(CalendarInfo.dom);
-    } else if (data_selection === zonesId.EVENT) {
-      EventInfo.update();
-      elements.view[viewId.INFORMATION].replaceChildren(EventInfo.dom);
+      elements.veiws[view_identifier.INFORMATION].replaceChildren(CalendarInformation.dom);
+    } else if (data_selection === zones_identifier.EVENT) {
+      EventInformation.update();
+      elements.veiws[view_identifier.INFORMATION].replaceChildren(EventInformation.dom);
     }
     
   });
-  viewType.append(b1,b2);
-  zones[zonesId.VIEWTYPE].selection = b1;
+  view_type.append(calendar_button, information_button);
+  zones[zones_identifier.VIEW_TYPE].selection = calendar_button;
 }
-
-observers.topWeek = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      focus.date.setMonth(focus.date.getMonth()-1);
-      refocusMonth();
-      setMonthObserver();
-    }
-  });
-}, {
-  root: elements.calendarBody,
-  threshold: [1],
-  rootMargin: '-66% 0px 0px 0px'
-});
-observers.bottomWeek = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      focus.date.setMonth(focus.date.getMonth()+1);
-      refocusMonth();
-      setMonthObserver();
-    }
-  });
-}, {
-  root: elements.calendarBody,
-  threshold: [1],
-  rootMargin: '0px 0px -66% 0px'
-});
-observers.calendarScrolling = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      if (state.isUpdating) return;
-      state.isUpdating = true;
-      elements.todayFrame.classList.remove('today');
-      const SHIFTING_BY = 5;
-      let shiftingBy = SHIFTING_BY;
-      if (entry.target === elements.markerBlocks[0]) {
-        shiftingBy = -SHIFTING_BY;
-      }
-      const week = elements.calendarContent.querySelectorAll('.week-row')[0];
-      elements.calendarBody.classList.replace('scroll-smooth', 'scroll-auto');
-      // @nocheckin: We should scroll by a variable offset determined after
-      // dom content modification.
-      elements.calendarBody.scrollTop -= shiftingBy*week.offsetHeight;
-      elements.calendarBody.classList.replace('scroll-auto', 'scroll-smooth');
-      requestAnimationFrame(() => {
-        state.baseDayNumber += shiftingBy*7;
-        let date = new Date();
-        const today = Math.floor(date.getTime()/MS_IN_DAY);
-        const offset = today - state.baseDayNumber;
-
-        date.setTime(state.baseDayNumber*MS_IN_DAY);
-        const focusMonth = focus.date.getMonth();
-        iterateOverDays((day) => {
-          day.children[0].textContent = date.getDate();
-          day._dayNum = Math.floor(date.getTime() / MS_IN_DAY);
-          if (day._dayNum == today) {
-            day.classList.add('today');
-            elements.todayFrame = day;
-          }
-          date.setDate(date.getDate() + 1);
-        });
-        refocusMonth();
-        setMonthObserver();
-        setTimeout(() => {
-          state.isUpdating = false;
-        }, 100);
-      });
-    }
-  });
-}, {
-  root: elements.calendarBody,
-});
-observers.calendarScrolling.observe(elements.markerBlocks[0]);
-observers.calendarScrolling.observe(elements.markerBlocks[1]);
-let date = new Date();
-focus.date = new Date();
-const today_epoch = Math.floor(date.getTime() / MS_IN_DAY);
-const today_weekday = (date.getDay()+6)%7;
-elements.todayFrame = elements.calendarContent.children[8].children[today_weekday];
-elements.todayFrame.classList.add('today');
-
-state.baseDayNumber = today_epoch-today_weekday-7*7;
-date.setTime(state.baseDayNumber*MS_IN_DAY);
-
-setMonthDisplay(focus.date);
-const focusMonth = focus.date.getMonth();
-iterateOverDays((day) => {
-  day.children[0].textContent = date.getDate();
-  day._dayNum = Math.floor(date.getTime() / MS_IN_DAY);
-  if (date.getMonth() == focusMonth) {
-    day.classList.add('focused-month');
-  }
-  date.setDate(date.getDate() + 1);
-});
-setMonthObserver(focus.month);

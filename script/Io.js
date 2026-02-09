@@ -2,7 +2,7 @@ export class BufferReader {
   constructor(buf) {
       this.view = new DataView(buf);
       this.offset = 0;
-      this.textDecoder = new TextDecoder('utf-8');
+      this.text_decoder = new TextDecoder('utf-8');
   }
 
   readInt32() {
@@ -59,8 +59,8 @@ export class BufferReader {
       throw new Error(`Buffer overrun reading String of length ${length}`);
     }
 
-    const stringBytes = new Uint8Array(this.view.buffer, this.offset, length);
-    const value = this.textDecoder.decode(stringBytes);
+    const string_bytes = new Uint8Array(this.view.buffer, this.offset, length);
+    const value = this.text_decoder.decode(string_bytes);
     this.offset += length;
     return value;
   }
@@ -119,10 +119,10 @@ export class BufferWriter {
   ensureCapacity(additionalBytes) {
     const required = this.offset + additionalBytes;
     if (required > this.buffer.byteLength) {
-      const newSize = Math.max(required, this.buffer.byteLength * 2);
-      const newBuffer = new ArrayBuffer(newSize);
-      new Uint8Array(newBuffer).set(new Uint8Array(this.buffer));
-      this.buffer = newBuffer;
+      const new_size = Math.max(required, this.buffer.byteLength * 2);
+      const new_buffer = new ArrayBuffer(new_size);
+      new Uint8Array(new_buffer).set(new Uint8Array(this.buffer));
+      this.buffer = new_buffer;
       this.view = new DataView(this.buffer);
     }
   }
@@ -133,16 +133,16 @@ export class BufferWriter {
     this.offset += 4;
   }
 
-  writeHash(hashBytes) {
-    if (hashBytes.length !== 32) {
-      throw new Error(`Invalid hash length: expected 32, got ${hashBytes.length}`);
+  writeHash(hash_bytes) {
+    if (hash_bytes.length !== 32) {
+      throw new Error(`Invalid hash length: expected 32, got ${hash_bytes.length}`);
     }
     this.ensureCapacity(32);
-    new Uint8Array(this.buffer, this.offset, 32).set(hashBytes);
+    new Uint8Array(this.buffer, this.offset, 32).set(hash_bytes);
     this.offset += 32;
   }
 
-  writeString(str) {
+  writeString(string) {
     const encoded = this.textEncoder.encode(str);
     const length = encoded.length;
     this.writeInt32(length);
