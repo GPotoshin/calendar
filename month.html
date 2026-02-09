@@ -24,7 +24,7 @@
 {{ end }}
 
 {{ define "weeksblock" }}
-{{range $idx, $week := .Weeks}}
+{{range $index, $week := .Weeks}}
 <div class="week-row">
   {{template "weekrow" $week}}
 </div>

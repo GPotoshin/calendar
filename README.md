@@ -5,8 +5,6 @@ run `go build && ./calendar` and open `http://localhost:8080`
 ![Settings screenshot](assets/settings.png)
 
 ## Bugs
-+ when we switch views we lose scrolling position
-+ when we clean up tokens on the second turn I guess, we read from a wrong index
 + when we right click for the second time we don't clear the old options. A
 solution may be to make button disappear on right click.
 

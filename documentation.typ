@@ -32,7 +32,7 @@ _ and are _camel_case.
 
 === Side Menu
 
-=== Event Info
+=== Event Information
 
 === Calendar View
 
