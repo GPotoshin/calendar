@@ -1,4 +1,4 @@
-import { zonesId } from './global_state.js';
+import { zones_identifier } from './global_state.js';
 import * as Utils from './utils.js';
 
 function fuzzyMatch(pattern, text) {
@@ -19,10 +19,10 @@ function fuzzyMatch(pattern, text) {
         consecutiveMatches = 0;
         score += 1;
       }
-      if (text_index === 0 || text[textIdx - 1] === ' ') {
+      if (text_index === 0 || text[text_index - 1] === ' ') {
         score += 10;
       }
-      if (text[text_index] === text[textIdx].toUpperCase() && text[textIdx] !== ' ') {
+      if (text[text_index] === text[text_index].toUpperCase() && text[text_index] !== ' ') {
         score += 5;
       }
       pattern_index++;
@@ -40,13 +40,13 @@ function updateList(input, container) {
   const query = input.value;
   if (!query) {
     container.innerHTML = '';
-    for (const b of container._btn_list) {
+    for (const b of container._button_list) {
       container.append(b);
     }
     return;
   }
   const scored = [];
-  for (const b of container._btn_list) {
+  for (const b of container._button_list) {
     const score = fuzzyMatch(query, b.textContent);
     if (score !== null) {
       scored.push({ btn: b, score: score });
@@ -83,9 +83,9 @@ export function createAndReturnListContainer(name, id) {
   const searchInput = menu.querySelector('.searching-input');
   objList[0].textContent = name;
   const container = objList[1];
-  Utils.setWidthPx(menu.children[1], 200);
-  Utils.setWidthPx(menu.children[2], 200);
-  objList[1]._id = zonesId.EVENTSTAFF;
+  Utils.setWidthInPixels(menu.children[1], 200);
+  Utils.setWidthInPixels(menu.children[2], 200);
+  objList[1]._identifier = zones_identifier.EVENT_STAFF;
 
   searchInput.addEventListener('input', () => { updateList(searchInput, container); });
   return [menu, objList[1]];
@@ -100,8 +100,8 @@ export function dynamise(menu, btnPlaceholder = '') {
   const objList = menu.querySelectorAll('.js-set');
   const searchInput = menu.querySelector('.searching-input');
   const container = objList[1];
-  Utils.setWidthPx(menu.children[1], 200);
-  Utils.setWidthPx(menu.children[2], 200);
+  Utils.setWidthInPixels(menu.children[1], 200);
+  Utils.setWidthInPixels(menu.children[2], 200);
   if (btnPlaceholder != '') {
     objList[1]._btnPlaceholder = btnPlaceholder;
   }

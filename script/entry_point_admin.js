@@ -67,7 +67,7 @@ Calendar.init();
   let calendar_button = document.createElement('button');
   let information_button = document.createElement('button');
   calendar_button.textContent = 'Calendrier';
-  calendar_button._data_identifier = view_identifier.CALENDAR;
+  calendar_button._data_identifierentifier = view_identifier.CALENDAR;
   calendar_button.addEventListener('click' ,()=>{
     elements.body_container.replaceChild(elements.veiws[view_identifier.CALENDER], elements.body_container.children[1]);
     if (zones[zones_identifier.VIEW_TYPE].selection === information_button) {
@@ -79,15 +79,14 @@ Calendar.init();
     zones[zones_identifier.VIEW_TYPE].selection = calendar_button;
   });
   information_button.textContent = 'Informationrmation';
-  information_button._data_identifier = view_identifier.INFORMATION;
+  information_button._data_identifierentifier = view_identifier.INFORMATION;
   information_button.addEventListener('click' ,()=>{
     if (zones[zones_identifier.VIEW_TYPE].selection === calendar_button) {
       state.scrollPosSave = elements.calendar_body.scrollTop;
       elements.body_container.replaceChild(elements.veiws[view_identifier.INFORMATION], elements.body_container.children[1]);
       zones[zones_identifier.VIEW_TYPE].selection = information_button;
     }
-    const data_selection = zones[zones_identifier.DATA_TYPE].selection._data_id;
-    if (zones[data_selection].selection === null) {
+    const data_selection = zones[zones_identifier.DATA_TYPE].selection._data_identifier; if (zones[data_selection].selection === null) {
       elements.veiws[view_identifier.INFORMATION].replaceChildren(CalendarInformation.dom);
     } else if (data_selection === zones_identifier.EVENT) {
       EventInformation.update();

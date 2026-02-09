@@ -55,19 +55,19 @@ b1.addEventListener('click', () => {
   handleClickOnViewButton(b1, zones_identifier.EVENT);
 });
 b1.textContent = 'Événements';
-b1._data_identifier = zones_identifier.EVENT;
+b1._data_identifierentifier = zones_identifier.EVENT;
 let b2 = document.createElement('button');
 b2.addEventListener('click', () => {
   handleClickOnViewButton(b2, zones_identifier.STAFF);
 });
 b2.textContent = 'Personnel';
-b2._data_identifier = zones_identifier.STAFF;
+b2._data_identifierentifier = zones_identifier.STAFF;
 let b3 = document.createElement('button');
 b3.addEventListener('click', () => {
   handleClickOnViewButton(b3, zones_identifier.VENUE);
 });
 b3.textContent = 'Lieux';
-b3._data_identifier = zones_identifier.VENUE;
+b3._data_identifierentifier = zones_identifier.VENUE;
 bContainer.append(b1, b2, b3);
 
 zones[zones_identifier.DATA_TYPE].selection = b1;
@@ -84,7 +84,7 @@ export function buttonClickCallback(event) {
   if (previous_button === current_button) {
     Utils.setBackgroundColor(current_button, 'transparent');
     zone.selection = null;
-    if (zones[zones_identifier.VIEW_TYPE].selection._data_identifier === view_identifier.INFORMATION) {
+    if (zones[zones_identifier.VIEW_TYPE].selection._data_identifierentifier === view_identifier.INFORMATION) {
       elements.veiws[view_identifier.INFORMATION].replaceChildren(CalendarInformation.dom);
     } else {
 
@@ -97,7 +97,7 @@ export function buttonClickCallback(event) {
     }
     Utils.setBackgroundColor(current_button, palette.blue);
     zone.selection = current_button;
-    if (zones[zones_identifier.VIEW_TYPE].selection._data_identifier === view_identifier.INFORMATION) {
+    if (zones[zones_identifier.VIEW_TYPE].selection._data_identifierentifier === view_identifier.INFORMATION) {
       EventInformation.update();
       elements.veiws[view_identifier.INFORMATION].replaceChildren(EventInformation.dom);
     } else {
@@ -142,7 +142,7 @@ export function composeList(map, names, list_identifier) {
 }
 
 export function setUserButton(button, name, surname, matricule) {
-  button._data_identifier = matricule;
+  button._data_identifierentifier = matricule;
   let left = document.createElement('span');
   left.textContent = name+' '+surname;
   let right = document.createElement('span');
@@ -152,9 +152,9 @@ export function setUserButton(button, name, surname, matricule) {
 }
 
 export function composeUsersList() {
-  for (const [mat, idx] of data.users_identifier) {
-    const name = data.users_name[idx]; // @factorout
-    const surname = data.users_surname[idx];
+  for (const [mat, index] of data.users_identifier) {
+    const name = data.users_name[index]; // @factorout
+    const surname = data.users_surname[index];
     let button = createListButtonAndSetToggleCallback();
     setUserButton(button, name, surname, mat);
     zones[zones_identifier.STAFF].element_list.appendChild(button);

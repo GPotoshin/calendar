@@ -4,7 +4,7 @@ import * as Utils from './utils.js';
 import { numeric_input } from './numeric_input.js';
 import { BufferWriter } from './io.js';
 import * as Api from './api.js';
-import * as EventInformation from './event_info.js';
+import * as EventInformation from './event_information.js';
 
 export let dom = document.createElement('div');
 
@@ -71,14 +71,14 @@ export function loadTemplate() {
   `;
 
   let [sDisplay, container] = SearchDisplay.createAndReturnListContainer('Personnel', zones_identifier.EVENT_STAFF);
-  container._btn_list = [];
+  container._button_list = [];
 
-  for (const [id, idx] of data.roles_idetifier) {
-    const name = data.roles_name[idx];
+  for (const [id, index] of data.roles_idetifier) {
+    const name = data.roles_name[index];
     const b = SearchDisplay.createButton(); 
     Utils.setNameAndId(b, name, id);
     container.appendChild(b);
-    container._btn_list.push(b);
+    container._button_list.push(b);
   }
   elements.event_role_list = container;
 
@@ -108,7 +108,7 @@ export function update() { // @working
   if (zone.selection == null) { // we need to show general setting
     return;
   }
-  const event_identifier = zone.selection._data_id;
+  const event_identifier = zone.selection._data_identifier;
   const event_index = data.events_identifier.get(event_id);
   if (event_index === undefined) { throw new Error("[update] no entry for event_id"); }
   const event_roles = data.events_roles[event_index];
@@ -142,13 +142,13 @@ export function update() { // @working
       let w = Api.createBufferWriter(Api.UPDATE, Api.EVENTS_PERSONAL_NUM_MAP_ID);
       w.writeInt32(event_id);
       w.writeInt32(line_index);
-      w.writeInt32(b._data_id);
+      w.writeInt32(b._data_identifier);
       w.writeInt32(n);
       Api.request(w)
       .then(resp => {
         throwIfRespNotOk(resp);
         evolveButton(b);
-        num_map[event_index][line_index][b._data_id] = n;
+        num_map[event_index][line_index][b._data_identifier] = n;
       })
       .catch(e => {
         console.error('Could not store num_map button');
@@ -168,14 +168,14 @@ export function update() { // @working
     };
     if (data_is_set) {
       line.classList.add('deletable');
-      line._data_id = num_map[event_index].length;
+      line._data_identifier = num_map[event_index].length;
       // we need to make an API store request here
       let w = Api.createBufferWriter(Api.CREATE, Api.EVENTS_PERSONAL_NUM_MAP_ID);
       w.writeInt32(event_id);
       w.writeInt32(btns.length);
       let data = [];
       for (let j = 0; j < btns.length; j++) {
-        btns[j]._data_id = j;
+        btns[j]._data_identifier = j;
         evolveButton(btns[j]);
         const n = getNumVal(btns[j]);
         w.writeInt32(n);
@@ -221,8 +221,8 @@ export function update() { // @working
   }
 
   // actual function code
-  for (const b of elements.event_role_list._btn_list) {
-    if (event_roles.includes(b._data_id)) {
+  for (const _button of elements.event_role_list._button_list) {
+    if (event_roles.includes(_button._data_identifier)) {
       b.classList.add('clicked');
     } else {
       b.classList.remove('clicked');
@@ -260,10 +260,10 @@ export function update() { // @working
     let line = createTemplateLine(event_roles.length);
     line.classList.add('deletable');
     const btns = line.querySelectorAll('button');
-    line._data_id = i;
+    line._data_identifier = i;
     for (let j = 0; j < btns.length; j++) {
       let b = btns[j];
-      b._data_id = j;
+      b._data_identifier = j;
       const val = num_map[event_index][i][j];
       if (val === -1) {
         setEmptyBtn(b, () => {
@@ -307,7 +307,7 @@ export function update() { // @working
     const new_duration = Number(numeric_input.element.value);
     button.textContent = numeric_input.element.value | '\u00A0';
     numeric_input.element.replaceWith(button);
-    const event_identifier = zones[zones_identifier.EVENT].selection._data_id;
+    const event_identifier = zones[zones_identifier.EVENT].selection._data_identifier;
     const event_index = data.events_identifier.get(event_id);
     if (event_index === undefined) { throw new Error('[updating duration]: event_identifier does not exist'); }
     if (numeric_input.element.value === '') {

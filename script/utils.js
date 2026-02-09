@@ -21,11 +21,11 @@ export function measureText(style, text) {
   return measure.getBoundingClientRect().width;
 }
 
-export function setWidthPx(element, width) {
+export function setWidthInPixels(element, width) {
   element.style.setProperty('width', Number(width)+'px');
 }
 
-export function setBgColor(element, color) {
+export function setBackgroundColor(element, color) {
   element.style.setProperty('background-color', color);
 }
 
@@ -41,7 +41,7 @@ export function createTextInput(placeholder) {
 }
 
 export function setNameAndId(b, name, id) {
-  b._dataId = id;
+  b._data_id = id;
   let span = document.createElement('span');
   span.textContent = name;
   b.appendChild(span);

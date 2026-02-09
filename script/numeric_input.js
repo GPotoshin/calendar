@@ -14,12 +14,12 @@ export var numeric_input = {
 
 numeric_input.element.type = 'text';
 numeric_input.element.className = 'std-min txt-center tiny-input';
-Utils.setWidthPx(numeric_input.element, 0);
+Utils.setWidthInPixels(numeric_input.element, 0);
 
 numeric_input.element.addEventListener('input', () => {
   numeric_input.element.value = Utils.digitise(numeric_input.element.value);
   const w = Utils.measureText(window.getComputedStyle(numeric_input.element), numeric_input.element.value)+2;
-  Utils.setWidthPx(numeric_input.element, w);
+  Utils.setWidthInPixels(numeric_input.element, w);
 });
 
 function end() {

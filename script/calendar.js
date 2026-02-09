@@ -65,12 +65,12 @@ export function init() {
           elements.calendar_body.scrollTop -= shiftingBy*week.offsetHeight;
         elements.calendar_body.classList.replace('scroll-auto', 'scroll-smooth');
         requestAnimationFrame(() => {
-          state.baseDayNumber += shiftingBy*7;
+          state.base_day_number += shiftingBy*7;
           let date = new Date();
           const today = Math.floor(date.getTime()/MS_IN_DAY);
-          const offset = today - state.baseDayNumber;
+          const offset = today - state.base_day_number;
 
-          date.setTime(state.baseDayNumber*MS_IN_DAY);
+          date.setTime(state.base_day_number*MS_IN_DAY);
           const focusMonth = focus.date.getMonth();
           iterateOverDays((day) => {
             day.children[0].textContent = date.getDate();
@@ -101,8 +101,8 @@ export function init() {
   elements.todayFrame = elements.calendar_content.children[8].children[today_weekday];
   elements.todayFrame.classList.add('today');
 
-  state.baseDayNumber = today_epoch-today_weekday-7*7;
-  date.setTime(state.baseDayNumber*MS_IN_DAY);
+  state.base_day_number = today_epoch-today_weekday-7*7;
+  date.setTime(state.base_day_number*MS_IN_DAY);
 
   setMonthDisplay(focus.date);
   const focusMonth = focus.date.getMonth();
@@ -218,7 +218,7 @@ export function update() {
   let date = new Date();
   const today = Math.floor(date.getTime()/MS_IN_DAY);
   const offset = today - state.base_day_number;
-  date.setTime(state.baseDayNumber*MS_IN_DAY);
+  date.setTime(state.base_day_number*MS_IN_DAY);
   const focusMonth = focus.date.getMonth();
   iterateOverDays((day) => {
     day.children[0].textContent = date.getDate();
@@ -349,9 +349,9 @@ elements.calendar_body.addEventListener('mousemove', e => {
     
     const event_selection = Glob.zones[Glob.zones_identifier.EVENT].selection;
     if (event_selection != null) {
-      const ev_identifier = event_selection._data_identifier;
-      const idx = Glob.data.eventsId.get(ev_id);
-      const name = Glob.data.eventsName[idx];
+      const ev_identifier = event_selection._data_identifierentifier;
+      const index = Glob.data.events_identifier.get(ev_id);
+      const name = Glob.data.events_name[index];
       state.bar.textContent = name;
     }
     else {

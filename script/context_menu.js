@@ -10,6 +10,13 @@ import * as EventInformation from './event_information.js';
 import { numeric_input } from './numeric_input.js';
 import { palette } from './color.js';
 
+let buttons = {
+  delete: document.getElementById('delete-button'),
+  edit: document.getElementById('edit-button'),
+  toggle: document.getElementById('toggle-button'),
+  create: document.getElementById('create-button'),
+};
+
 let state = {
   delete_target: null,
   extend_target: null,
@@ -27,22 +34,22 @@ function handleClickForContextMenu() {
 }
 
 function createUserDataInputs() {
-  const retval = {
+  const inputs = {
     name:      Utils.createTextInput('Prenom'),
     surname:   Utils.createTextInput('Nom'),
     matricule: Utils.createTextInput('Matricule'),
   };
-  retval.matricule.addEventListener('input', () => {
-    retval.matricule.value = Utils.digitise(retval.matricule.value);
+  inputs.matricule.addEventListener('input', () => {
+    inputs.matricule.value = Utils.digitise(inputs.matricule.value);
   });
-  return retval;
+  return inputs;
 }
 
-function endOfUserInputs(b, w, inputs) {
-  b.addEventListener('click', SideMenu.buttonClickCallback);
-  w.writeInt32(Number(inputs.matricule.value));
-  w.writeString(inputs.name.value);
-  w.writeString(inputs.surname.value);
+function endOfUserInputs(button, writer, inputs) {
+  button.addEventListener('click', SideMenu.buttonClickCallback);
+  writer.writeInt32(Number(inputs.matricule.value));
+  writer.writeString(inputs.name.value);
+  writer.writeString(inputs.surname.value);
   inputs.name.remove();
   inputs.name = null;
   inputs.surname.remove();
@@ -61,103 +68,103 @@ function getValuesFromUserInputs(inputs) {
   return [inputs.name.value, inputs.surname.value, Number(inputs.matricule.value)];
 }
 
-function escOrCreateOnEnter(e, b, inputs, next = null) {
-  if (e.key === 'Enter') {
+function escOrCreateOnEnter(event, button, inputs, next = null) {
+  if (event.key === 'Enter') {
     if (userInputsAreNotEmpty(inputs)) {
-      e.preventDefault();
+      event.preventDefault();
       const [name, surname, matricule] = getValuesFromUserInputs(inputs);
 
       if (Global.data.users_identifier.has(matricule)) {
         Utils.setBackgroundColor(inputs.matricule, palette.red);
         return;
       }
-      SideMenu.setUserButton(b, name, surname, matricule);
-      let w = Api.createBufferWriter(Api.CREATE, Api.USERS_ID_MAP_ID);
+      SideMenu.setUserButton(button, name, surname, matricule);
+      let writer = Api.createBufferWriter(Api.CREATE, Api.USERS_ID_MAP_ID);
 
-      endOfUserInputs(b, w, inputs);
-      Api.request(w)
-      .then(resp => {
-        Utils.throwIfNotOk(resp);
+      endOfUserInputs(button, writer, inputs);
+      Api.request(writer)
+      .then(response => {
+        Utils.throwIfNotOk(response);
 
-        let idx = storageIndex(Global.data.users_identifier, Global.data.usersFreeList);
-        Global.data.users_identifier.set(matricule, idx);
-        storeValue(Global.data.users_name, idx, name);
-        storeValue(Global.data.users_surname, idx, surname);
-        b._data_identifier = matricule;
+        let index = storageIndex(Global.data.users_identifier, Global.data.usersFreeList);
+        Global.data.users_identifier.set(matricule, index);
+        storeValue(Global.data.users_name, index, name);
+        storeValue(Global.data.users_surname, index, surname);
+        button._data_identifierentifier = matricule;
       })
-      .catch(e => {
-        b.remove();
-        console.error("Could not store ", name, e);
+      .catch(error => {
+        button.remove();
+        console.error("Could not store ", name, error);
       });
     }
     if (next) { next.focus(); }
-  } else if (e.key === 'Escape') {
-    e.preventDefault();
-    b.remove();
+  } else if (event.key === 'Escape') {
+    event.preventDefault();
+    button.remove();
   }
 }
 
-function escOrUpdateOnEnter(e, b, inputs, old) {
-  if (e.key === 'Enter') {
+function escOrUpdateOnEnter(event, button, inputs, old) {
+  if (event.key === 'Enter') {
     if (userInputsAreNotEmpty(inputs)) {
-      e.preventDefault();
+      event.preventDefault();
       const [name, surname, matricule] = getValuesFromUserInputs(inputs);
 
       if (matricule !== old.matricule && Global.data.users_identifier.has(matricule)) {
         Utils.setBackgroundColor(inputs.matricule, palette.red);
         return;
       }
-      SideMenu.setUserButton(b, name, surname, matricule);
-      let w = Api.createBufferWriter(Api.UPDATE, Api.USERS_ID_MAP_ID);
-      w.writeInt32(old.matricule);
+      SideMenu.setUserButton(button, name, surname, matricule);
+      let writer = Api.createBufferWriter(Api.UPDATE, Api.USERS_ID_MAP_ID);
+      writer.writeInt32(old.matricule);
 
-      endOfUserInputs(b, w, inputs);
-      Api.request(w)
-      .then(resp => {
-        Utils.throwIfNotOk(resp);
-        const idx = Global.data.users_identifier.get(old.matricule);
-        if (idx === undefined) {
+      endOfUserInputs(button, writer, inputs);
+      Api.request(writer)
+      .then(response => {
+        Utils.throwIfNotOk(response);
+        const index = Global.data.users_identifier.get(old.matricule);
+        if (index === undefined) {
           console.error("old matricule does not exist locally");
           return
         }
         if (old.matricule !== matricule) {
           Global.data.users_identifier.delete(old.matricule);
-          Global.data.users_identifier.set(matricule, idx);
+          Global.data.users_identifier.set(matricule, index);
         }
-        Global.data.users_name[idx] = name;
-        Global.data.users_surname[idx] = surname;
-        b._data_identifier = matricule;
+        Global.data.users_name[index] = name;
+        Global.data.users_surname[index] = surname;
+        button._data_identifierentifier = matricule;
       })
-      .catch( e => {
-        SideMenu.setUserButton(b, old.name, old.surname, old.matricule);
-        console.error("Could not store ", name, e);
+      .catch(error => {
+        SideMenu.setUserButton(button, old.name, old.surname, old.matricule);
+        console.error("Could not store ", name, error);
       });
     }
-  } else if (e.key === 'Escape') {
-    e.preventDefault();
-    SideMenu.setUserButton(b, old.name, old.surname, old.matricule);
+  } else if (event.key === 'Escape') {
+    evenet.preventDefault();
+    SideMenu.setUserButton(button, old.name, old.surname, old.matricule);
   }
 }
 
-document.getElementById('edit-button').addEventListener('click', function() {
-  const b = state.edit_target;
-  const id = Number(state.edit_target._data_id);
-  if (id == undefined) {
-    throw new Error('delete-target should have a property `_data_id` which infers to which piece of data the element is associated with');
+buttons.edit.addEventListener('click', function() {
+  const button = state.edit_target;
+  const identifier = Number(button._data_identifier);
+  if (identifier == undefined) {
+    throw new Error('delete-target should have a property `_data_identifier` which infers to which piece of data the element is associated with');
   }
 
-  let w = new BufferWriter();
+  let writer = new BufferWriter();
   switch (state.edit_target.parentElement._id) {
     case zones_identifier.STAFF: {
-      b.removeEventListener('click', SideMenu.buttonClickCallback);
-      const idx = Global.data.users_identifier.get(id);
-      if (idx === undefined) {
+      button.removeEventListener('click', SideMenu.buttonClickCallback);
+      const index = Global.data.users_identifier.get(identifier);
+      if (index === undefined) {
         console.error('user index is not found');
         return;
       }
       const old = {
-        name: Global.data.users_name[idx],
-        surname: Global.data.users_surname[idx],
+        name: Global.data.users_name[index],
+        surname: Global.data.users_surname[index],
         matricule: id,
       };
 
@@ -165,22 +172,22 @@ document.getElementById('edit-button').addEventListener('click', function() {
       inputs.name.value = old.name;
       inputs.surname.value = old.surname;
       inputs.matricule.value = old.matricule;
-      inputs.name.addEventListener('keydown', (e) => {
-        escOrUpdateOnEnter(e, b, inputs, old)
+      inputs.name.addEventListener('keydown', event => {
+        escOrUpdateOnEnter(event, button, inputs, old)
       });
-      inputs.surname.addEventListener('keydown', (e) => {
-        escOrUpdateOnEnter(e, b, inputs, old)
+      inputs.surname.addEventListener('keydown', event => {
+        escOrUpdateOnEnter(event, button, inputs, old)
       });
       inputs.matricule.addEventListener('keydown', (e) => {
-        escOrUpdateOnEnter(e, b, inputs, old)
+        escOrUpdateOnEnter(event, button, inputs, old)
       });
-      b.replaceChildren(inputs.name, inputs.surname, inputs.matricule);
+      button.replaceChildren(inputs.name, inputs.surname, inputs.matricule);
       break;
     }
 
     case zones_identifier.EVENT: {
       updateEventOrVenue(
-        b,
+        button,
         'Nom d\'Événement',
         Api.EVENTS_ID_MAP_ID,
         Global.data.bundleEventsNames(),
@@ -189,7 +196,7 @@ document.getElementById('edit-button').addEventListener('click', function() {
     }
     case zones_identifier.VENUE: {
       updateEventOrVenue(
-        b,
+        button,
         'Nom de Lieu',
         Api.VENUES_ID_MAP_ID,
         Global.data.bundleVenuesNames(),
@@ -197,46 +204,46 @@ document.getElementById('edit-button').addEventListener('click', function() {
       break;
     }
     case zones_identifier.DURATION: {
-      const event_identifier = zones[zones_identifier.EVENT].selection._data_id;
-      const event_index = Global.data.events_identifier.get(event_id);
+      const event_identifier = zones[zones_identifier.EVENT].selection._data_identifier;
+      const event_index = Global.data.events_identifier.get(event_identifier);
       if (event_index === undefined) { throw new Error('[updating duration]: event_identifier does not exist'); }
       const old_duration = Global.data.events_duration[event_index];
 
       numeric_input.endOfWriting = () => {
-        const duration = swapBackNumberButtonAndReturnNewValue(b);
+        const duration = swapBackNumberButtonAndReturnNewValue(button);
         if (duration === undefined) { return; }
-        const w = EventInformation.createDurationBuffer(duration, Api.UPDATE, event_id);
-        Api.request(w)
+        const writer = EventInformation.createDurationBuffer(duration, Api.UPDATE, event_identifier);
+        Api.request(writer)
         .then(response => {
           Utils.throwIfNotOk(response);
           Global.data.events_duration[event_index] = duration;
         })
-        .catch(e => {
-          b.textContent = old_duration;
+        .catch(error => {
+          button.textContent = old_duration;
         });
       };
-      swapNumberButtonToInputAndLatterToOldValue(b, old_duration);
+      swapNumberButtonToInputAndLatterToOldValue(button, old_duration);
       break;
     }
     case zones_identifier.EMPLOYEES_LIMIT: {
       const old_limit = Global.data.employees_limit;
 
       numeric_input.endOfWriting = () => {
-        const new_limit = swapBackNumberButtonAndReturnNewValue(b);
+        const new_limit = swapBackNumberButtonAndReturnNewValue(button);
         if (new_limit === undefined) { return; }
 
-        const w = Api.createBufferWriter(Api.UPDATE, Api.EMPLOYEES_LIMIT_ID);
-        w.writeInt32(new_limit);
-        Api.request(w)
+        const writer = Api.createBufferWriter(Api.UPDATE, Api.EMPLOYEES_LIMIT_ID);
+        writer.writeInt32(new_limit);
+        Api.request(writer)
         .then(response => {
           Utils.throwIfNotOk(response);
           Global.data.employees_limit = new_limit;
         })
-        .catch(e => {
-          b.textContent = old_limit;
+        .catch(error => {
+          button.textContent = old_limit;
         });
       };
-      swapNumberButtonToInputAndSetLatterToOldValue(b, old_limit);
+      swapNumberButtonToInputAndSetLatterToOldValue(button, old_limit);
       break;
     }
   }
@@ -260,69 +267,69 @@ function swapBackNumberButtonAndReturnNewValue(button) {
   return Number(numeric_input.element.value);
 }
 
-document.getElementById('delete-button').addEventListener('click', function() {
-  const id = state.delete_target._data_id;
-  if (id == undefined) {
-    throw new Error('delete-target should have a property `_data_id` which infers with which piece of data the element is associated');
+buttons.delete.addEventListener('click', function() {
+  const identifier = state.delete_target._data_identifier;
+  if (identifier == undefined) {
+    throw new Error('delete-target should have a property `_data_identifier` which infers with which piece of data the element is associated');
   }
   state.delete_target.classList.add('disp-none');
 
-  let w = new BufferWriter();
-  switch (state.delete_target.parentElement._id) {
+  let writer = new BufferWriter();
+  switch (state.delete_target.parentElement._identifier) {
     case zones_identifier.STAFF:
-      Api.writeHeader(w, Api.DELETE, Api.USERS_ID_MAP_ID);
+      Api.writeHeader(writer, Api.DELETE, Api.USERS_ID_MAP_ID);
       break;
     case zones_identifier.VENUE:
-      Api.writeHeader(w, Api.DELETE, Api.VENUES_ID_MAP_ID);
+      Api.writeHeader(writer, Api.DELETE, Api.VENUES_ID_MAP_ID);
       break;
     case zones_identifier.EVENT:
-      Api.writeHeader(w, Api.DELETE, Api.EVENTS_ID_MAP_ID);
+      Api.writeHeader(writer, Api.DELETE, Api.EVENTS_ID_MAP_ID);
       break;
     case zones_identifier.EVENT_STAFF:
-      Api.writeHeader(w, Api.DELETE, Api.ROLES_ID_MAP_ID);
+      Api.writeHeader(writer, Api.DELETE, Api.ROLES_ID_MAP_ID);
       break;
     case zones_identifier.PERSONAL_NUMBER_MAP:
-      Api.writeHeader(w, Api.DELETE, Api.EVENTS_PERSONAL_NUM_MAP_ID);
-      w.writeInt32(zones[zones_identifier.EVENT].selection._data_id);
+      Api.writeHeader(writer, Api.DELETE, Api.EVENTS_PERSONAL_NUM_MAP_ID);
+      writer.writeInt32(zones[zones_identifier.EVENT].selection._data_identifier);
       break;
     default:
       state.delete_target.classList.remove('disp-none');
-      throw new Error('delete_target\'s parent should have `_id` property with a value from `zones_identifier`');
+      throw new Error('delete_target\'s parent should have `_identifier` property with a value from `zones_identifier`');
   }
-  w.writeInt32(Number(id));
-  Api.request(w)
-  .then(resp => {
-    Utils.throwIfNotOk(resp);
-    switch (state.delete_target.parentElement._id) {
+  writer.writeInt32(Number(identifier));
+  Api.request(writer)
+  .then(response => {
+    Utils.throwIfNotOk(response);
+    switch (state.delete_target.parentElement._identifier) {
       case zones_identifier.STAFF:
-        deleteValue(Global.data.users_identifier, Global.data.usersFreeList, id);
-        deleteOccurrences(Global.data.occurrences_participants, id);
+        deleteValue(Global.data.users_identifier, Global.data.usersFreeList, identifier);
+        deleteOccurrences(Global.data.occurrences_participants, identifier);
         break;
       case zones_identifier.VENUE:
-        deleteValue(Global.data.venues_identifier, Global.data.venuesFreeList, id);
-        deleteOccurrences(Global.data.events_venues, id);
+        deleteValue(Global.data.venues_identifier, Global.data.venuesFreeList, identifier);
+        deleteOccurrences(Global.data.events_venues, identifier);
         break;
       case zones_identifier.EVENT:
-        deleteValue(Global.data.events_identifier, Global.data.eventsFreeList, id);
+        deleteValue(Global.data.events_identifier, Global.data.eventsFreeList, identifier);
         break;
       case zones_identifier.EVENT_STAFF: // we should here remove the button from a backing array
-        EventInformation.elements.event_role_list._btn_list =
-          EventInformation.elements.event_role_list._btn_list.filter(b => b !== state.delete_target);
+        EventInformation.elements.event_role_list._button_list =
+          EventInformation.elements.event_role_list._button_list.filter(b => b !== state.delete_target);
 
-        deleteValue(Global.data.roles_idetifier, Global.data.rolesFreeList, id);
+        deleteValue(Global.data.roles_idetifier, Global.data.rolesFreeList, identifier);
         for (let i = 0; i < Global.data.events_roles.length; i++) {
-          let eventsRoles = Global.data.events_roles[i];
-          let idx = eventsRoles.indexOf(id);
-          eventsRoles.splice(Number(id), 1);
-          let nummap = Global.data.eventsStaffNumericMap[i];
-          for (let j = 0; j < nummap.length; j++) {
-            nummap.splice(idx, 1);
+          let events_roles = Global.data.events_roles[i];
+          let index = events_roles.indexOf(identifier);
+          events_roles.splice(Number(identifier), 1);
+          let staff_numeric_map = Global.data.events_staff_numeric_map[i];
+          for (let j = 0; j < staff_numberic_map.length; j++) {
+            staff_numeric_map.splice(index, 1);
           }
         }
         EventInformation.update();
         break;
       case zones_identifier.PERSONAL_NUMBER_MAP:
-        Global.data.eventsStaffNumericMap[zones[zones_identifier.EVENT].selection._data_id].splice(Number(id), 1)
+        Global.data.eventsStaffNumericMap[zones[zones_identifier.EVENT].selection._data_identifier].splice(Number(identifier), 1)
 
         EventInformation.update();
         break;
@@ -337,131 +344,131 @@ document.getElementById('delete-button').addEventListener('click', function() {
   });
 });
 
-function endOfStandardInput(e, input, b, val) {
+function endOfStandardInput(event, input, button, value) {
   Utils.setBackgroundColor(input, 'transparent');
-  e.preventDefault();
+  event.preventDefault();
   input.remove();
-  b.textContent = val;
+  button.textContent = value;
 }
 
-function setCreateInput(b, input, api, meta_data) {
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      const val = input.value;
-      for (const [id, idx] of meta_data.map) {
-        if (meta_data.arr[idx] === val) {
+function setCreateInput(button, input, api, meta_data) {
+  input.addEventListener('keydown', event => {
+    if (event.key === 'Enter') {
+      const value = input.value;
+      for (const [identifier, index] of meta_data.map) {
+        if (meta_data.array[index] === value) {
           Utils.setBackgroundColor(input, palette.red);
           return
         }
       }
 
-      endOfStandardInput(e, input, b, val);
-      let w = Api.createBufferWriter(Api.CREATE, api);
-      w.writeString(val);
-      Api.request(w)
-      .then(resp => {
-        Utils.throwIfNotOk(resp);
-        resp.arrayBuffer()
-        .then(bin => {
-          let r = new BufferReader(bin);
-          let id = r.readInt32();
-          let idx = storageIndex(meta_data.map, meta_data.free_list);
-          meta_data.map.set(id, idx);
-          meta_data.array[idx] = val;
+      endOfStandardInput(evenet, input, button, value);
+      let writer = Api.createBufferWriter(Api.CREATE, api);
+      writer.writeString(value);
+      Api.request(writer)
+      .then(response => {
+        Utils.throwIfNotOk(response);
+        response.arrayBuffer()
+        .then(binary => {
+          let reader = new BufferReader(binary);
+          let identifier = r.readInt32();
+          let index = storageIndex(meta_data.map, meta_data.free_list);
+          meta_data.map.set(identifier, index);
+          meta_data.array[index] = value;
           b.textContent = '';
-          Utils.setNameAndId(b, val, id);
+          Utils.setNameAndId(button, value, identifier);
           b.addEventListener('click', SideMenu.buttonClickCallback);
         });
       })
-      .catch(e => {
-        b.remove();
-        console.error("Could not store ", val, e);
+      .catch(error => {
+        button.remove();
+        console.error("Could not store ", value, error);
       });
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      b.remove();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      button.remove();
     }
   });
   input.focus();
 }
 
 function createEventOrVenue(parent, placeholder, api, meta_data) {
-  let b = SideMenu.createTemplateButton();
+  let button = SideMenu.createTemplateButton();
   const input = Utils.createTextInput(placeholder)
-  b.replaceChildren(input);
-  parent.appendChild(b);
-  setCreateInput(b, input, api, meta_data);
+  button.replaceChildren(input);
+  parent.appendChild(button);
+  setCreateInput(button, input, api, meta_data);
 }
 
-function updateEventOrVenue(b, placeholder, api, meta_data) {
-  const id = Number(state.edit_target._data_id);
-  const idx = meta_data.map.get(id);
-  if (idx === undefined) { throw new Error('[updateEventOrVenue]: id does not exist'); }
-  const old_name = meta_data.arr[idx];
+function updateEventOrVenue(button, placeholder, api, meta_data) {
+  const identifier = Number(state.edit_target._data_identifier);
+  const index = meta_data.map.get(identifier);
+  if (index === undefined) { throw new Error('[updateEventOrVenue]: id does not exist'); }
+  const old_name = meta_data.array[index];
 
-  b.removeEventListener('click', SideMenu.buttonClickCallback);
+  button.removeEventListener('click', SideMenu.buttonClickCallback);
 
   const input = Utils.createTextInput(placeholder)
   input.value = old_name;
-  b.replaceChildren(input);
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      const val = input.value;
-      for (const [_id, _index] of meta_data.map) {
-        const name = meta_data.arr[_index];
-        if (name !== old_name && name === val) {
+  button.replaceChildren(input);
+  input.addEventListener('keydown', event => {
+    if (event.key === 'Enter') {
+      const value = input.value;
+      for (const [_identifier, _index] of meta_data.map) {
+        const name = meta_data.array[_index];
+        if (name !== old_name && name === value) {
           Utils.setBackgroundColor(input, palette.red);
           return
         }
       }
 
-      endOfStandardInput(e, input, b, val);
-      let w = Api.createBufferWriter(Api.UPDATE, api);
-      w.writeInt32(id);
-      w.writeString(val);
-      Api.request(w)
-      .then(resp => {
-        Utils.throwIfNotOk(resp);
-        meta_data.arr[idx] = val;
-        b.textContent = '';
-        b.addEventListener('click', SideMenu.buttonClickCallback);
-        Utils.setNameAndId(b, val, id);
+      endOfStandardInput(event, input, button, value);
+      let writer = Api.createBufferWriter(Api.UPDATE, api);
+      writer.writeInt32(identifier);
+      w.writeString(value);
+      Api.request(writer)
+      .then(response => {
+        Utils.throwIfNotOk(response);
+        meta_data.arr[index] = value;
+        button.textContent = '';
+        button.addEventListener('click', SideMenu.buttonClickCallback);
+        Utils.setNameAndId(button, value, identifier);
       })
-      .catch(e => {
-        b.textContent = '';
-        Utils.setNameAndId(b, old_name, id);
-        b.addEventListener('click', SideMenu.buttonClickCallback);
-        console.error("Could not store ", val, e);
+      .catch(error => {
+        button.textContent = '';
+        Utils.setNameAndId(button, old_name, identifier);
+        button.addEventListener('click', SideMenu.buttonClickCallback);
+        console.error("Could not store ", value, error);
       });
-    } else if (e.key === 'Escape') {
-      b.textContent = '';
-      b.addEventListener('click', SideMenu.buttonClickCallback);
-      Utils.setNameAndId(b, old_name, id);
-      b.remove();
+    } else if (event.key === 'Escape') {
+      button.textContent = '';
+      button.addEventListener('click', SideMenu.buttonClickCallback);
+      Utils.setNameAndId(button, old_name, identifier);
+      button.remove();
     }
   });
   input.focus();
 }
 
-document.getElementById('create-button').addEventListener('click', () => {
+buttons.create.addEventListener('click', () => {
   switch (state.extend_target._id) {
     case zones_identifier.STAFF: {
       const target = zones[zones_identifier.STAFF].element_list;
-      let b = SideMenu.createTemplateButton(); 
+      let button = SideMenu.createTemplateButton(); 
       const inputs = createUserDataInputs();
-      inputs.name.addEventListener('keydown', (e) => {
-        escOrCreateOnEnter(e, b, inputs, inputs.surname)
+      inputs.name.addEventListener('keydown', event => {
+        escOrCreateOnEnter(event, button, inputs, inputs.surname)
       });
-      inputs.surname.addEventListener('keydown', (e) => {
-        escOrCreateOnEnter(e, b, inputs, inputs.matricule)
+      inputs.surname.addEventListener('keydown', event => {
+        escOrCreateOnEnter(event, button, inputs, inputs.matricule)
       });
-      inputs.matricule.addEventListener('keydown', (e) => {
-        escOrCreateOnEnter(e, b, inputs)
+      inputs.matricule.addEventListener('keydown', event => {
+        escOrCreateOnEnter(event, button, inputs)
       });
-      target.appendChild(b);
-      b.appendChild(inputs.name);
-      b.appendChild(inputs.surname);
-      b.appendChild(inputs.matricule);
+      target.appendChild(button);
+      button.appendChild(inputs.name);
+      button.appendChild(inputs.surname);
+      button.appendChild(inputs.matricule);
       inputs.name.focus();
       break;
     }
@@ -491,28 +498,28 @@ document.getElementById('create-button').addEventListener('click', () => {
       input.focus();
 
       setCreateInput(
-        b,
+        button,
         input,
         Api.ROLES_ID_MAP_ID,
         Global.data.bundleRolesNames(),
       );
-      EventInformation.elements.event_role_list._btn_list.push(b);
+      EventInformation.elements.event_role_list._button_list.push(button);
       break;
     }
     default:
   }
 });
 
-document.getElementById('toggle-button').addEventListener('click', () => {
+buttons.toggle.addEventListener('click', () => {
   const target = state.toggle_target;
   const turning_on = target.classList.toggle('clicked');
   switch (state.toggle_target.parentElement._id) { // working
     case zones_identifier.EVENT_STAFF:
-      const event_identifier = zones[zones_identifier.EVENT].selection._data_id; 
-      const role_identifier = target._data_id;
-      const idx = Global.data.events_identifier.get(event_id);
+      const event_identifier = zones[zones_identifier.EVENT].selection._data_identifier; 
+      const role_identifier = target._data_identifier;
+      const index = Global.data.events_identifier.get(event_id);
       const role_index = Global.data.roles_idetifier.get(role_id);
-      if (idx === undefined || role_index === undefined) {
+      if (index === undefined || role_index === undefined) {
         console.error('[toggle-button:click] Incorrect event\'s or role\'s ids');
         return;
       }
@@ -533,15 +540,15 @@ document.getElementById('toggle-button').addEventListener('click', () => {
         let num_map = Global.data.eventsStaffNumericMap;
 
         if (turning_on) {
-          Global.data.events_roles[idx].push(role_id);
-          for (const arr of num_map[idx]) {
+          Global.data.events_roles[index].push(role_id);
+          for (const arr of num_map[index]) {
             arr.push(-1);
           }
         }
         else {
-          const pos = Global.data.events_roles[idx].indexOf(role_id); 
-          Global.data.events_roles[idx].splice(pos, 1);
-          for (let arr of num_map[idx]) {
+          const pos = Global.data.events_roles[index].indexOf(role_id); 
+          Global.data.events_roles[index].splice(pos, 1);
+          for (let arr of num_map[index]) {
             arr.splice(pos+2, 1);
           }
         }
@@ -555,9 +562,9 @@ document.getElementById('toggle-button').addEventListener('click', () => {
   }
 });
 
-function display(s, btn_name) {
-  document.getElementById(btn_name).classList.replace('disp-none', 'disp-block');
-  s.show = true;
+function display(local_state, button) {
+  button.classList.replace('disp-none', 'disp-block');
+  local_state.show = true;
 }
 
 document.addEventListener('contextmenu', function(e) {
@@ -566,16 +573,16 @@ document.addEventListener('contextmenu', function(e) {
   const target = e.target;
 
   if (state.delete_target = target.closest('.deletable')) {
-    display(s, 'delete-button');
+    display(s, button.delete);
   }
   if (state.edit_target = target.closest('.editable')) {
-    display(s, 'edit-button');
+    display(s, button.edit);
   }
   if (state.toggle_target = target.closest('.togglable')) {
-    display(s, 'toggle-button');
+    display(s, button.toggle);
   }
   if (state.extend_target = target.closest('.extendable')) {
-    display(s, 'create-button');
+    display(s, button.create);
   }
 
   if (s.show) {
