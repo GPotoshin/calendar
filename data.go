@@ -21,37 +21,37 @@ func newId[K, V comparable](m map[K]V, freeId *[]int32) int32 {
 
 func storageIndex[K, V comparable](m map[K]V, freeList *[]int) int {
 	if len(*freeList) > 0 {
-    idx := (*freeList)[len(*freeList)-1]
+    index := (*freeList)[len(*freeList)-1]
 		*freeList = (*freeList)[:len(*freeList)-1]
-    return idx
+    return index
 	} else {
 		return len(m)
 	}
 }
 
-func storeValue[T any](array *[]T, idx int, value T) {
-	if idx >= 0 && idx < len(*array) {
-		(*array)[idx] = value
+func storeValue[T any](array *[]T, index int, value T) {
+	if index >= 0 && index < len(*array) {
+		(*array)[index] = value
 	} else {
 		*array = append(*array, value)
 	}
 }
 
 func deleteToken(m map[[32]byte]int, freeList *[]int, token [32]byte) {
-  idx, exists := m[token]
+  index, exists := m[token]
   if exists {
-    *freeList = append(*freeList, idx)
+    *freeList = append(*freeList, index)
     delete(m, token)
   }
 }
 
 func deleteValue(m map[int32]int, freeId *[]int32, freeList *[]int, id int32) {
-  idx, exists := m[id]
+  index, exists := m[id]
   if exists {
     if freeId != nil {
       *freeId = append(*freeId, id)
     }
-    *freeList = append(*freeList, idx)
+    *freeList = append(*freeList, index)
     delete(m, id) 
   }
 }
@@ -61,9 +61,9 @@ func rebaseMap[K comparable](m map[K]int, freeList []int) {
   if len(freeList) == 0 {
     return
   }
-  for key, idx := range m {
+  for key, index := range m {
     count := 0
-    for count < len(freeList) && freeList[count]<idx {
+    for count < len(freeList) && freeList[count]<index {
       count++
     }
     m[key] -= count
@@ -99,9 +99,9 @@ func shrinkArray[T any](array_p *[]T, free_list []int) {
 
 func getById[K, T comparable](id K, m map[K]int, a []T) (T, bool) {
   var retval T
-  idx, exists := m[id]
+  index, exists := m[id]
   if exists {
-    retval = a[idx] 
+    retval = a[index] 
   }
   return retval, exists
 }
@@ -117,8 +117,8 @@ func filterVal[T comparable](arr *[]T, val T) {
   (*arr) = (*arr)[:writeIdx]
 }
 
-func filterIdx[T any](arr *[]T, idx int) {
-  for i := idx; i < len(*arr)-1; i++ {
+func filterIdx[T any](arr *[]T, index int) {
+  for i := index; i < len(*arr)-1; i++ {
     (*arr)[i] = (*arr)[i+1];
   }
   (*arr) = (*arr)[:len(*arr)-1]

@@ -12,7 +12,7 @@ export let elements = {
   todayFrame: null,
   dataListContainer: null,
 
-  view: [document.getElementsByClassName('view-content')[0], null],
+  views: [document.getElementsByClassName('view-content')[0], null],
 }
 
 export let callbacks = {

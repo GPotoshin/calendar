@@ -1,9 +1,9 @@
-import * as Global from './global_state.js';
+import * as Global from './global.js';
 import { palette } from './color.js';
 import * as DM from './data_manager.js';
 import * as EventInformation from './event_information.js';
 import * as CalendarInformation from './calendar_information.js';
-import * as Utils from './utils.js';
+import * as Utilities from './utilities.js';
 import { BufferWriter } from './io.js';
 
 function handleClickOnViewButton(button, view_zone_identifier) {
@@ -32,7 +32,7 @@ Global.elements.side_menu.classList.add('v-container');
 Global.elements.side_menu.id = 'side-menu';
 let header_container = document.createElement('div');
 header_container.className = 'header-container';
-let button_container = document.createElement('div');
+let header_button_container = document.createElement('div');
 header_button_container.className = 'button-container';
 header_button_container.id = 'data-type';
 Global.zones[Global.zones_identifier.DATA_TYPE].element_list = header_button_container.children;
@@ -58,9 +58,10 @@ function createDataTypeButton(zones_identifier, name) {
   });
   button.textContent = name;
   button._data_identifier = zones_identifier;
+  return button;
 }
 
-let events_button = createDataTypeButton(Global.zones_identifier.EVENT, 'Événements');
+let event_button = createDataTypeButton(Global.zones_identifier.EVENT, 'Événements');
 let staff_button = createDataTypeButton(Global.zones_identifier.STAFF, 'Personnel');
 let venue_button = createDataTypeButton(Global.zones_identifier.VENUE, 'Lieux');
 header_button_container.append(event_button, staff_button, venue_button);
@@ -77,24 +78,24 @@ export function buttonClickCallback(event) {
 
   current_button.classList.toggle('hover');
   if (previous_button === current_button) {
-    Utils.setBackgroundColor(current_button, 'transparent');
+    Utilities.setBackgroundColor(current_button, 'transparent');
     zone.selection = null;
-    if (Global.zones[Global.zones_identifier.VIEW_TYPE].selection._data_identifierentifier === Global.view_identifier.INFORMATION) {
-      Global.elements.veiws[Global.view_identifier.INFORMATION].replaceChildren(CalendarInformation.dom);
+    if (Global.zones[Global.zones_identifier.VIEW_TYPE].selection._data_identifier === Global.view_identifier.INFORMATION) {
+      Global.elements.views[Global.view_identifier.INFORMATION].replaceChildren(CalendarInformation.dom);
     } else {
 
     }
     return;
   } else {
     if (previous_button) {
-      Utils.setBackgroundColor(previous_button, 'transparent');
+      Utilities.setBackgroundColor(previous_button, 'transparent');
       previous_button.classList.toggle('hover');
     }
-    Utils.setBackgroundColor(current_button, palette.blue);
+    Utilities.setBackgroundColor(current_button, palette.blue);
     zone.selection = current_button;
-    if (Global.zones[Global.zones_identifier.VIEW_TYPE].selection._data_identifierentifier === Global.view_identifier.INFORMATION) {
+    if (Global.zones[Global.zones_identifier.VIEW_TYPE].selection._data_identifier === Global.view_identifier.INFORMATION) {
       EventInformation.update();
-      Global.elements.veiws[Global.view_identifier.INFORMATION].replaceChildren(EventInformation.dom);
+      Global.elements.views[Global.view_identifier.INFORMATION].replaceChildren(EventInformation.dom);
     } else {
       const list = Global.elements.calendar_content.children;
       for (let i = 0; i < list.length; i++) {
@@ -105,7 +106,7 @@ export function buttonClickCallback(event) {
         let line = document.createElement('div');
         line.classList = 'event-occurence event-single no-select';
         line.style.top = '0%';
-        Utils.setBackgroundColor(line, palette.green);
+        Utilities.setBackgroundColor(line, palette.green);
         let new_width = row.children[6].getBoundingClientRect().right-
           row.children[0].getBoundingClientRect().left-1;
         line.style.width = new_width+'px';
@@ -131,13 +132,13 @@ export function composeList(map, names, list_identifier) {
   for (const [identifier, index] of map) {
     const name = names[index];
     let button = createListButtonAndSetToggleCallback();
-    Utils.setNameAndId(button, name, identifier);
+    Utilities.setNameAndIdentifier(button, name, identifier);
     Global.zones[list_identifier].element_list.appendChild(button);
   }
 }
 
 export function setUserButton(button, name, surname, matricule) {
-  button._data_identifierentifier = matricule;
+  button._data_identifier = matricule;
   let left = document.createElement('span');
   left.textContent = name+' '+surname;
   let right = document.createElement('span');

@@ -1,6 +1,6 @@
-import * as Global from './global_state.js';
+import * as Global from './global.js';
 import * as SearchDisplay from './search_display.js';
-import * as Utils from './utils.js';
+import * as Utilities from './utilities.js';
 import { numeric_input } from './numeric_input.js';
 import { BufferWriter } from './io.js';
 import * as Api from './api.js';
@@ -72,10 +72,10 @@ export function loadTemplate() {
   let [search_display, container] = SearchDisplay.createAndReturnListContainer('Personnel', Global.zones_identifier.EVENT_STAFF);
   container._button_list = [];
 
-  for (const [idetifier, index] of Global.data.roles_idetifier) {
+  for (const [identifier, index] of Global.data.roles_identifier) {
     const name = Global.data.roles_name[index];
     const button = SearchDisplay.createButton(); 
-    Utils.setNameAndId(b, name, identifier);
+    Utilities.setNameAndIdentifier(button, name, identifier);
     container.appendChild(button);
     container._button_list.push(button);
   }
@@ -231,13 +231,13 @@ export function update() { // @working
   // nummap
   const base_width = 125;
   let width = base_width*(event_roles.length+1);
-  Utils.setWidthInPixels(elements.numeric_table_header_list, width);
-  Utils.setWidthInPixels(elements.numeric_table_content, width);
+  Utilities.setWidthInPixels(elements.numeric_table_header_list, width);
+  Utilities.setWidthInPixels(elements.numeric_table_content, width);
 
   function createLocalHeader(name) {
     let header_container = document.createElement('div');
     header_container.className = 'disp-flex justify-content-center';
-    Utils.setWidthInPixels(header_container, width);
+    Utilities.setWidthInPixels(header_container, width);
     let header = document.createElement('h4');
     header.className = 'txt-center';
     header.textContent = name;
@@ -247,7 +247,7 @@ export function update() { // @working
   // @nocheckin: we will need to merge all those iterations together
   let list = [createLocalHeader('Participants')];
   for (const role_identifier of event_roles) {
-    const role_index = Global.data.roles_idetifier.get(role_id);
+    const role_index = Global.data.roles_identifier.get(role_id);
     if (role_index === undefined) { throw new Error('Can find role_id') }
     const name = Global.data.roles_name[role_index];
     list.push(createLocalHeader(name));
@@ -282,7 +282,7 @@ export function update() { // @working
 
   list = [SearchDisplay.create('Participants', Global.zones_identifier.COMPETENCES)];
   for (const role_identifier of event_roles) {
-    const role_index = Global.data.roles_idetifier.get(role_identifier);
+    const role_index = Global.data.roles_identifier.get(role_identifier);
     if (role_index === undefined) { throw new Error("Can't find role_id") }; 
     const name = Global.data.roles_name[role_index];
     list.push(SearchDisplay.create(name, Global.zones_identifier.COMPETENCES));
@@ -316,7 +316,7 @@ export function update() { // @working
     let buffer_writer = createDurationBuffer(new_duration, Api.CREATE, event_identifier);
     Api.request(buffer_writer)
     .then(response => {
-      Utils.throwIfNotOk(response);
+      Utilities.throwIfNotOk(response);
       Global.data.events_duration[event_index] = duration;
       button.classList.add('editable');
       button.removeEventListener('click', localCallback);

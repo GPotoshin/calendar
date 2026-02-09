@@ -33,39 +33,39 @@ func serveFile(fileName string, headers []HeaderPair) http.HandlerFunc {
 }
 
 const (
-	USERS_ID_MAP_ID int32 = iota
-	USERS_NAME_ID
-	USERS_SURNAME_ID
-	USERS_MAIL_ID
-	USERS_PHONE_ID
-	USERS_COMPETENCES_ID
-	USERS_DUTY_STATION_ID
-	USERS_PRIVILEGE_LEVEL_ID
+	USERS_MAP int32 = iota
+	USERS_NAME
+	USERS_SURNAME
+	USERS_MAIL
+	USERS_PHONE
+	USERS_COMPETENCES
+	USERS_DUTY_STATION
+	USERS_PRIVILEGE_LEVEL
 
-	EVENTS_ID_MAP_ID
-	EVENTS_NAME_ID
-	EVENTS_VENUE_ID
-	EVENTS_ROLE_ID
-	EVENTS_ROLES_REQUIREMENT_ID
-	EVENTS_PERSONAL_NUM_MAP_ID
-	EVENTS_DURATION_ID
+	EVENTS_MAP
+	EVENTS_NAME
+	EVENTS_VENUE
+	EVENTS_ROLE
+	EVENTS_ROLES_REQUIREMENT
+	EVENTS_PERSONAL_NUM_MAP
+	EVENTS_DURATION
 
-	VENUES_ID_MAP_ID
-	VENUES_NAME_ID
+	VENUES_MAP
+	VENUES_NAME
 
-	COMPETENCES_ID_MAP_ID
-	COMPETENCES_NAME_ID
+	COMPETENCES_MAP
+	COMPETENCES_NAME
 
-	ROLES_ID_MAP_ID
-	ROLES_NAME_ID
+	ROLES_MAP
+	ROLES_NAME
 
-	OCCURRENCES_ID_MAP_ID
-	OCCURRENCES_VENUE_ID
-	OCCURRENCES_DATES_ID
-	OCCURRENCES_PARTICIPANT_ID
-	OCCURRENCES_PARTICIPANTS_ROLE_ID
+	OCCURRENCES_MAP
+	OCCURRENCES_VENUE
+	OCCURRENCES_DATES
+	OCCURRENCES_PARTICIPANT
+	OCCURRENCES_PARTICIPANTS_ROLE
 
-  EMPLOYEES_LIMIT_ID
+  EMPLOYEES_LIMIT
 
 	STATE_FIELD_COUNT
 )
@@ -76,7 +76,7 @@ const (
 )
 
 // every data object is always referenced by Id, but is stored at a runtime
-// computable index. For example a user with $usr_id has its related
+// computable index. For example a user with $usr_identifier has its related
 // information stored at the index $UsersId[$usr_id]. If we are dealing
 // with subindexing in each category, its indexing is a direct mapping.
 // For exmaple, for a given event EventsRole has a list of role ids and
@@ -262,16 +262,16 @@ func writeState(w io.Writer, state State, dest int32) error {
 
   if err := writeString(w, version); err != nil { return fmt.Errorf("Failed to store data [file format]: %v\n", err) }
 
-  // idx := storageIndex(state.UsersId, &state.UsersFreeList)
-  // state.UsersId[2] = idx
-  // storeValue(&state.UsersPassword, idx, sha256.Sum256([]byte("chef")))
-  // storeValue(&state.UsersName, idx, "Chef")
-  // storeValue(&state.UsersSurname, idx, "Chefovich")
-  // storeValue(&state.UsersMail, idx, "chef@mail.fr")
-  // storeValue(&state.UsersPhone, idx, 0)
-  // storeValue(&state.UsersCompetences, idx, []int32{})
-  // storeValue(&state.UsersDutyStation, idx, 0)
-  // storeValue(&state.UsersPrivilegeLevel, idx, 0)
+  // index := storageIndex(state.UsersId, &state.UsersFreeList)
+  // state.UsersId[2] = index
+  // storeValue(&state.UsersPassword, index, sha256.Sum256([]byte("chef")))
+  // storeValue(&state.UsersName, index, "Chef")
+  // storeValue(&state.UsersSurname, index, "Chefovich")
+  // storeValue(&state.UsersMail, index, "chef@mail.fr")
+  // storeValue(&state.UsersPhone, index, 0)
+  // storeValue(&state.UsersCompetences, index, []int32{})
+  // storeValue(&state.UsersDutyStation, index, 0)
+  // storeValue(&state.UsersPrivilegeLevel, index, 0)
 
   if err := writeMapInt32Int(w, state.UsersId); err != nil { return fmt.Errorf("failed to write UsersId: %w", err) }
   if dest == DEST_DISK {
@@ -426,21 +426,21 @@ func main() {
   jsFiles := []string{
     "login.js",
     "color.js",
-    "utils.js",
+    "utilities.js",
     "io.js",
     "numeric_input.js",
     "data_manager.js",
     "search_display.js",
     "calendar.js",
     "context_menu.js",
-    "global_state.js",
+    "global.js",
     "api.js",
     "side_menu.js",
-    "event_info.js",
+    "event_information.js",
     "entry_point_admin.js",
     "entry_point_user.js",
     "entry_point_chef.js",
-    "calendar_info.js",
+    "calendar_information.js",
   }
   jsHeaders := []HeaderPair{{Key: "Content-Type", Value: "text/javascript"}}
   for _, file := range jsFiles {
@@ -493,16 +493,16 @@ func handleData(w http.ResponseWriter, r *http.Request) {
 
   token, err := readHash(r.Body) 
   
-  idx, exists := state.ConnectionsToken[token]
+  index, exists := state.ConnectionsToken[token]
   if doesNotExistError(w, "handleData", "token", exists) { return }
-  idx, exists = state.UsersId[state.ConnectionsUser[idx]]
+  index, exists = state.UsersId[state.ConnectionsUser[index]]
   if !exists {
-    slog.Error("Incorrect user id", "We have a token", token, "which corresponds to a not existing user", state.ConnectionsUser[idx])
+    slog.Error("Incorrect user id", "We have a token", token, "which corresponds to a not existing user", state.ConnectionsUser[index])
     http.Error(w, "Internal error", http.StatusInternalServerError)
     return 
   }
 
-  if state.UsersPrivilegeLevel[idx] == PRIVILEGE_LEVEL_ADMIN {
+  if state.UsersPrivilegeLevel[index] == PRIVILEGE_LEVEL_ADMIN {
     slog.Info("Writing admin data")
     rebaseState()
     if err = writeState(w, state, DEST_ADMIN); err != nil {
@@ -525,8 +525,8 @@ const (
   UPDATE
 ) 
 
-func isAdmin(w http.ResponseWriter, p_level int32) bool {
-  if p_level != PRIVILEGE_LEVEL_ADMIN {
+func isAdmin(w http.ResponseWriter, privilege_level int32) bool {
+  if privilege_level != PRIVILEGE_LEVEL_ADMIN {
     slog.Error("unpriviliged user tried accessing priviliged api")
     http.Error(w, "incorrect privilige level", http.StatusBadRequest)
     return false
@@ -568,19 +568,19 @@ func handleSimpleCreate(
   str, err := readStringWithLimits(r, []int32{128})
   if readError(w, "handleSimpleCreate", "name", err) { return false }
 
-  for _, idx := range m {
-    if (*names)[idx] == str {
+  for _, index := range m {
+    if (*names)[index] == str {
       slog.Error("collision in names")
       http.Error(w, "collision in names", http.StatusBadRequest)
       return false
     }
   }
   id := newId(m, freeId)
-  idx := storageIndex(m, freeList)
-  m[id] = idx
-  storeValue(names, idx, str)
+  index := storageIndex(m, freeList)
+  m[id] = index
+  storeValue(names, index, str)
 
-  slog.Info("DATA", "name", str, "id", id, "idx", idx)
+  slog.Info("DATA", "name", str, "id", id, "index", index)
 
   writeInt32(w, id)
   return true
@@ -594,29 +594,29 @@ func handleSimpleUpdate(
 ) bool {
   id, err := readInt32(r)
   if readError(w, "handleSimpleUpdate", "id", err) { return false }
-  storage_idx, exists := m[id]
+  storage_index, exists := m[id]
   if doesNotExistError(w, "handleSimpleUpdate", "id", exists) { return false } 
   new_name, err := readStringWithLimits(r, []int32{128})
   if readError(w, "handleSimpleUpdate", "name", err) { return false }
 
-  for _, idx := range m {
-    if (*names)[idx] == new_name && storage_idx != idx {
+  for _, index := range m {
+    if (*names)[index] == new_name && storage_index != index {
       slog.Error("collision in names")
       http.Error(w, "collision in names", http.StatusBadRequest)
       return false
     }
   }
-  storeValue(names, storage_idx, new_name)
+  storeValue(names, storage_index, new_name)
   return true
 }
 
 func readNameAndSurname(w http.ResponseWriter, r *http.Request) (string, string, bool) {
   name, err := readStringWithLimits(r.Body, []int32{128})
-  if readError(w, "USERS_ID_MAP", "name", err) {
+  if readError(w, "USERS_MAP", "name", err) {
     return "", "", false
   }
   surname, err := readStringWithLimits(r.Body, []int32{128})
-  if readError(w, "USERS_ID_MAP", "surname", err) {
+  if readError(w, "USERS_MAP", "surname", err) {
     return "", "", false
   }
   return name, surname, true
@@ -638,38 +638,38 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
   }
   token, err := readHash(r.Body)
   if readError(w, "handleApi", "token", err) { return }
-  c_idx, exists := state.ConnectionsToken[token]
+  connection_index, exists := state.ConnectionsToken[token]
   if !exists {
     slog.Error("token does not exists")
     http.Error(w, "incorrect api", http.StatusBadRequest)
     return
   }
-  u_id := state.ConnectionsUser[c_idx]
-  u_idx, exists := state.UsersId[u_id]
+  user_identifier := state.ConnectionsUser[connection_index]
+  user_index, exists := state.UsersId[user_identifier]
   if !exists {
-    slog.Error("we have an unexisting u_id within ConnectinosUser")
+    slog.Error("we have an unexisting u_identifier within ConnectinosUser")
     http.Error(w, "internal error", http.StatusInternalServerError)
   }
-  p_level := state.UsersPrivilegeLevel[u_idx]
+  privilege_level := state.UsersPrivilegeLevel[user_index]
   mode, err := readInt32(r.Body)
   if readError(w, "handleApi", "mode", err) { return }
-  field_id, err := readInt32(r.Body)
+  field_identifier, err := readInt32(r.Body)
   if readError(w, "handleApi", "field_id", err) { return }
-  if field_id < 0 || field_id >= STATE_FIELD_COUNT {
-    slog.Error("incorrect field_id in api")
+  if field_identifier < 0 || field_identifier >= STATE_FIELD_COUNT {
+    slog.Error("incorrect field_identifier in api")
     http.Error(w, "incorrect api", http.StatusBadRequest)
     return
   }
 
-  switch field_id {
-  case USERS_ID_MAP_ID:
-    slog.Info("USER_ID_MAP_ID")
-    if !isAdmin(w, p_level) { return }
+  switch field_identifier {
+  case USERS_MAP:
+    slog.Info("USER_MAP")
+    if !isAdmin(w, privilege_level) { return }
     mat, err := readInt32(r.Body)
-    if readError(w, "USERS_ID_MAP", "matricule", err) {
+    if readError(w, "USERS_MAP", "matricule", err) {
       return
     }
-    idx, exists := state.UsersId[mat]
+    index, exists := state.UsersId[mat]
     switch mode {
       case CREATE:
         slog.Info("CREATE")
@@ -681,11 +681,11 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
           http.Error(w, "bad request", http.StatusBadRequest)
           return
         }
-        idx = storageIndex(state.UsersId, &state.UsersFreeList)
-        state.UsersId[mat] = idx
-        storeValue(&state.UsersName, idx, name)
-        storeValue(&state.UsersSurname, idx, surname)
-        slog.Info("DATA", "name", name, "surname", surname, "mat", mat, "idx", idx)
+        index = storageIndex(state.UsersId, &state.UsersFreeList)
+        state.UsersId[mat] = index
+        storeValue(&state.UsersName, index, name)
+        storeValue(&state.UsersSurname, index, surname)
+        slog.Info("DATA", "name", name, "surname", surname, "mat", mat, "index", index)
       case UPDATE:
         slog.Info("UPDATE")
         if !exists {
@@ -693,17 +693,22 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
           http.Error(w, "bad request", http.StatusBadRequest)
           return
         }
-        new_id, err := readInt32(r.Body)
-        if readError(w, "USERS_ID_MAP:UPDATE", "new_id", err) { return }
+        new_identifier, err := readInt32(r.Body)
+        if readError(w, "USERS_MAP:UPDATE", "new_id", err) { return }
         name, surname, success := readNameAndSurname(w, r)
         if !success { return }
-        if new_id != mat {
+        if new_identifier != mat {
           delete(state.UsersId, mat)
-          state.UsersId[new_id] = idx
+          state.UsersId[new_identifier] = index
         }
-        state.UsersName[idx] = name
-        state.UsersSurname[idx] = surname
-        slog.Info("DATA", "name", name, "surname", surname, "old_mat", mat, "new_mat", new_id, "idx", idx)
+        state.UsersName[index] = name
+        state.UsersSurname[index] = surname
+        slog.Info("DATA",
+        "name", name,
+        "surname", surname,
+        "old_mat", mat,
+        "new_mat", new_identifier,
+        "index", index)
       case DELETE:
         slog.Info("DELETE")
         if !exists {
@@ -712,35 +717,35 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         }
         deleteValue(state.UsersId, nil, &state.UsersFreeList, mat)
         deleteOccurrences(state.OccurrencesParticipant, mat)
-        for token, idx := range state.ConnectionsToken {
-          if state.ConnectionsUser[idx] == mat {
+        for token, index := range state.ConnectionsToken {
+          if state.ConnectionsUser[index] == mat {
             deleteToken(state.ConnectionsToken, &state.ConnectionsFreeList, token)
           }
         }
         slog.Info("DATA", "mat", mat)
 
       default:
-        noSupport(w, "USERS_ID:default")
+        noSupport(w, "USERS:default")
     }
 
-  case USERS_NAME_ID:
-    noSupport(w, "USERS_NAME_ID")
-  case USERS_SURNAME_ID:
-    noSupport(w, "USERS_SURNAME_ID")
-  case USERS_MAIL_ID:
-    noSupport(w, "USERS_MAIL_ID")
-  case USERS_PHONE_ID:
-    noSupport(w, "USERS_PHONE_ID")
-  case USERS_COMPETENCES_ID:
-    noSupport(w, "USERS_COMPETENCES_ID")
-  case USERS_DUTY_STATION_ID:
-    noSupport(w, "USERS_DUTY_STATION_ID")
-  case USERS_PRIVILEGE_LEVEL_ID:
-    noSupport(w, "USERS_PRIVILEGE_LEVEL_ID")
+  case USERS_NAME:
+    noSupport(w, "USERS_NAME")
+  case USERS_SURNAME:
+    noSupport(w, "USERS_SURNAME")
+  case USERS_MAIL:
+    noSupport(w, "USERS_MAIL")
+  case USERS_PHONE:
+    noSupport(w, "USERS_PHONE")
+  case USERS_COMPETENCES:
+    noSupport(w, "USERS_COMPETENCES")
+  case USERS_DUTY_STATION:
+    noSupport(w, "USERS_DUTY_STATION")
+  case USERS_PRIVILEGE_LEVEL:
+    noSupport(w, "USERS_PRIVILEGE_LEVEL")
 
-  case EVENTS_ID_MAP_ID:
-    slog.Info("EVENT_ID_MAP_ID")
-    if !isAdmin(w, p_level) { return }
+  case EVENTS_MAP:
+    slog.Info("EVENT_MAP")
+    if !isAdmin(w, privilege_level) { return }
 
     switch mode {
     case CREATE:
@@ -781,20 +786,20 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       )
 
     default:
-      noSupport(w, "EVENTS_ID:default")
+      noSupport(w, "EVENTS:default")
     }
-  case EVENTS_NAME_ID:
-    noSupport(w, "EVENTS_NAME_ID")
-  case EVENTS_VENUE_ID:
-    noSupport(w, "EVENTS_VENUE_ID")
-  case EVENTS_ROLE_ID:
-    slog.Info("EVENTS_ROLE_ID")
-    if !isAdmin(w, p_level) { return }
+  case EVENTS_NAME:
+    noSupport(w, "EVENTS_NAME")
+  case EVENTS_VENUE:
+    noSupport(w, "EVENTS_VENUE")
+  case EVENTS_ROLE:
+    slog.Info("EVENTS_ROLE")
+    if !isAdmin(w, privilege_level) { return }
     event_id, err := readInt32(r.Body)
-    if readError(w, "EVENTS_ROLE_ID", "event_id", err) { return }
+    if readError(w, "EVENTS_ROLE", "event_id", err) { return }
     role_id, err := readInt32(r.Body)
-    if readError(w, "EVENTS_ROLE_ID", "role_id", err) { return }
-    idx, event_exists := state.EventsId[event_id]
+    if readError(w, "EVENTS_ROLE", "role_id", err) { return }
+    index, event_exists := state.EventsId[event_id]
     _, role_exists := state.RolesId[role_id]
     if !event_exists || !role_exists {
       slog.Error("we are getting unexisting identifiers")
@@ -802,38 +807,38 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       return
     }
 
-    num_map := state.EventsPersonalNumMap[idx]
+    num_map := state.EventsPersonalNumMap[index]
     switch mode {
       case CREATE:
         slog.Info("CREATE")
-        if len(state.EventsRole) <= idx {
-          state.EventsRole = slices.Grow(state.EventsRole, idx+1-len(state.EventsRole));
-          state.EventsRole = state.EventsRole[:idx+1];
+        if len(state.EventsRole) <= index {
+          state.EventsRole = slices.Grow(state.EventsRole, index+1-len(state.EventsRole));
+          state.EventsRole = state.EventsRole[:index+1];
         }
-        state.EventsRole[idx] = append(state.EventsRole[idx], role_id)
+        state.EventsRole[index] = append(state.EventsRole[index], role_id)
         for i := 0; i < len(num_map); i++ {
           num_map[i] = append(num_map[i], -1)
         }
       slog.Info("DATA", "event_id", event_id, "role_id", role_id)
       case DELETE:
         slog.Info("DELETE")
-        pos := slices.Index(state.EventsRole[idx], role_id)
-        filterIdx(&state.EventsRole[idx], pos)
+        pos := slices.Index(state.EventsRole[index], role_id)
+        filterIdx(&state.EventsRole[index], pos)
         for i := 0; i < len(num_map); i++ {
           filterIdx(&num_map[i], pos+2)
         }
         slog.Info("DATA", "event_id", event_id, "role_id", role_id, "column", pos)
       default:
-        noSupport(w, "EVENTS_ROLES_REQUIREMENT_ID:default")
+        noSupport(w, "EVENTS_ROLES_REQUIREMENT:default")
     }
-  case EVENTS_ROLES_REQUIREMENT_ID:
-    noSupport(w, "EVENTS_ROLES_REQUIREMENT_ID")
-  case EVENTS_PERSONAL_NUM_MAP_ID:
-    slog.Info("EVENTS_PERSONAL_NUM_MAP_ID")
-    if !isAdmin(w, p_level) { return }
+  case EVENTS_ROLES_REQUIREMENT:
+    noSupport(w, "EVENTS_ROLES_REQUIREMENT")
+  case EVENTS_PERSONAL_NUM_MAP:
+    slog.Info("EVENTS_PERSONAL_NUM_MAP")
+    if !isAdmin(w, privilege_level) { return }
     event_id, err := readInt32(r.Body)
     if readError(w, "NUM_MAP", "event_id", err) { return }
-    event_idx, exists := state.EventsId[event_id];
+    event_index, exists := state.EventsId[event_id];
     if doesNotExistError(w, "NUM_MAP:CREATE", "event", exists) { return }
     num_map := state.EventsPersonalNumMap
     switch mode {
@@ -841,31 +846,31 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       slog.Info("CREATE")
       data, err := readInt32ArrayWithLimits(r.Body, []int32{64})
       if readError(w, "NUM_MAP:CREATE", "data", err) { return }
-      num_map[event_idx] = append(num_map[event_idx], data)
+      num_map[event_index] = append(num_map[event_index], data)
       slog.Info("DATA", "event_id", event_id)
     case DELETE:
       slog.Info("DELETE")
-      line_idx, err := readInt32(r.Body)
-      if readError(w, "NUM_MAP:DELETE", "line_idx", err) { return }
-      filterIdx(&state.EventsPersonalNumMap[event_idx], int(line_idx));
-      slog.Info("DATA", "event_id", event_id, "line_idx", line_idx)
+      line_index, err := readInt32(r.Body)
+      if readError(w, "NUM_MAP:DELETE", "line_index", err) { return }
+      filterIdx(&state.EventsPersonalNumMap[event_index], int(line_index));
+      slog.Info("DATA", "event_id", event_id, "line_index", line_index)
     case UPDATE:
       slog.Info("UPDATE")
-      line_idx, err := readInt32(r.Body)
-      if readError(w, "NUM_MAP:UPDATE", "line_idx", err) { return }
-      num_idx, err := readInt32(r.Body)
-      if readError(w, "NUM_MAP:UPDATE", "num_idx", err) { return }
+      line_index, err := readInt32(r.Body)
+      if readError(w, "NUM_MAP:UPDATE", "line_index", err) { return }
+      num_index, err := readInt32(r.Body)
+      if readError(w, "NUM_MAP:UPDATE", "num_index", err) { return }
       val, err := readInt32(r.Body)
-      if readError(w, "NUM_MAP:UPDATE", "num_idx", err) { return }
-      num_map[event_idx][line_idx][num_idx] = val
-      slog.Info("DATA", "event_id", event_id, "line_idx", line_idx, "num_idx", num_idx, "value", val)
+      if readError(w, "NUM_MAP:UPDATE", "num_index", err) { return }
+      num_map[event_index][line_index][num_index] = val
+      slog.Info("DATA", "event_id", event_id, "line_index", line_index, "num_index", num_index, "value", val)
 
     default:
-      noSupport(w, "EVENTS_ROLES_REQUIREMENT_ID:default")
+      noSupport(w, "EVENTS_ROLES_REQUIREMENT:default")
     }
-  case EVENTS_DURATION_ID:
-    slog.Info("EVENTS_DURATION_ID");
-    if !isAdmin(w, p_level) { return }
+  case EVENTS_DURATION:
+    slog.Info("EVENTS_DURATION");
+    if !isAdmin(w, privilege_level) { return }
     switch mode {
     case UPDATE:
       slog.Info("UPDATE")
@@ -880,7 +885,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     event_id, err := readInt32(r.Body)
     if readError(w, "EVENTS_DURATION", "event_id", err) { return }
     event_index, exists := state.EventsId[event_id];
-    if doesNotExistError(w, "EVENTS_DURATION_ID", "event_index", exists) { return }
+    if doesNotExistError(w, "EVENTS_DURATION", "event_index", exists) { return }
     duration, err := readInt32(r.Body)
     if readError(w, "EVENTS_DURATION", "duration", err) { return }
     if duration < 0 || duration > 1024 {
@@ -891,9 +896,9 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     state.EventsDuration[event_index] = duration;
 
 
-  case VENUES_ID_MAP_ID:
-    slog.Info("VENUES_ID_MAP_ID")
-    if !isAdmin(w, p_level) { return }
+  case VENUES_MAP:
+    slog.Info("VENUES_MAP")
+    if !isAdmin(w, privilege_level) { return }
     switch mode {
     case CREATE:
       slog.Info("CREATE")
@@ -909,9 +914,9 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     case DELETE:
       slog.Info("DELETE")
       id, err := readInt32(r.Body)
-      if readError(w, "VENUES_ID:DELETE", "id", err) { return }
+      if readError(w, "VENUES:DELETE", "id", err) { return }
       _, exists := state.EventsId[id]
-      if doesNotExistError(w, "VENUES_ID:DELETE", "idx", exists) { return }
+      if doesNotExistError(w, "VENUES:DELETE", "index", exists) { return }
       deleteValue(state.VenuesId, &state.VenuesFreeId, &state.VenuesFreeList, id)
       deleteOccurrences(state.EventsVenues, id);
       slog.Info("DATA", "venue_id", id)
@@ -926,19 +931,19 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       )
 
     default:
-      noSupport(w, "VENUES_ID:default")
+      noSupport(w, "VENUES:default")
     }
-  case VENUES_NAME_ID:
-    noSupport(w, "VENUES_NAME_ID")
+  case VENUES_NAME:
+    noSupport(w, "VENUES_NAME")
 
-  case COMPETENCES_ID_MAP_ID:
-    noSupport(w, "COMPETENCES_ID_MAP_ID")
-  case COMPETENCES_NAME_ID:
-    noSupport(w, "COMPETENCES_NAME_ID")
+  case COMPETENCES_MAP:
+    noSupport(w, "COMPETENCES_MAP")
+  case COMPETENCES_NAME:
+    noSupport(w, "COMPETENCES_NAME")
 
-  case ROLES_ID_MAP_ID:
-    slog.Info("ROLES_ID_MAP_ID")
-    if !isAdmin(w, p_level) { return }
+  case ROLES_MAP:
+    slog.Info("ROLES_MAP")
+    if !isAdmin(w, privilege_level) { return }
     switch mode {
     case CREATE:
       slog.Info("CREATE")
@@ -953,36 +958,36 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     case DELETE:
       slog.Info("DELETE")
       id, err := readInt32(r.Body)
-      if readError(w, "ROLES_ID:DELETE", "id", err) { return }
+      if readError(w, "ROLES:DELETE", "id", err) { return }
       _, exists := state.EventsId[id]
-      if doesNotExistError(w, "ROLES_ID:DELETE", "idx", exists) { return }
+      if doesNotExistError(w, "ROLES:DELETE", "index", exists) { return }
       deleteValue(state.RolesId, &state.RolesFreeId, &state.RolesFreeList, id)
       deleteOccurrences(state.EventsRole, id)
       slog.Info("DATA", "role_id", id)
     default:
-      noSupport(w, "ROLES_ID:default")
+      noSupport(w, "ROLES:default")
     }
-  case ROLES_NAME_ID:
-    noSupport(w, "ROLES_NAME_ID")
+  case ROLES_NAME:
+    noSupport(w, "ROLES_NAME")
 
-  case OCCURRENCES_ID_MAP_ID:
-    noSupport(w, "OCCURRENCES_ID_MAP_ID")
-  case OCCURRENCES_VENUE_ID:
-    noSupport(w, "OCCURRENCES_VENUE_ID")
-  case OCCURRENCES_DATES_ID:
-    noSupport(w, "OCCURRENCES_DATES_ID")
-  case OCCURRENCES_PARTICIPANT_ID:
-    noSupport(w, "OCCURRENCES_PARTICIPANT_ID")
-  case OCCURRENCES_PARTICIPANTS_ROLE_ID:
-    noSupport(w, "OCCURRENCES_PARTICIPANTS_ROLE_ID")
-  case EMPLOYEES_LIMIT_ID:
-    slog.Info("EMPLOYEES_LIMIT_ID");
-    if !isAdmin(w, p_level) { return }
+  case OCCURRENCES_MAP:
+    noSupport(w, "OCCURRENCES_MAP")
+  case OCCURRENCES_VENUE:
+    noSupport(w, "OCCURRENCES_VENUE")
+  case OCCURRENCES_DATES:
+    noSupport(w, "OCCURRENCES_DATES")
+  case OCCURRENCES_PARTICIPANT:
+    noSupport(w, "OCCURRENCES_PARTICIPANT")
+  case OCCURRENCES_PARTICIPANTS_ROLE:
+    noSupport(w, "OCCURRENCES_PARTICIPANTS_ROLE")
+  case EMPLOYEES_LIMIT:
+    slog.Info("EMPLOYEES_LIMIT");
+    if !isAdmin(w, privilege_level) { return }
     switch mode {
     case UPDATE:
       slog.Info("UPDATE");
       new_limit, err := readInt32(r.Body)
-      if readError(w, "ROLES_ID:UPDATE", "new_limit", err) { return }
+      if readError(w, "ROLES:UPDATE", "new_limit", err) { return }
       if new_limit > 1000 || new_limit < 0 {
         slog.Error("new_limit is not in 0..1000")
         http.Error(w, "incorrect request", http.StatusBadRequest)
@@ -991,7 +996,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       state.EmployeesLimit = new_limit;
 
     default:
-      noSupport(w, "EMPLOYEES_LIMIT_ID:default")
+      noSupport(w, "EMPLOYEES_LIMIT:default")
     }
   default:
     noSupport(w, "default")

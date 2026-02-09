@@ -1,4 +1,4 @@
-import * as Global from './global_state.js';
+import * as Global from './global.js';
 
 export let dom = document.createElement('div');
 

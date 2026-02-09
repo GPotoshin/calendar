@@ -37,16 +37,16 @@ func (s *State) validateToken(token [32]byte) (int32, bool) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
-	idx, exists := s.ConnectionsToken[token]
-	if !exists || idx < 0 {
+	index, exists := s.ConnectionsToken[token]
+	if !exists || index < 0 {
 		return -1, false
 	}
 
-	if time.Now().After(s.ConnectionsTime[idx][1]) {
+	if time.Now().After(s.ConnectionsTime[index][1]) {
 		return -1, false
 	}
 
-	return s.ConnectionsUser[idx], true
+	return s.ConnectionsUser[index], true
 }
 
 func (s *State) cleanupExpiredTokens() {
@@ -54,8 +54,8 @@ func (s *State) cleanupExpiredTokens() {
 	defer s.mutex.Unlock()
 
 	now := time.Now()
-	for token, idx := range s.ConnectionsToken {
-		if now.After(s.ConnectionsTime[idx][1]) {
+	for token, index := range s.ConnectionsToken {
+		if now.After(s.ConnectionsTime[index][1]) {
       deleteToken(s.ConnectionsToken, &s.ConnectionsFreeList, token)
 		}
 	}
@@ -175,13 +175,13 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
   state.mutex.Lock()
-  user_idx, user_exists := state.UsersId[userId]
+  user_index, user_exists := state.UsersId[userId]
   if (!user_exists) { 
     state.mutex.Unlock()
     http.Error(w, "Incorrect Login or Password", http.StatusBadRequest)
     return
   }
-  if (state.UsersPassword[user_idx] != password) {
+  if (state.UsersPassword[user_index] != password) {
     state.mutex.Unlock()
     http.Error(w, "Incorrect Login or Password", http.StatusBadRequest)
     return
@@ -201,11 +201,11 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
     state.mutex.Lock()
     _, token_exists := state.ConnectionsToken[token]
     if !token_exists {
-      token_idx := storageIndex(state.ConnectionsToken, &state.ConnectionsFreeList)
-      state.ConnectionsToken[token] = token_idx
-      storeValue(&state.ConnectionsUser, token_idx, userId)
-      storeValue(&state.ConnectionsTime, token_idx, [2]time.Time{now, now.Add(time.Hour)})
-      storeValue(&state.ConnectionsChannel, token_idx, make(chan []byte))
+      token_index := storageIndex(state.ConnectionsToken, &state.ConnectionsFreeList)
+      state.ConnectionsToken[token] = token_index
+      storeValue(&state.ConnectionsUser, token_index, userId)
+      storeValue(&state.ConnectionsTime, token_index, [2]time.Time{now, now.Add(time.Hour)})
+      storeValue(&state.ConnectionsChannel, token_index, make(chan []byte))
 
       state.mutex.Unlock()
       goto _token_generation_success
@@ -224,7 +224,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
   }
 
   state.mutex.Lock()
-  privilege := state.UsersPrivilegeLevel[user_idx]
+  privilege := state.UsersPrivilegeLevel[user_index]
   state.mutex.Unlock()
 
   if err := writeInt32(w, privilege); err != nil {

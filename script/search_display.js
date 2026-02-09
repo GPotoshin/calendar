@@ -1,5 +1,5 @@
-import { zones_identifier } from './global_state.js';
-import * as Utils from './utils.js';
+import { zones_identifier } from './global.js';
+import * as Utilities from './utilities.js';
 
 function fuzzyMatch(pattern, text) {
   pattern = pattern.toLowerCase();
@@ -83,8 +83,8 @@ export function createAndReturnListContainer(name, id) {
   const searchInput = menu.querySelector('.searching-input');
   objList[0].textContent = name;
   const container = objList[1];
-  Utils.setWidthInPixels(menu.children[1], 200);
-  Utils.setWidthInPixels(menu.children[2], 200);
+  Utilities.setWidthInPixels(menu.children[1], 200);
+  Utilities.setWidthInPixels(menu.children[2], 200);
   objList[1]._identifier = zones_identifier.EVENT_STAFF;
 
   searchInput.addEventListener('input', () => { updateList(searchInput, container); });
@@ -100,8 +100,8 @@ export function dynamise(menu, btnPlaceholder = '') {
   const objList = menu.querySelectorAll('.js-set');
   const searchInput = menu.querySelector('.searching-input');
   const container = objList[1];
-  Utils.setWidthInPixels(menu.children[1], 200);
-  Utils.setWidthInPixels(menu.children[2], 200);
+  Utilities.setWidthInPixels(menu.children[1], 200);
+  Utilities.setWidthInPixels(menu.children[2], 200);
   if (btnPlaceholder != '') {
     objList[1]._btnPlaceholder = btnPlaceholder;
   }

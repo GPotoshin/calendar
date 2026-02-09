@@ -1,4 +1,4 @@
-import * as Glob from './global_state.js';
+import * as Global from './global.js';
 
 let elements = {
   today_frame: null,
@@ -24,6 +24,8 @@ let state = {
   calendar_scrolling_observer: null,
 };
 
+const MS_IN_DAY = 86400000;
+
 export function init() {
   setMonthScrollPosition();
   state.top_month_week_observer = new IntersectionObserver((entries) => {
@@ -34,7 +36,7 @@ export function init() {
       setMonthObserver();
     }
   }, {
-    root: elements.calendar_body,
+    root: Global.elements.calendar_body,
     threshold: [1],
     rootMargin: '-66% 0px 0px 0px'
   });
@@ -46,7 +48,7 @@ export function init() {
       setMonthObserver();
     }
   }, {
-    root: elements.calendar_body,
+    root: Global.elements.calendar_body,
     threshold: [1],
     rootMargin: '0px 0px -66% 0px'
   });
@@ -55,18 +57,18 @@ export function init() {
       if (entry.isIntersecting) {
         if (state.is_updating) return;
         state.is_updating = true;
-        elements.today_frame.classList.remove('today');
+        Global.elements.today_frame.classList.remove('today');
         const SHIFTING_BY = 5;
         let shifting_by = SHIFTING_BY;
-        if (entry.target === elements.marker_blocks[0]) {
+        if (entry.target === Global.elements.marker_blocks[0]) {
           shifting_by = -SHIFTING_BY;
         }
-        const week = elements.calendar_content.querySelectorAll('.week-row')[0];
-        elements.calendar_body.classList.replace('scroll-smooth', 'scroll-auto');
+        const week = Global.elements.calendar_content.querySelectorAll('.week-row')[0];
+        Global.elements.calendar_body.classList.replace('scroll-smooth', 'scroll-auto');
         // @nocheckin: We should scroll by a variable offset determined after
         // dom content modification.
-          elements.calendar_body.scrollTop -= shiftingBy*week.offsetHeight;
-        elements.calendar_body.classList.replace('scroll-auto', 'scroll-smooth');
+          Global.elements.calendar_body.scrollTop -= shiftingBy*week.offsetHeight;
+        Global.elements.calendar_body.classList.replace('scroll-auto', 'scroll-smooth');
         requestAnimationFrame(() => {
           state.base_day_number += shiftingBy*7;
           let date = new Date();
@@ -93,15 +95,15 @@ export function init() {
       }
     });
   }, {
-    root: elements.calendar_body,
+    root: Global.elements.calendar_body,
   });
-  state.calendar_scrolling_observer.observe(elements.marker_blocks[0]);
-  state.calendar_scrolling_observer.observe(elements.marker_blocks[1]);
+  state.calendar_scrolling_observer.observe(Global.elements.marker_blocks[0]);
+  state.calendar_scrolling_observer.observe(Global.elements.marker_blocks[1]);
   let date = new Date();
   focus.date = new Date();
   const today_epoch = Math.floor(date.getTime() / MS_IN_DAY);
   const today_weekday = (date.getDay()+6)%7;
-  elements.today_frame = elements.calendar_content.children[8].children[today_weekday];
+  elements.today_frame = Global.elements.calendar_content.children[8].children[today_weekday];
   elements.today_frame.classList.add('today');
 
   state.base_day_number = today_epoch-today_weekday-7*7;
@@ -140,12 +142,12 @@ function setMonthDisplay(date) {
   let monthHolder = document.createElement('strong');
   monthHolder.textContent = months[date.getMonth()];
   let year = document.createTextNode(" " + date.getFullYear());
-  elements.month_display.replaceChildren(monthHolder, year);
+  Global.elements.month_display.replaceChildren(monthHolder, year);
 }
 
 // runs a callback over all days in the displayed buffer
 function iterateOverDays(dayCallback) {
-  const rows = elements.calendar_content.children;
+  const rows = Global.elements.calendar_content.children;
   for (let i = 0; i < rows.length; i++) {
     let row = rows[i];
     if (row.classList.contains('block-marker')) {
@@ -161,7 +163,7 @@ function iterateOverDays(dayCallback) {
 function refocusMonth() {
   setMonthDisplay(focus.date);
   let date = new Date();
-  date.setTime(Number(elements.calendar_content.children[0].children[0]._day_number)*MS_IN_DAY)
+  date.setTime(Number(Global.elements.calendar_content.children[0].children[0]._day_number)*MS_IN_DAY)
   const focusMonth = focus.date.getMonth();
   iterateOverDays((day) => {
     if (date.getMonth() == focusMonth) {
@@ -176,7 +178,7 @@ function refocusMonth() {
 function setMonthObserver() {
   state.top_month_week_observer.disconnect();
   state.bottom_month_week_observer.disconnect();
-  const weeks = elements.calendar_content.children;
+  const weeks = Global.elements.calendar_content.children;
   const month = focus.date.getMonth();
 
   let test_date = new Date(); // what is that?
@@ -188,19 +190,19 @@ function setMonthObserver() {
     const day = row.children[6];
     test_date.setTime(Number(day._day_number)*MS_IN_DAY);
     if (test_date.getMonth() == month) {
-      observers.topWeek.observe(el);
+      state.top_month_week_observer.observe(row);
       break;
     }
   }
   for (let i = weeks.length-1; i >= 0; i--) {
     var row = weeks[i];
-    if (el.classList.contains('block-marker')) {
+    if (row.classList.contains('block-marker')) {
       continue;
     }
     const day = row.children[0];
     test_date.setTime(Number(day._day_number)*MS_IN_DAY);
     if (test_date.getMonth() == month) {
-      observers.bottomWeek.observe(row);
+      state.bottom_month_week_observer.observe(row);
       break;
     }
   }
@@ -223,7 +225,7 @@ export function update() {
     day._day_number = Math.floor(date.getTime() / MS_IN_DAY);
     if (day._day_number == today) {
       day.classList.add('today');
-      elements.today_frame = day;
+      Global.elements.today_frame = day;
     }
     date.setDate(date.getDate() + 1);
   });
@@ -241,12 +243,12 @@ export function setMonthScrollPosition() {
   const calendar_body = document.getElementById('calendar-body');
   const calendar_content = document.getElementById('calendar-content');
 
-  const originalScrollBehavior = calendar_body.style.scrollBehavior;
+  const original_scroll_behavior = calendar_body.style.scrollBehavior;
   calendar_body.style.scrollBehavior = 'auto';
 
   const week = calendar_content.querySelectorAll('.week-row')[0];
   calendar_body.scrollTop = week.offsetHeight*7;
-  calendar_body.style.scrollBehavior = originalScrollBehavior;
+  calendar_body.style.scrollBehavior = original_scroll_behavior;
 }
 
 function getCellNum(pos_x) {
@@ -256,7 +258,7 @@ function getCellNum(pos_x) {
   return Math.floor(rel_pos_x/(week_rect.width/7.0));
 }
 
-elements.calendar_body.addEventListener('mousedown', e => {
+Global.elements.calendar_body.addEventListener('mousedown', e => {
   if (e.button !== 0) return;
 
   state.is_dragging = true;
@@ -271,14 +273,14 @@ elements.calendar_body.addEventListener('mousedown', e => {
   state.prev_focus_num = state.start_cell_num;
 });
 
-elements.calendar_body.addEventListener('mouseup', e => {
+Global.elements.calendar_body.addEventListener('mouseup', e => {
   state.is_created = false;
   state.is_dragging = false;
 });
 
 function shiftBarBy(bar, n) {
-  bar.dataset.top = Number(bar.dataset.top)+n;
-  bar.style.top = Number(bar.dataset.top)*20+'%';
+  bar._top = Number(bar._top)+n;
+  bar.style.top = Number(bar._top)*20+'%';
 }
 
 function getEvents(cell) {
@@ -290,40 +292,40 @@ function getEvents(cell) {
 }
 
 function addBarToCell(state) {
-  let cell = state.cells[state.bar.dataset.leftCellNum];
+  let cell = state.cells[state.bar._left_cell_num];
   let list = cell.getElementsByClassName('bar-holder');
   state.bar_holder = list[0];
 
   let i = 0;
   let rightMax = -1;
-  for (i=0; i<state.bar.dataset.leftCellNum; i++) {
+  for (i=0; i<state.bar._left_cell_num; i++) {
     let list = getEvents(state.cells[i]);
     let shifting = false;
     let shiftingFrom = 99;
     for (let bar of list) {
       if (!shifting) {
-        if (bar.dataset.rightCellNum >= state.bar.dataset.leftCellNum) {
+        if (bar._right_cell_num >= state.bar._left_cell_num) {
           shifting = true;
-          shiftingFrom = Math.min(bar.dataset.top, shiftingFrom);
-          rightMax = Math.max(bar.dataset.rightCellNum, rightMax);
+          shiftingFrom = Math.min(bar._top, shiftingFrom);
+          rightMax = Math.max(bar._right_cell_num, rightMax);
           shiftBarBy(bar, 1);
-        } else if (bar.dataset.top > shiftingFrom) {
+        } else if (bar._top > shiftingFrom) {
           shifting = true;
-          rightMax = Math.max(bar.dataset.rightCellNum, rightMax);
+          rightMax = Math.max(bar._right_cell_num, rightMax);
           shiftBarBy(bar, 1);
         }
       } else {
-          rightMax = Math.max(bar.dataset.rightCellNum, rightMax);
+          rightMax = Math.max(bar._right_cell_num, rightMax);
           shiftBarBy(bar, 1);
       }
     }
   }
 
-  rightMax = Math.max(state.bar.dataset.rightCellNum, rightMax);
-  for (i=state.bar.dataset.leftCellNum; i<=rightMax;i++) {
+  rightMax = Math.max(state.bar._right_cell_num, rightMax);
+  for (i=state.bar._left_cell_num; i<=rightMax;i++) {
     let list = getEvents(state.cells[i]);
     for (let bar of list) {
-      rightMax = Math.max(bar.dataset.rightCellNum, rightMax);
+      rightMax = Math.max(bar._right_cell_num, rightMax);
       shiftBarBy(bar,1);
     }
   }
@@ -333,7 +335,7 @@ function addBarToCell(state) {
 
 let event_counter = 1;
 
-elements.calendar_body.addEventListener('mousemove', e => {
+Global.elements.calendar_body.addEventListener('mousemove', e => {
   if (!state.is_dragging) return;
 
   const d = 50;
@@ -345,11 +347,11 @@ elements.calendar_body.addEventListener('mousemove', e => {
     state.bar.classList.add('event-single');
     state.bar.classList.add('no-select');
     
-    const event_selection = Glob.zones[Glob.zones_identifier.EVENT].selection;
+    const event_selection = Global.zones[Global.zones_identifier.EVENT].selection;
     if (event_selection != null) {
-      const ev_identifier = event_selection._data_identifierentifier;
-      const index = Glob.data.events_identifier.get(ev_id);
-      const name = Glob.data.events_name[index];
+      const ev_identifier = event_selection._data_identifier;
+      const index = Global.data.events_identifier.get(ev_id);
+      const name = Global.data.events_name[index];
       state.bar.textContent = name;
     }
     else {
@@ -357,9 +359,9 @@ elements.calendar_body.addEventListener('mousemove', e => {
       event_counter+=1;
     }
 
-    state.bar.dataset.rightCellNum = state.start_cell_num;
-    state.bar.dataset.leftCellNum = state.start_cell_num;
-    state.bar.dataset.top = 0;
+    state.bar._right_cell_num = state.start_cell_num;
+    state.bar._left_cell_num = state.start_cell_num;
+    state.bar._top = 0;
     state.bar.style.top = '0%';
 
     addBarToCell(state);
@@ -371,10 +373,10 @@ elements.calendar_body.addEventListener('mousemove', e => {
     if (num != state.prev_focus_num) {
       state.prev_focus_num = num;
       if (num > state.start_cell_num) {
-        state.bar.dataset.rightCellNum = num;
+        state.bar._right_cell_num = num;
       } else {
-        state.bar.dataset.leftCellNum = num;
-        state.bar.dataset.rightCellNum = state.start_cell_num;
+        state.bar._left_cell_num = num;
+        state.bar._right_cell_num = state.start_cell_num;
       }
 
       state.bar_holder.removeChild(state.bar);
@@ -384,8 +386,8 @@ elements.calendar_body.addEventListener('mousemove', e => {
       state.cells = replace.getElementsByClassName('day-cell');
       addBarToCell(state);
 
-      let right_cell = state.cells[state.bar.dataset.rightCellNum]; 
-      let left_cell = state.cells[state.bar.dataset.leftCellNum]; 
+      let right_cell = state.cells[state.bar._right_cell_num]; 
+      let left_cell = state.cells[state.bar._left_cell_num]; 
 
       let newWidth = right_cell.getBoundingClientRect().right-
         left_cell.getBoundingClientRect().left-1;

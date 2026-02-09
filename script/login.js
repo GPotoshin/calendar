@@ -1,11 +1,11 @@
 import { BufferReader, BufferWriter } from './io.js';
-import * as Utils from './utils.js';
+import * as Utilities from './utilities.js';
 const idInput = document.getElementById('id');
 const passwordInput = document.getElementById('password');
 const connectButton = document.getElementById('connect');
 
 idInput.addEventListener('input', () => {
-  idInput.value = Utils.digitise(idInput.value);
+  idInput.value = Utilities.digitise(idInput.value);
 });
 
 let publicKey = null;
@@ -96,7 +96,7 @@ connectButton.addEventListener('click', async () => {
       body: encryptedData,
     });
 
-    Utils.throwIfNotOk(resp);
+    Utilities.throwIfNotOk(resp);
     const bin = await resp.arrayBuffer();
     const r = new BufferReader(bin);
 
@@ -118,7 +118,7 @@ connectButton.addEventListener('click', async () => {
     passwordInput.value = '';
     document.body.innerHTML = html;
     document.body.className = "";
-    Utils.appendMeasure();
+    Utilities.appendMeasure();
 
     import(entrypoint)
     .catch((err) => {

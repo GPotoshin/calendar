@@ -1,10 +1,10 @@
-import * as Global from './global_state.js';
+import * as Global from './global.js';
 import { BufferReader, BufferWriter } from './io.js';
-import { zones, zones_identifier } from './global_state.js';
+import { zones, zones_identifier } from './global.js';
 import { storageIndex, deleteValue, deleteOccurrences, storeValue } from './data_manager.js';
 import * as Api from './api.js';
 import * as SideMenu from './side_menu.js';
-import * as Utils from './utils.js';
+import * as Utilities from './utilities.js';
 import * as SearchDisplay from './search_display.js';
 import * as EventInformation from './event_information.js';
 import { numeric_input } from './numeric_input.js';
@@ -35,12 +35,12 @@ function handleClickForContextMenu() {
 
 function createUserDataInputs() {
   const inputs = {
-    name:      Utils.createTextInput('Prenom'),
-    surname:   Utils.createTextInput('Nom'),
-    matricule: Utils.createTextInput('Matricule'),
+    name:      Utilities.createTextInput('Prenom'),
+    surname:   Utilities.createTextInput('Nom'),
+    matricule: Utilities.createTextInput('Matricule'),
   };
   inputs.matricule.addEventListener('input', () => {
-    inputs.matricule.value = Utils.digitise(inputs.matricule.value);
+    inputs.matricule.value = Utilities.digitise(inputs.matricule.value);
   });
   return inputs;
 }
@@ -75,7 +75,7 @@ function escOrCreateOnEnter(event, button, inputs, next = null) {
       const [name, surname, matricule] = getValuesFromUserInputs(inputs);
 
       if (Global.data.users_identifier.has(matricule)) {
-        Utils.setBackgroundColor(inputs.matricule, palette.red);
+        Utilities.setBackgroundColor(inputs.matricule, palette.red);
         return;
       }
       SideMenu.setUserButton(button, name, surname, matricule);
@@ -84,13 +84,13 @@ function escOrCreateOnEnter(event, button, inputs, next = null) {
       endOfUserInputs(button, writer, inputs);
       Api.request(writer)
       .then(response => {
-        Utils.throwIfNotOk(response);
+        Utilities.throwIfNotOk(response);
 
         let index = storageIndex(Global.data.users_identifier, Global.data.users_free_list);
         Global.data.users_identifier.set(matricule, index);
         storeValue(Global.data.users_name, index, name);
         storeValue(Global.data.users_surname, index, surname);
-        button._data_identifierentifier = matricule;
+        button._data_identifier = matricule;
       })
       .catch(error => {
         button.remove();
@@ -111,7 +111,7 @@ function escOrUpdateOnEnter(event, button, inputs, old) {
       const [name, surname, matricule] = getValuesFromUserInputs(inputs);
 
       if (matricule !== old.matricule && Global.data.users_identifier.has(matricule)) {
-        Utils.setBackgroundColor(inputs.matricule, palette.red);
+        Utilities.setBackgroundColor(inputs.matricule, palette.red);
         return;
       }
       SideMenu.setUserButton(button, name, surname, matricule);
@@ -121,7 +121,7 @@ function escOrUpdateOnEnter(event, button, inputs, old) {
       endOfUserInputs(button, writer, inputs);
       Api.request(writer)
       .then(response => {
-        Utils.throwIfNotOk(response);
+        Utilities.throwIfNotOk(response);
         const index = Global.data.users_identifier.get(old.matricule);
         if (index === undefined) {
           console.error("old matricule does not exist locally");
@@ -133,7 +133,7 @@ function escOrUpdateOnEnter(event, button, inputs, old) {
         }
         Global.data.users_name[index] = name;
         Global.data.users_surname[index] = surname;
-        button._data_identifierentifier = matricule;
+        button._data_identifier = matricule;
       })
       .catch(error => {
         SideMenu.setUserButton(button, old.name, old.surname, old.matricule);
@@ -215,7 +215,7 @@ buttons.edit.addEventListener('click', function() {
         const writer = EventInformation.createDurationBuffer(duration, Api.UPDATE, event_identifier);
         Api.request(writer)
         .then(response => {
-          Utils.throwIfNotOk(response);
+          Utilities.throwIfNotOk(response);
           Global.data.events_duration[event_index] = duration;
         })
         .catch(error => {
@@ -236,7 +236,7 @@ buttons.edit.addEventListener('click', function() {
         writer.writeInt32(new_limit);
         Api.request(writer)
         .then(response => {
-          Utils.throwIfNotOk(response);
+          Utilities.throwIfNotOk(response);
           Global.data.employees_limit = new_limit;
         })
         .catch(error => {
@@ -251,8 +251,8 @@ buttons.edit.addEventListener('click', function() {
 
 function swapNumberButtonToInputAndSetLatterToOldValue(button, old_value) {
   numeric_input.element.value = old_value;
-  const width = Utils.measureText(window.getComputedStyle(numeric_input.element), old_value)+2;
-  Utils.setWidthInPixels(numeric_input.element, width);
+  const width = Utilities.measureText(window.getComputedStyle(numeric_input.element), old_value)+2;
+  Utilities.setWidthInPixels(numeric_input.element, width);
   numeric_input.replace(button);
 }
 
@@ -299,7 +299,7 @@ buttons.delete.addEventListener('click', function() {
   writer.writeInt32(Number(identifier));
   Api.request(writer)
   .then(response => {
-    Utils.throwIfNotOk(response);
+    Utilities.throwIfNotOk(response);
     switch (state.delete_target.parentElement._identifier) {
       case zones_identifier.STAFF:
         deleteValue(Global.data.users_identifier, Global.data.users_free_list, identifier);
@@ -316,7 +316,7 @@ buttons.delete.addEventListener('click', function() {
         EventInformation.elements.event_role_list._button_list =
           EventInformation.elements.event_role_list._button_list.filter(b => b !== state.delete_target);
 
-        deleteValue(Global.data.roles_idetifier, Global.data.roles_free_list, identifier);
+        deleteValue(Global.data.roles_identifier, Global.data.roles_free_list, identifier);
         for (let i = 0; i < Global.data.events_roles.length; i++) {
           let events_roles = Global.data.events_roles[i];
           let index = events_roles.indexOf(identifier);
@@ -345,7 +345,7 @@ buttons.delete.addEventListener('click', function() {
 });
 
 function endOfStandardInput(event, input, button, value) {
-  Utils.setBackgroundColor(input, 'transparent');
+  Utilities.setBackgroundColor(input, 'transparent');
   event.preventDefault();
   input.remove();
   button.textContent = value;
@@ -357,7 +357,7 @@ function setCreateInput(button, input, api, meta_data) {
       const value = input.value;
       for (const [identifier, index] of meta_data.map) {
         if (meta_data.array[index] === value) {
-          Utils.setBackgroundColor(input, palette.red);
+          Utilities.setBackgroundColor(input, palette.red);
           return
         }
       }
@@ -367,7 +367,7 @@ function setCreateInput(button, input, api, meta_data) {
       writer.writeString(value);
       Api.request(writer)
       .then(response => {
-        Utils.throwIfNotOk(response);
+        Utilities.throwIfNotOk(response);
         response.arrayBuffer()
         .then(binary => {
           let reader = new BufferReader(binary);
@@ -376,7 +376,7 @@ function setCreateInput(button, input, api, meta_data) {
           meta_data.map.set(identifier, index);
           meta_data.array[index] = value;
           b.textContent = '';
-          Utils.setNameAndId(button, value, identifier);
+          Utilities.setNameAndIdentifier(button, value, identifier);
           b.addEventListener('click', SideMenu.buttonClickCallback);
         });
       })
@@ -394,7 +394,7 @@ function setCreateInput(button, input, api, meta_data) {
 
 function createEventOrVenue(parent, placeholder, api, meta_data) {
   let button = SideMenu.createTemplateButton();
-  const input = Utils.createTextInput(placeholder)
+  const input = Utilities.createTextInput(placeholder)
   button.replaceChildren(input);
   parent.appendChild(button);
   setCreateInput(button, input, api, meta_data);
@@ -408,7 +408,7 @@ function updateEventOrVenue(button, placeholder, api, meta_data) {
 
   button.removeEventListener('click', SideMenu.buttonClickCallback);
 
-  const input = Utils.createTextInput(placeholder)
+  const input = Utilities.createTextInput(placeholder)
   input.value = old_name;
   button.replaceChildren(input);
   input.addEventListener('keydown', event => {
@@ -417,7 +417,7 @@ function updateEventOrVenue(button, placeholder, api, meta_data) {
       for (const [_identifier, _index] of meta_data.map) {
         const name = meta_data.array[_index];
         if (name !== old_name && name === value) {
-          Utils.setBackgroundColor(input, palette.red);
+          Utilities.setBackgroundColor(input, palette.red);
           return
         }
       }
@@ -428,22 +428,22 @@ function updateEventOrVenue(button, placeholder, api, meta_data) {
       writer.writeString(value);
       Api.request(writer)
       .then(response => {
-        Utils.throwIfNotOk(response);
+        Utilities.throwIfNotOk(response);
         meta_data.array[index] = value;
         button.textContent = '';
         button.addEventListener('click', SideMenu.buttonClickCallback);
-        Utils.setNameAndId(button, value, identifier);
+        Utilities.setNameAndIdentifier(button, value, identifier);
       })
       .catch(error => {
         button.textContent = '';
-        Utils.setNameAndId(button, old_name, identifier);
+        Utilities.setNameAndIdentifier(button, old_name, identifier);
         button.addEventListener('click', SideMenu.buttonClickCallback);
         console.error("Could not store ", value, error);
       });
     } else if (event.key === 'Escape') {
       button.textContent = '';
       button.addEventListener('click', SideMenu.buttonClickCallback);
-      Utils.setNameAndId(button, old_name, identifier);
+      Utilities.setNameAndIdentifier(button, old_name, identifier);
       button.remove();
     }
   });
@@ -492,7 +492,7 @@ buttons.create.addEventListener('click', () => {
     }
     case zones_identifier.EVENT_STAFF: {
       let button = SearchDisplay.createButton();
-      const input = Utils.createTextInput('Nouveau Rôle');
+      const input = Utilities.createTextInput('Nouveau Rôle');
       button.appendChild(input);
       state.extend_target.appendChild(button);
       input.focus();
@@ -518,7 +518,7 @@ buttons.toggle.addEventListener('click', () => {
       const event_identifier = zones[zones_identifier.EVENT].selection._data_identifier; 
       const role_identifier = target._data_identifier;
       const index = Global.data.events_identifier.get(event_id);
-      const role_index = Global.data.roles_idetifier.get(role_id);
+      const role_index = Global.data.roles_identifier.get(role_id);
       if (index === undefined || role_index === undefined) {
         console.error('[toggle-button:click] Incorrect event\'s or role\'s ids');
         return;
@@ -536,7 +536,7 @@ buttons.toggle.addEventListener('click', () => {
 
       Api.request(writer)
       .then(response => {
-        Utils.throwIfNotOk(response);
+        Utilities.throwIfNotOk(response);
         let staff_numeric_map = Global.data.events_staff_numeric_map;
 
         if (turning_on) {
@@ -573,16 +573,16 @@ document.addEventListener('contextmenu', event => {
   const target = event.target;
 
   if (state.delete_target = target.closest('.deletable')) {
-    display(local_state, button.delete);
+    display(local_state, buttons.delete);
   }
   if (state.edit_target = target.closest('.editable')) {
-    display(local_state, button.edit);
+    display(local_state, buttons.edit);
   }
   if (state.toggle_target = target.closest('.togglable')) {
-    display(local_state, button.toggle);
+    display(local_state, buttons.toggle);
   }
   if (state.extend_target = target.closest('.extendable')) {
-    display(local_state, button.create);
+    display(local_state, buttons.create);
   }
 
   if (local_state.show) {

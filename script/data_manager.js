@@ -87,7 +87,7 @@ export class DataManager {
     this.competencesFreeId = [];
     this.competences_free_list = [];
 
-    this.roles_idetifier = new Map();
+    this.roles_identifier = new Map();
     this.roles_name = [];
     this.roles_free_list = [];
 
@@ -135,7 +135,7 @@ export class DataManager {
     this.competences_identifier = r.readMapInt32Int();
     this.competences_name = r.readStringArray();
 
-    this.roles_idetifier = r.readMapInt32Int();
+    this.roles_identifier = r.readMapInt32Int();
     this.roles_name = r.readStringArray();
 
     this.occurrences_identifier = r.readMapInt32Int();
@@ -166,7 +166,7 @@ export class DataManager {
   }
   bundleRolesNames() {
     return {
-      map: this.roles_idetifier,
+      map: this.roles_identifier,
       array: this.roles_name,
       free_list: this.roles_free_list,
     };
