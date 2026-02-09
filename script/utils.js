@@ -8,6 +8,7 @@ left: -9999px;
 white-space: pre;
 `;
 
+// we need this function to exist in the case we clear body
 export function appendMeasure() {
   document.body.appendChild(measure);
 }
@@ -40,17 +41,16 @@ export function createTextInput(placeholder) {
   return input;
 }
 
-export function setNameAndId(b, name, id) {
-  b._data_id = id;
+export function setNameAndIdentifier(button, name, identifier) {
+  button._data_identifier = identifier;
   let span = document.createElement('span');
   span.textContent = name;
-  b.appendChild(span);
+  button.appendChild(span);
   span = document.createElement('span');
   span.classList = 'color-grey';
-  span.textContent = '#'+id;
-  b.appendChild(span);
+  span.textContent = '#'+identifier;
+  button.appendChild(span);
 }
-export function throwIfNotOk(r) {
-  if (!r.ok) { throw new Error(`HTTP error! status: ${r.status}`); }
+export function throwIfNotOk(response) {
+  if (!response.ok) { throw new Error(`HTTP error! status: ${response.status}`); }
 }
-

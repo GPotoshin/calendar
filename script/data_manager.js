@@ -67,7 +67,7 @@ export class DataManager {
     this.users_competences = [];
     this.users_duty_station = [];
     this.users_privilage_level = [];
-    this.usersFreeList = [];
+    this.users_free_list = [];
 
     this.events_identifier = new Map();
     this.events_name = [];
@@ -76,27 +76,27 @@ export class DataManager {
     this.events_roles_requirements = [];
     this.events_staff_numeric_map = [];
     this.events_duration = [];
-    this.eventsFreeList = [];
+    this.events_free_list = [];
 
     this.venues_identifier = new Map();
     this.venues_name = [];
-    this.venuesFreeList = [];
+    this.venues_free_list = [];
 
     this.competences_identifier = new Map();
     this.competences_name = [];
     this.competencesFreeId = [];
-    this.competencesFreeList = [];
+    this.competences_free_list = [];
 
     this.roles_idetifier = new Map();
     this.roles_name = [];
-    this.rolesFreeList = [];
+    this.roles_free_list = [];
 
     this.occurrences_identifier = new Map();
     this.occurrences_venue = [];
     this.occurrences_dates = [];
     this.occurrences_participants = [];
     this.occurrences_participantssRole = [];
-    this.occurrencesFreeList = [];
+    this.occurrences_free_list = [];
 
     this.base_day_number = [];
     this.day_occurrences = [];
@@ -154,21 +154,21 @@ export class DataManager {
     return {
       map: this.events_identifier,
       array: this.events_name,
-      free_list: this.eventsFreeList,
+      free_list: this.events_free_list,
     };
   }
   bundleVenuesNames() {
     return {
       map: this.venues_identifier,
       array: this.venues_name,
-      free_list: this.venuesFreeList,
+      free_list: this.venues_free_list,
     };
   }
   bundleRolesNames() {
     return {
       map: this.roles_idetifier,
       array: this.roles_name,
-      free_list: this.rolesFreeList,
+      free_list: this.roles_free_list,
     };
   }
 }

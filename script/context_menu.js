@@ -79,14 +79,14 @@ function escOrCreateOnEnter(event, button, inputs, next = null) {
         return;
       }
       SideMenu.setUserButton(button, name, surname, matricule);
-      let writer = Api.createBufferWriter(Api.CREATE, Api.USERS_ID_MAP_ID);
+      let writer = Api.createBufferWriter(Api.CREATE, Api.USERS_MAP);
 
       endOfUserInputs(button, writer, inputs);
       Api.request(writer)
       .then(response => {
         Utils.throwIfNotOk(response);
 
-        let index = storageIndex(Global.data.users_identifier, Global.data.usersFreeList);
+        let index = storageIndex(Global.data.users_identifier, Global.data.users_free_list);
         Global.data.users_identifier.set(matricule, index);
         storeValue(Global.data.users_name, index, name);
         storeValue(Global.data.users_surname, index, surname);
@@ -115,7 +115,7 @@ function escOrUpdateOnEnter(event, button, inputs, old) {
         return;
       }
       SideMenu.setUserButton(button, name, surname, matricule);
-      let writer = Api.createBufferWriter(Api.UPDATE, Api.USERS_ID_MAP_ID);
+      let writer = Api.createBufferWriter(Api.UPDATE, Api.USERS_MAP);
       writer.writeInt32(old.matricule);
 
       endOfUserInputs(button, writer, inputs);
@@ -189,7 +189,7 @@ buttons.edit.addEventListener('click', function() {
       updateEventOrVenue(
         button,
         'Nom d\'Événement',
-        Api.EVENTS_ID_MAP_ID,
+        Api.EVENTS_MAP,
         Global.data.bundleEventsNames(),
       );
       break;
@@ -198,7 +198,7 @@ buttons.edit.addEventListener('click', function() {
       updateEventOrVenue(
         button,
         'Nom de Lieu',
-        Api.VENUES_ID_MAP_ID,
+        Api.VENUES_MAP,
         Global.data.bundleVenuesNames(),
       );
       break;
@@ -232,7 +232,7 @@ buttons.edit.addEventListener('click', function() {
         const new_limit = swapBackNumberButtonAndReturnNewValue(button);
         if (new_limit === undefined) { return; }
 
-        const writer = Api.createBufferWriter(Api.UPDATE, Api.EMPLOYEES_LIMIT_ID);
+        const writer = Api.createBufferWriter(Api.UPDATE, Api.EMPLOYEES_LIMIT);
         writer.writeInt32(new_limit);
         Api.request(writer)
         .then(response => {
@@ -277,19 +277,19 @@ buttons.delete.addEventListener('click', function() {
   let writer = new BufferWriter();
   switch (state.delete_target.parentElement._identifier) {
     case zones_identifier.STAFF:
-      Api.writeHeader(writer, Api.DELETE, Api.USERS_ID_MAP_ID);
+      Api.writeHeader(writer, Api.DELETE, Api.USERS_MAP);
       break;
     case zones_identifier.VENUE:
-      Api.writeHeader(writer, Api.DELETE, Api.VENUES_ID_MAP_ID);
+      Api.writeHeader(writer, Api.DELETE, Api.VENUES_MAP);
       break;
     case zones_identifier.EVENT:
-      Api.writeHeader(writer, Api.DELETE, Api.EVENTS_ID_MAP_ID);
+      Api.writeHeader(writer, Api.DELETE, Api.EVENTS_MAP);
       break;
     case zones_identifier.EVENT_STAFF:
-      Api.writeHeader(writer, Api.DELETE, Api.ROLES_ID_MAP_ID);
+      Api.writeHeader(writer, Api.DELETE, Api.ROLES_MAP);
       break;
     case zones_identifier.PERSONAL_NUMBER_MAP:
-      Api.writeHeader(writer, Api.DELETE, Api.EVENTS_PERSONAL_NUM_MAP_ID);
+      Api.writeHeader(writer, Api.DELETE, Api.EVENTS_PERSONAL_NUM_MAP);
       writer.writeInt32(zones[zones_identifier.EVENT].selection._data_identifier);
       break;
     default:
@@ -302,21 +302,21 @@ buttons.delete.addEventListener('click', function() {
     Utils.throwIfNotOk(response);
     switch (state.delete_target.parentElement._identifier) {
       case zones_identifier.STAFF:
-        deleteValue(Global.data.users_identifier, Global.data.usersFreeList, identifier);
+        deleteValue(Global.data.users_identifier, Global.data.users_free_list, identifier);
         deleteOccurrences(Global.data.occurrences_participants, identifier);
         break;
       case zones_identifier.VENUE:
-        deleteValue(Global.data.venues_identifier, Global.data.venuesFreeList, identifier);
+        deleteValue(Global.data.venues_identifier, Global.data.venues_free_list, identifier);
         deleteOccurrences(Global.data.events_venues, identifier);
         break;
       case zones_identifier.EVENT:
-        deleteValue(Global.data.events_identifier, Global.data.eventsFreeList, identifier);
+        deleteValue(Global.data.events_identifier, Global.data.events_free_list, identifier);
         break;
       case zones_identifier.EVENT_STAFF: // we should here remove the button from a backing array
         EventInformation.elements.event_role_list._button_list =
           EventInformation.elements.event_role_list._button_list.filter(b => b !== state.delete_target);
 
-        deleteValue(Global.data.roles_idetifier, Global.data.rolesFreeList, identifier);
+        deleteValue(Global.data.roles_idetifier, Global.data.roles_free_list, identifier);
         for (let i = 0; i < Global.data.events_roles.length; i++) {
           let events_roles = Global.data.events_roles[i];
           let index = events_roles.indexOf(identifier);
@@ -425,11 +425,11 @@ function updateEventOrVenue(button, placeholder, api, meta_data) {
       endOfStandardInput(event, input, button, value);
       let writer = Api.createBufferWriter(Api.UPDATE, api);
       writer.writeInt32(identifier);
-      w.writeString(value);
+      writer.writeString(value);
       Api.request(writer)
       .then(response => {
         Utils.throwIfNotOk(response);
-        meta_data.arr[index] = value;
+        meta_data.array[index] = value;
         button.textContent = '';
         button.addEventListener('click', SideMenu.buttonClickCallback);
         Utils.setNameAndId(button, value, identifier);
@@ -476,7 +476,7 @@ buttons.create.addEventListener('click', () => {
       createEventOrVenue(
         zones[zones_identifier.EVENT].element_list, 
         'Nouvel Événement',
-        Api.EVENTS_ID_MAP_ID,
+        Api.EVENTS_MAP,
         Global.data.bundleEventsNames(),
       );
       break;
@@ -485,22 +485,22 @@ buttons.create.addEventListener('click', () => {
       createEventOrVenue(
         zones[zones_identifier.VENUE].element_list, 
         'Nouveau Lieu',
-        Api.VENUES_ID_MAP_ID,
+        Api.VENUES_MAP,
         Global.data.bundleVenuesNames(),
       );
       break;
     }
     case zones_identifier.EVENT_STAFF: {
-      let b = SearchDisplay.createButton();
+      let button = SearchDisplay.createButton();
       const input = Utils.createTextInput('Nouveau Rôle');
-      b.appendChild(input);
-      state.extend_target.appendChild(b);
+      button.appendChild(input);
+      state.extend_target.appendChild(button);
       input.focus();
 
       setCreateInput(
         button,
         input,
-        Api.ROLES_ID_MAP_ID,
+        Api.ROLES_MAP,
         Global.data.bundleRolesNames(),
       );
       EventInformation.elements.event_role_list._button_list.push(button);
@@ -523,40 +523,40 @@ buttons.toggle.addEventListener('click', () => {
         console.error('[toggle-button:click] Incorrect event\'s or role\'s ids');
         return;
       }
-      let w = new BufferWriter();
+      let writer = new BufferWriter();
 
       if (turning_on) {
-        Api.writeHeader(w, Api.CREATE, Api.EVENTS_ROLE_ID);
+        Api.writeHeader(writer, Api.CREATE, Api.EVENTS_ROLE);
       } else {
-        Api.writeHeader(w, Api.DELETE, Api.EVENTS_ROLE_ID);
+        Api.writeHeader(writer, Api.DELETE, Api.EVENTS_ROLE);
       }
 
-      w.writeInt32(event_id);
-      w.writeInt32(role_id);
+      writer.writeInt32(event_identifier);
+      writer.writeInt32(role_identifier);
 
-      Api.request(w)
-      .then(resp => {
-        Utils.throwIfNotOk(resp);
-        let num_map = Global.data.eventsStaffNumericMap;
+      Api.request(writer)
+      .then(response => {
+        Utils.throwIfNotOk(response);
+        let staff_numeric_map = Global.data.events_staff_numeric_map;
 
         if (turning_on) {
-          Global.data.events_roles[index].push(role_id);
-          for (const arr of num_map[index]) {
-            arr.push(-1);
+          Global.data.events_roles[index].push(role_identifier);
+          for (const line of staff_numeric_map[index]) {
+            line.push(-1);
           }
         }
         else {
-          const pos = Global.data.events_roles[index].indexOf(role_id); 
-          Global.data.events_roles[index].splice(pos, 1);
-          for (let arr of num_map[index]) {
-            arr.splice(pos+2, 1);
+          const position = Global.data.events_roles[index].indexOf(role_id); 
+          Global.data.events_roles[index].splice(position, 1);
+          for (let line of staff_numeric_map[index]) {
+            line.splice(position+2, 1);
           }
         }
         EventInformation.update();
       })
-      .catch( e => {
+      .catch(error => {
         target.classList.toggle('clicked');
-        console.error("fail in [toggle-button:click]", name, e);
+        console.error("fail in [toggle-button:click]", name, error);
       });
       break;
   }
@@ -567,29 +567,29 @@ function display(local_state, button) {
   local_state.show = true;
 }
 
-document.addEventListener('contextmenu', function(e) {
-  const s = { show: false };
+document.addEventListener('contextmenu', event => {
+  const local_state = { show: false };
   const menu = Global.elements.right_click_menu;
-  const target = e.target;
+  const target = event.target;
 
   if (state.delete_target = target.closest('.deletable')) {
-    display(s, button.delete);
+    display(local_state, button.delete);
   }
   if (state.edit_target = target.closest('.editable')) {
-    display(s, button.edit);
+    display(local_state, button.edit);
   }
   if (state.toggle_target = target.closest('.togglable')) {
-    display(s, button.toggle);
+    display(local_state, button.toggle);
   }
   if (state.extend_target = target.closest('.extendable')) {
-    display(s, button.create);
+    display(local_state, button.create);
   }
 
-  if (s.show) {
-    e.preventDefault();
+  if (local_state.show) {
+    event.preventDefault();
     menu.classList.replace('disp-none', 'disp-flex');
-    menu.style.setProperty('--menu-left', e.clientX + 'px');
-    menu.style.setProperty('--menu-top', e.clientY + 'px');
+    menu.style.setProperty('--menu-left', event.clientX + 'px');
+    menu.style.setProperty('--menu-top', event.clientY + 'px');
     document.addEventListener('click', handleClickForContextMenu);
   }
 });

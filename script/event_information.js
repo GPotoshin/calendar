@@ -1,4 +1,4 @@
-import { data, zones, zones_identifier } from './global_state.js';
+import * as Global from './global_state.js';
 import * as SearchDisplay from './search_display.js';
 import * as Utils from './utils.js';
 import { numeric_input } from './numeric_input.js';
@@ -10,15 +10,14 @@ export let dom = document.createElement('div');
 
 export const elements = {
   event_role_list: null,
-  comp_tables: null,
-  numtab_header_list: null,
-  numtab_content: null,
+  competences_tables: null,
+  numeric_table_header_list: null,
+  numeric_table_content: null,
 };
 
 function createStaffTable() {
   let table = document.createElement('div');
   table.classList.add('v-container', 'align-items-center');
-  const columnWidth = 125;
 
   table.innerHTML = `
     <h3 class="txt-center">Nombre de</h3>
@@ -29,9 +28,9 @@ function createStaffTable() {
     </div>
     `;
   
-  elements.numtab_header_list = table.children[1];
-  elements.numtab_content = table.children[2];
-  elements.numtab_content._identifier = zones_identifier.PERSONAL_NUMBER_MAP;
+  elements.numeric_table_header_list = table.children[1];
+  elements.numeric_table_content = table.children[2];
+  elements.numeric_table_content._identifier = Global.zones_identifier.PERSONAL_NUMBER_MAP;
   return table;
 }
 
@@ -47,7 +46,7 @@ function createCompetencesTable() {
     `;
 
   const container = table.querySelector('.js-set');
-  elements.comp_tables = container;
+  elements.competences_tables = container;
 
   return table;
 }
@@ -60,7 +59,7 @@ function createFooterOptions() {
     Durée: <button id="event-duration" class="hover std-min no-padding txt-center tiny-button">\u00A0</button>j
     </div>
     `;
-  footer.children[0]._identifier = zones_identifier.DURATION;
+  footer.children[0]._identifier = Global.zones_identifier.DURATION;
   return footer;
 }
 
@@ -70,20 +69,20 @@ export function loadTemplate() {
     </div>
   `;
 
-  let [sDisplay, container] = SearchDisplay.createAndReturnListContainer('Personnel', zones_identifier.EVENT_STAFF);
+  let [search_display, container] = SearchDisplay.createAndReturnListContainer('Personnel', Global.zones_identifier.EVENT_STAFF);
   container._button_list = [];
 
-  for (const [id, index] of data.roles_idetifier) {
-    const name = data.roles_name[index];
-    const b = SearchDisplay.createButton(); 
-    Utils.setNameAndId(b, name, id);
-    container.appendChild(b);
-    container._button_list.push(b);
+  for (const [idetifier, index] of Global.data.roles_idetifier) {
+    const name = Global.data.roles_name[index];
+    const button = SearchDisplay.createButton(); 
+    Utils.setNameAndId(b, name, identifier);
+    container.appendChild(button);
+    container._button_list.push(button);
   }
   elements.event_role_list = container;
 
   EventInformation.dom.children[0].append(
-    sDisplay,
+    search_display,
     createStaffTable(),
     createCompetencesTable(),
     createFooterOptions(),
@@ -104,20 +103,20 @@ export function update() { // @working
     </div>
     `;
 
-  const zone = zones[zones_identifier.EVENT];
+  const zone = Global.zones[Global.zones_identifier.EVENT];
   if (zone.selection == null) { // we need to show general setting
     return;
   }
   const event_identifier = zone.selection._data_identifier;
-  const event_index = data.events_identifier.get(event_id);
+  const event_index = Global.data.events_identifier.get(event_id);
   if (event_index === undefined) { throw new Error("[update] no entry for event_id"); }
-  const event_roles = data.events_roles[event_index];
-  const num_map = data.events_staff_numeric_map;
+  const event_roles = Global.data.events_roles[event_index];
+  const staff_numeric_map = Global.data.events_staff_numeric_map;
 
-  function createTemplateLine(staff_num) {
+  function createTemplateLine(staff_numeric_map) {
     let line = document.createElement('div');
     line.className = 'h-container align-items-center wide';
-    line.innerHTML = participant_num_field_html+staff_num_field_html.repeat(staff_num);
+    line.innerHTML = participant_num_field_html+staff_num_field_html.repeat(staff_numeric_map);
     for (let i = 0; i < line.children.length-1; i++) {
       line.children[i].classList.add('right-border');
     }
@@ -125,43 +124,43 @@ export function update() { // @working
   }
 
 
-  function evolveButton(b) {
-    b.classList.add('editable');
-    b.removeEventListener('click', b._clickCallback);
-    b._clickCallback = null;
+  function evolveButton(button) {
+    button.classList.add('editable');
+    button.removeEventListener('click', b._clickCallback);
+    button._clickCallback = null;
   }
 
-  function getNumVal(b) {
-    return Number(b.textContent);
+  function getNumVal(button) {
+    return Number(button.textContent);
   }
 
-  function endOfButtonWriting(b, line_index) {
-    numeric_input.swapBackAndSetContent(b);
-    if (b.textContent !== '\u00A0') {
-      const n = getNumVal(b);
-      let w = Api.createBufferWriter(Api.UPDATE, Api.EVENTS_PERSONAL_NUM_MAP_ID);
-      w.writeInt32(event_id);
-      w.writeInt32(line_index);
-      w.writeInt32(b._data_identifier);
-      w.writeInt32(n);
-      Api.request(w)
-      .then(resp => {
-        throwIfRespNotOk(resp);
-        evolveButton(b);
-        num_map[event_index][line_index][b._data_identifier] = n;
+  function endOfButtonWriting(button, line_index) {
+    numeric_input.swapBackAndSetContent(button);
+    if (button.textContent !== '\u00A0') {
+      const numeric_value = getNumVal(button);
+      let writer = Api.createBufferWriter(Api.UPDATE, Api.EVENTS_PERSONAL_NUM_MAP);
+      writer.writeInt32(event_identifier);
+      writer.writeInt32(line_index);
+      writer.writeInt32(button._data_identifier);
+      writer.writeInt32(numeric_value);
+      Api.request(writer)
+      .then(response => {
+        throwIfRespNotOk(response);
+        evolveButton(button);
+        num_map[event_index][line_index][button._data_identifier] = numeric_value;
       })
-      .catch(e => {
-        console.error('Could not store num_map button');
+      .catch(error => {
+        console.error('Could not store num_map button: ', error);
       });
     }
   }
 
-  function endOfLineWriting(staff_num, b, line, btns) {
-    numeric_input.swapBackAndSetContent(b);
+  function endOfLineWriting(staff_number_map, button, line, buttons) {
+    numeric_input.swapBackAndSetContent(button);
 
     let data_is_set = true;
-    for (let button of btns) {
-      if (button.textContent == '\u00A0') {
+    for (let _button of buttons) {
+      if (_button.textContent == '\u00A0') {
         data_is_set = false;
         break;
       }
@@ -170,129 +169,129 @@ export function update() { // @working
       line.classList.add('deletable');
       line._data_identifier = num_map[event_index].length;
       // we need to make an API store request here
-      let w = Api.createBufferWriter(Api.CREATE, Api.EVENTS_PERSONAL_NUM_MAP_ID);
-      w.writeInt32(event_id);
-      w.writeInt32(btns.length);
+      let writer = Api.createBufferWriter(Api.CREATE, Api.EVENTS_PERSONAL_NUM_MAP);
+      writer.writeInt32(event_id);
+      writer.writeInt32(buttons.length);
       let data = [];
-      for (let j = 0; j < btns.length; j++) {
-        btns[j]._data_identifier = j;
-        evolveButton(btns[j]);
-        const n = getNumVal(btns[j]);
-        w.writeInt32(n);
-        data.push(n);
+      for (let j = 0; j < buttons.length; j++) {
+        buttons[j]._data_identifier = j;
+        evolveButton(buttons[j]);
+        const n = getNumVal(buttons[j]);
+        writer.writeInt32(numeric_value);
+        data.push(numeric_value);
       }
       Api.request(w)
-      .then(resp => {
-        throwIfRespNotOk(resp);
+      .then(response => {
+        throwIfRespNotOk(response);
         num_map[event_index].push(data);
       })
-      .catch(e => {
+      .catch(error => {
         line.remove();
-        console.error('Could not store num_map line');
+        console.error('Could not store num_map line: ', error);
       });
-      addEmptyLine(staff_num);
+      addEmptyLine(staff_numeric_map);
     }
   }
 
-  function setEmptyBtn(b, clickCallback) {
-    b.textContent = '\u00A0';
-    b.className = 'std-min hover no-padding txt-center tiny-button';
-    b._clickCallback = clickCallback;
-    b.addEventListener('click', clickCallback)
+  function setEmptyButton(button, clickCallback) {
+    button.textContent = '\u00A0';
+    button.className = 'std-min hover no-padding txt-center tiny-button';
+    button._clickCallback = clickCallback;
+    button.addEventListener('click', clickCallback)
   }
 
-  function setClickCallback(b, callback) {
-    b._clickCallback = callback;
-    b.addEventListener('click', callback)
+  function setClickCallback(button, callback) {
+    button._clickCallback = callback;
+    button.addEventListener('click', callback)
   }
 
   function addEmptyLine(staff_num) {
     let line = createTemplateLine(staff_num);
-    const btns = line.querySelectorAll('button');
-    for (const b of btns) {
-      setEmptyBtn(b, () => {
-        numeric_input.replace(b);
+    const buttons = line.querySelectorAll('button');
+    for (const _button of buttons) {
+      setEmptyButton(_button, () => {
+        numeric_input.replace(_button);
         numeric_input.endOfWriting = () => {
-          endOfLineWriting(staff_num, b, line, btns)
+          endOfLineWriting(staff_num, _button, line, buttons)
         };
       });
     };
-    elements.numtab_content.appendChild(line);
+    elements.numeric_table_content.appendChild(line);
   }
 
   // actual function code
   for (const _button of elements.event_role_list._button_list) {
     if (event_roles.includes(_button._data_identifier)) {
-      b.classList.add('clicked');
+      _button.classList.add('clicked');
     } else {
-      b.classList.remove('clicked');
+      _button.classList.remove('clicked');
     }
   }
 
   // nummap
   const base_width = 125;
   let width = base_width*(event_roles.length+1);
-  Utils.setWidthInPixels(elements.numtab_header_list, width);
-  Utils.setWidthInPixels(elements.numtab_content, width);
+  Utils.setWidthInPixels(elements.numeric_table_header_list, width);
+  Utils.setWidthInPixels(elements.numeric_table_content, width);
 
   function createLocalHeader(name) {
-    let retval = document.createElement('div');
-    retval.className = 'disp-flex justify-content-center';
-    Utils.setWidthInPixels(retval, width);
+    let header_container = document.createElement('div');
+    header_container.className = 'disp-flex justify-content-center';
+    Utils.setWidthInPixels(header_container, width);
     let header = document.createElement('h4');
     header.className = 'txt-center';
     header.textContent = name;
-    retval.append(header);
-    return retval;
+    header_container.append(header);
+    return header_container;
   }
   // @nocheckin: we will need to merge all those iterations together
   let list = [createLocalHeader('Participants')];
   for (const role_identifier of event_roles) {
-    const role_index = data.roles_idetifier.get(role_id);
+    const role_index = Global.data.roles_idetifier.get(role_id);
     if (role_index === undefined) { throw new Error('Can find role_id') }
-    const name = data.roles_name[role_index];
+    const name = Global.data.roles_name[role_index];
     list.push(createLocalHeader(name));
   }
-  elements.numtab_header_list.replaceChildren(...list);
+  elements.numeric_table_header_list.replaceChildren(...list);
 
   list = [];
-  for (let i = 0; i < num_map[event_index].length; i++) {
+  for (let i = 0; i < staff_numeric_map[event_index].length; i++) {
     let line = createTemplateLine(event_roles.length);
     line.classList.add('deletable');
-    const btns = line.querySelectorAll('button');
+    const buttons = line.querySelectorAll('button');
     line._data_identifier = i;
-    for (let j = 0; j < btns.length; j++) {
-      let b = btns[j];
-      b._data_identifier = j;
-      const val = num_map[event_index][i][j];
-      if (val === -1) {
-        setEmptyBtn(b, () => {
-          numeric_input.replace(b);
+    for (let j = 0; j < buttons.length; j++) {
+      let _button = buttons[j];
+      _button._data_identifier = j;
+      const value = num_map[event_index][i][j];
+      if (value === -1) {
+        setEmptyButton(_button, () => {
+          numeric_input.replace(_button);
           numeric_input.endOfWriting = () => {
-            endOfButtonWriting(b, i);
+            endOfButtonWriting(_button, i);
           }
         }); 
       } else {
-        b.textContent = val;
+        _button.textContent = value;
       }
     };
     list.push(line);
   }
-  elements.numtab_content.replaceChildren(...list);
+  elements.numeric_table_content.replaceChildren(...list);
   addEmptyLine(event_roles.length); // idea is that addEmptyLine will add a line directly to the dom
 
-  list = [SearchDisplay.create('Participants', zones_identifier.COMPETENCES)];
+  list = [SearchDisplay.create('Participants', Global.zones_identifier.COMPETENCES)];
   for (const role_identifier of event_roles) {
-    const role_index = data.roles_idetifier.get(role_id);
+    const role_index = Global.data.roles_idetifier.get(role_identifier);
     if (role_index === undefined) { throw new Error("Can't find role_id") }; 
-    const name = data.roles_name[role_index];
-    list.push(SearchDisplay.create(name, zones_identifier.COMPETENCES));
+    const name = Global.data.roles_name[role_index];
+    list.push(SearchDisplay.create(name, Global.zones_identifier.COMPETENCES));
   }
-  elements.comp_tables.replaceChildren(...list);
+  elements.competences_tables.replaceChildren(...list);
 
-  let duration = data.events_duration[event_index];
+  let duration = Global.data.events_duration[event_index];
   if (duration === undefined) {
-    data.events_duration[_eventId] = -1;
+    Global.data.events_duration[event_identifier] = -1;
     duration = -1;
   }
 
@@ -307,18 +306,18 @@ export function update() { // @working
     const new_duration = Number(numeric_input.element.value);
     button.textContent = numeric_input.element.value | '\u00A0';
     numeric_input.element.replaceWith(button);
-    const event_identifier = zones[zones_identifier.EVENT].selection._data_identifier;
-    const event_index = data.events_identifier.get(event_id);
+    const event_identifier = Global.zones[Global.zones_identifier.EVENT].selection._data_identifier;
+    const event_index = Global.data.events_identifier.get(event_identifier);
     if (event_index === undefined) { throw new Error('[updating duration]: event_identifier does not exist'); }
     if (numeric_input.element.value === '') {
-      data.events_duration[event_id] = -1;
+      Global.data.events_duration[event_identifier] = -1;
       return;
     }
-    let buffer_writer = createDurationBuffer(new_duration, Api.CREATE, event_id);
+    let buffer_writer = createDurationBuffer(new_duration, Api.CREATE, event_identifier);
     Api.request(buffer_writer)
     .then(response => {
       Utils.throwIfNotOk(response);
-      data.events_duration[event_index] = duration;
+      Global.data.events_duration[event_index] = duration;
       button.classList.add('editable');
       button.removeEventListener('click', localCallback);
     })
@@ -338,13 +337,13 @@ export function update() { // @working
   }
 }
 
-export function createDurationBuffer(duration, mode, event_id) {
+export function createDurationBuffer(duration, mode, event_identifier) {
   if (duration < 0 || duration > 1024) {
     console.error("value of duration should be in 1..1024"); 
     return;
   }
-  let w = Api.createBufferWriter(Api.UPDATE, Api.EVENTS_DURATION_ID);
-  w.writeInt32(event_id);
-  w.writeInt32(duration);
-  return w;
+  let writer = Api.createBufferWriter(Api.UPDATE, Api.EVENTS_DURATION);
+  writer.writeInt32(event_identifier);
+  writer.writeInt32(duration);
+  return writer;
 }

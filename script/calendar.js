@@ -1,12 +1,17 @@
 import * as Glob from './global_state.js';
 
+let elements = {
+  today_frame: null,
+};
+
 let state = {
   cells: null,
   backed_week: null,
   week: null,
   start_cell_num: 0,
-  isCreated: false,
-  isDragging: false,
+  is_updating: false,
+  is_created: false,
+  is_dragging: false,
   start_x: 0,
   start_y: 0,
   bar_holder: null,
@@ -22,26 +27,24 @@ let state = {
 export function init() {
   setMonthScrollPosition();
   state.top_month_week_observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        focused_day_date.setMonth(focus.date.getMonth()-1);
-        refocusMonth();
-        setMonthObserver();
-      }
-    });
+    let entry = entries[0]
+    if (entry.isIntersecting) {
+      focused_day_date.setMonth(focus.date.getMonth()-1);
+      refocusMonth();
+      setMonthObserver();
+    }
   }, {
     root: elements.calendar_body,
     threshold: [1],
     rootMargin: '-66% 0px 0px 0px'
   });
   state.bottom_month_week_observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        focused_day_date.setMonth(focus.date.getMonth()+1);
-        refocusMonth();
-        setMonthObserver();
-      }
-    });
+    let entry = entries[0];
+    if (entry.isIntersecting) {
+      focused_day_date.setMonth(focus.date.getMonth()+1);
+      refocusMonth();
+      setMonthObserver();
+    }
   }, {
     root: elements.calendar_body,
     threshold: [1],
@@ -50,13 +53,13 @@ export function init() {
   state.calendar_scrolling_observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
-        if (state.isUpdating) return;
-        state.isUpdating = true;
-        elements.todayFrame.classList.remove('today');
+        if (state.is_updating) return;
+        state.is_updating = true;
+        elements.today_frame.classList.remove('today');
         const SHIFTING_BY = 5;
-        let shiftingBy = SHIFTING_BY;
+        let shifting_by = SHIFTING_BY;
         if (entry.target === elements.marker_blocks[0]) {
-          shiftingBy = -SHIFTING_BY;
+          shifting_by = -SHIFTING_BY;
         }
         const week = elements.calendar_content.querySelectorAll('.week-row')[0];
         elements.calendar_body.classList.replace('scroll-smooth', 'scroll-auto');
@@ -74,17 +77,17 @@ export function init() {
           const focusMonth = focus.date.getMonth();
           iterateOverDays((day) => {
             day.children[0].textContent = date.getDate();
-            day._dayNum = Math.floor(date.getTime() / MS_IN_DAY);
-            if (day._dayNum == today) {
+            day._day_number = Math.floor(date.getTime() / MS_IN_DAY);
+            if (day._day_number == today) {
               day.classList.add('today');
-              elements.todayFrame = day;
+              elements.today_frame = day;
             }
             date.setDate(date.getDate() + 1);
           });
           refocusMonth();
           setMonthObserver();
           setTimeout(() => {
-            state.isUpdating = false;
+            state.is_updating = false;
           }, 100);
         });
       }
@@ -98,8 +101,8 @@ export function init() {
   focus.date = new Date();
   const today_epoch = Math.floor(date.getTime() / MS_IN_DAY);
   const today_weekday = (date.getDay()+6)%7;
-  elements.todayFrame = elements.calendar_content.children[8].children[today_weekday];
-  elements.todayFrame.classList.add('today');
+  elements.today_frame = elements.calendar_content.children[8].children[today_weekday];
+  elements.today_frame.classList.add('today');
 
   state.base_day_number = today_epoch-today_weekday-7*7;
   date.setTime(state.base_day_number*MS_IN_DAY);
@@ -108,7 +111,7 @@ export function init() {
   const focusMonth = focus.date.getMonth();
   iterateOverDays((day) => {
     day.children[0].textContent = date.getDate();
-    day._dayNum = Math.floor(date.getTime() / MS_IN_DAY);
+    day._day_number = Math.floor(date.getTime() / MS_IN_DAY);
     if (date.getMonth() == focusMonth) {
       day.classList.add('focused-month');
     }
@@ -142,14 +145,14 @@ function setMonthDisplay(date) {
 
 // runs a callback over all days in the displayed buffer
 function iterateOverDays(dayCallback) {
-  const list = elements.calendar_content.children;
-  for (let i = 0; i < list.length; i++) {
-    var el = list[i];
-    if (el.classList.contains('block-marker')) {
+  const rows = elements.calendar_content.children;
+  for (let i = 0; i < rows.length; i++) {
+    let row = rows[i];
+    if (row.classList.contains('block-marker')) {
       continue;
     }
-    for (let j = 0; j < el.children.length; j++) {
-      dayCallback(el.children[j]);
+    for (let j = 0; j < row.children.length; j++) {
+      dayCallback(row.children[j]);
     }
   }
 }
@@ -158,7 +161,7 @@ function iterateOverDays(dayCallback) {
 function refocusMonth() {
   setMonthDisplay(focus.date);
   let date = new Date();
-  date.setTime(Number(elements.calendar_content.children[0].children[0]._dayNum)*MS_IN_DAY)
+  date.setTime(Number(elements.calendar_content.children[0].children[0]._day_number)*MS_IN_DAY)
   const focusMonth = focus.date.getMonth();
   iterateOverDays((day) => {
     if (date.getMonth() == focusMonth) {
@@ -170,39 +173,34 @@ function refocusMonth() {
   });
 }
 
-function dateFromDayNum(n) {
-  let date = new Date();
-  date.setTime(Number(n)*MS_IN_DAY);
-}
-
 function setMonthObserver() {
   state.top_month_week_observer.disconnect();
   state.bottom_month_week_observer.disconnect();
   const weeks = elements.calendar_content.children;
   const month = focus.date.getMonth();
 
-  let testDate = new Date();
+  let test_date = new Date(); // what is that?
   for (let i = 0; i < weeks.length; i++) {
-    var el = weeks[i];
-    if (el.classList.contains('block-marker')) {
+    var row = weeks[i];
+    if (row.classList.contains('block-marker')) {
       continue;
     }
-    const day = el.children[6];
-    testDate.setTime(Number(day._dayNum)*MS_IN_DAY);
-    if (testDate.getMonth() == month) {
+    const day = row.children[6];
+    test_date.setTime(Number(day._day_number)*MS_IN_DAY);
+    if (test_date.getMonth() == month) {
       observers.topWeek.observe(el);
       break;
     }
   }
   for (let i = weeks.length-1; i >= 0; i--) {
-    var el = weeks[i];
+    var row = weeks[i];
     if (el.classList.contains('block-marker')) {
       continue;
     }
-    const day = el.children[0];
-    testDate.setTime(Number(day._dayNum)*MS_IN_DAY);
-    if (testDate.getMonth() == month) {
-      observers.bottomWeek.observe(el);
+    const day = row.children[0];
+    test_date.setTime(Number(day._day_number)*MS_IN_DAY);
+    if (test_date.getMonth() == month) {
+      observers.bottomWeek.observe(row);
       break;
     }
   }
@@ -222,10 +220,10 @@ export function update() {
   const focusMonth = focus.date.getMonth();
   iterateOverDays((day) => {
     day.children[0].textContent = date.getDate();
-    day._dayNum = Math.floor(date.getTime() / MS_IN_DAY);
-    if (day._dayNum == today) {
+    day._day_number = Math.floor(date.getTime() / MS_IN_DAY);
+    if (day._day_number == today) {
       day.classList.add('today');
-      elements.todayFrame = day;
+      elements.today_frame = day;
     }
     date.setDate(date.getDate() + 1);
   });
@@ -261,7 +259,7 @@ function getCellNum(pos_x) {
 elements.calendar_body.addEventListener('mousedown', e => {
   if (e.button !== 0) return;
 
-  state.isDragging = true;
+  state.is_dragging = true;
   state.start_x = e.clientX;
   state.start_y = e.clientY;
 
@@ -274,8 +272,8 @@ elements.calendar_body.addEventListener('mousedown', e => {
 });
 
 elements.calendar_body.addEventListener('mouseup', e => {
-  state.isCreated = false;
-  state.isDragging = false;
+  state.is_created = false;
+  state.is_dragging = false;
 });
 
 function shiftBarBy(bar, n) {
@@ -336,11 +334,11 @@ function addBarToCell(state) {
 let event_counter = 1;
 
 elements.calendar_body.addEventListener('mousemove', e => {
-  if (!state.isDragging) return;
+  if (!state.is_dragging) return;
 
   const d = 50;
   if ((state.start_x-e.clientX>d || state.start_x-e.clientX<-d)
-    && !state.isCreated) {
+    && !state.is_created) {
 
     state.bar = document.createElement('div');
     state.bar.classList.add('event-occurence');
@@ -366,8 +364,8 @@ elements.calendar_body.addEventListener('mousemove', e => {
 
     addBarToCell(state);
 
-    state.isCreated = true;
-  } else if (state.isCreated) {
+    state.is_created = true;
+  } else if (state.is_created) {
 
     const num = getCellNum(e.clientX);
     if (num != state.prev_focus_num) {

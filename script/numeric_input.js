@@ -2,13 +2,13 @@ import * as Utils from './utils.js';
 export var numeric_input = {
   element: document.createElement('input'),
   endOfWriting: null,
-  replace(b) {
-    b.replaceWith(numeric_input.element);
+  replace(button) {
+    button.replaceWith(numeric_input.element);
     numeric_input.element.focus();
   },
-  swapBackAndSetContent(b) {
-    b.textContent = numeric_input.element.value || '\u00A0';
-    numeric_input.element.replaceWith(b);
+  swapBackAndSetContent(button) {
+    button.textContent = numeric_input.element.value || '\u00A0';
+    numeric_input.element.replaceWith(button);
   },
 };
 
@@ -18,8 +18,8 @@ Utils.setWidthInPixels(numeric_input.element, 0);
 
 numeric_input.element.addEventListener('input', () => {
   numeric_input.element.value = Utils.digitise(numeric_input.element.value);
-  const w = Utils.measureText(window.getComputedStyle(numeric_input.element), numeric_input.element.value)+2;
-  Utils.setWidthInPixels(numeric_input.element, w);
+  const width = Utils.measureText(window.getComputedStyle(numeric_input.element), numeric_input.element.value)+2;
+  Utils.setWidthInPixels(numeric_input.element, width);
 });
 
 function end() {
