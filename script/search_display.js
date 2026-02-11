@@ -66,7 +66,7 @@ export function createButton(name = '') {
   return button;
 }
 
-export function createAndReturnListContainer(name, id) {
+export function createAndReturnListContainer(name, identifier) {
   let menu = document.createElement('div');
 
   menu.className = 'm-box v-container align-items-center';
@@ -85,14 +85,14 @@ export function createAndReturnListContainer(name, id) {
   const container = objList[1];
   Utilities.setWidthInPixels(menu.children[1], 200);
   Utilities.setWidthInPixels(menu.children[2], 200);
-  objList[1]._identifier = zones_identifier.EVENT_STAFF;
+  objList[1]._identifier = identifier;
 
   searchInput.addEventListener('input', () => { updateList(searchInput, container); });
   return [menu, objList[1]];
 }
 
-export function create(name, id) {
-  let [menu, ] = createAndReturnListContainer(name, id);
+export function create(name, identifier) {
+  let [menu, ] = createAndReturnListContainer(name, identifier);
   return menu;
 }
 

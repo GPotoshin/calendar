@@ -334,7 +334,7 @@ buttons.delete.addEventListener('click', function() {
           let index = events_roles.indexOf(identifier);
           events_roles.splice(identifier, 1);
           let staff_number_map = Global.data.events_staff_number_map[i];
-          for (let j = 0; j < staff_numberic_map.length; j++) {
+          for (let j = 0; j < staff_number_map.length; j++) {
             staff_number_map.splice(index, 1);
           }
         }
