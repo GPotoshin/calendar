@@ -40,14 +40,14 @@ function updateList(input, container) {
   const query = input.value;
   if (!query) {
     container.innerHTML = '';
-    for (const b of container._button_list) {
-      container.append(b);
+    for (const button of container._button_list) {
+      container.append(button);
     }
     return;
   }
   const scored = [];
-  for (const b of container._button_list) {
-    const score = fuzzyMatch(query, b.textContent);
+  for (const button of container._button_list) {
+    const score = fuzzyMatch(query, button.textContent);
     if (score !== null) {
       scored.push({ btn: b, score: score });
     }
@@ -60,10 +60,10 @@ function updateList(input, container) {
 }
 
 export function createButton(name = '') {
-  let b = document.createElement('button');
-  b.className = 'hover search-list-button togglable deletable';
-  b.textContent = name;
-  return b;
+  let button = document.createElement('button');
+  button.className = 'hover search-list-button togglable deletable';
+  button.textContent = name;
+  return button;
 }
 
 export function createAndReturnListContainer(name, id) {

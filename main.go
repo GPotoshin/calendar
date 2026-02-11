@@ -654,7 +654,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
   mode, err := readInt32(r.Body)
   if readError(w, "handleApi", "mode", err) { return }
   field_identifier, err := readInt32(r.Body)
-  if readError(w, "handleApi", "field_id", err) { return }
+  if readError(w, "handleApi", "field_identifier", err) { return }
   if field_identifier < 0 || field_identifier >= STATE_FIELD_COUNT {
     slog.Error("incorrect field_identifier in api")
     http.Error(w, "incorrect api", http.StatusBadRequest)
@@ -694,7 +694,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
           return
         }
         new_identifier, err := readInt32(r.Body)
-        if readError(w, "USERS_MAP:UPDATE", "new_id", err) { return }
+        if readError(w, "USERS_MAP:UPDATE", "new_identifier", err) { return }
         name, surname, success := readNameAndSurname(w, r)
         if !success { return }
         if new_identifier != mat {
@@ -795,12 +795,12 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
   case EVENTS_ROLE:
     slog.Info("EVENTS_ROLE")
     if !isAdmin(w, privilege_level) { return }
-    event_id, err := readInt32(r.Body)
-    if readError(w, "EVENTS_ROLE", "event_id", err) { return }
-    role_id, err := readInt32(r.Body)
-    if readError(w, "EVENTS_ROLE", "role_id", err) { return }
-    index, event_exists := state.EventsId[event_id]
-    _, role_exists := state.RolesId[role_id]
+    event_identifier, err := readInt32(r.Body)
+    if readError(w, "EVENTS_ROLE", "event_identifier", err) { return }
+    role_identifier, err := readInt32(r.Body)
+    if readError(w, "EVENTS_ROLE", "role_identifier", err) { return }
+    index, event_exists := state.EventsId[event_identifier]
+    _, role_exists := state.RolesId[role_identifier]
     if !event_exists || !role_exists {
       slog.Error("we are getting unexisting identifiers")
       http.Error(w, "we are getting unexisting identifiers", http.StatusBadRequest)
@@ -815,19 +815,19 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
           state.EventsRole = slices.Grow(state.EventsRole, index+1-len(state.EventsRole));
           state.EventsRole = state.EventsRole[:index+1];
         }
-        state.EventsRole[index] = append(state.EventsRole[index], role_id)
+        state.EventsRole[index] = append(state.EventsRole[index], role_identifier)
         for i := 0; i < len(num_map); i++ {
           num_map[i] = append(num_map[i], -1)
         }
-      slog.Info("DATA", "event_id", event_id, "role_id", role_id)
+      slog.Info("DATA", "event_identifier", event_identifier, "role_identifier", role_identifier)
       case DELETE:
         slog.Info("DELETE")
-        pos := slices.Index(state.EventsRole[index], role_id)
+        pos := slices.Index(state.EventsRole[index], role_identifier)
         filterIdx(&state.EventsRole[index], pos)
         for i := 0; i < len(num_map); i++ {
           filterIdx(&num_map[i], pos+2)
         }
-        slog.Info("DATA", "event_id", event_id, "role_id", role_id, "column", pos)
+        slog.Info("DATA", "event_identifier", event_identifier, "role_identifier", role_identifier, "column", pos)
       default:
         noSupport(w, "EVENTS_ROLES_REQUIREMENT:default")
     }
@@ -836,9 +836,9 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
   case EVENTS_PERSONAL_NUM_MAP:
     slog.Info("EVENTS_PERSONAL_NUM_MAP")
     if !isAdmin(w, privilege_level) { return }
-    event_id, err := readInt32(r.Body)
-    if readError(w, "NUM_MAP", "event_id", err) { return }
-    event_index, exists := state.EventsId[event_id];
+    event_identifier, err := readInt32(r.Body)
+    if readError(w, "NUM_MAP", "event_identifier", err) { return }
+    event_index, exists := state.EventsId[event_identifier];
     if doesNotExistError(w, "NUM_MAP:CREATE", "event", exists) { return }
     num_map := state.EventsPersonalNumMap
     switch mode {
@@ -847,13 +847,13 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       data, err := readInt32ArrayWithLimits(r.Body, []int32{64})
       if readError(w, "NUM_MAP:CREATE", "data", err) { return }
       num_map[event_index] = append(num_map[event_index], data)
-      slog.Info("DATA", "event_id", event_id)
+      slog.Info("DATA", "event_identifier", event_identifier)
     case DELETE:
       slog.Info("DELETE")
       line_index, err := readInt32(r.Body)
       if readError(w, "NUM_MAP:DELETE", "line_index", err) { return }
       filterIdx(&state.EventsPersonalNumMap[event_index], int(line_index));
-      slog.Info("DATA", "event_id", event_id, "line_index", line_index)
+      slog.Info("DATA", "event_identifier", event_identifier, "line_index", line_index)
     case UPDATE:
       slog.Info("UPDATE")
       line_index, err := readInt32(r.Body)
@@ -863,7 +863,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       val, err := readInt32(r.Body)
       if readError(w, "NUM_MAP:UPDATE", "num_index", err) { return }
       num_map[event_index][line_index][num_index] = val
-      slog.Info("DATA", "event_id", event_id, "line_index", line_index, "num_index", num_index, "value", val)
+      slog.Info("DATA", "event_identifier", event_identifier, "line_index", line_index, "num_index", num_index, "value", val)
 
     default:
       noSupport(w, "EVENTS_ROLES_REQUIREMENT:default")
@@ -882,9 +882,9 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       noSupport(w, "EVENTS_DURATION:default")
       return
     }
-    event_id, err := readInt32(r.Body)
-    if readError(w, "EVENTS_DURATION", "event_id", err) { return }
-    event_index, exists := state.EventsId[event_id];
+    event_identifier, err := readInt32(r.Body)
+    if readError(w, "EVENTS_DURATION", "event_identifier", err) { return }
+    event_index, exists := state.EventsId[event_identifier];
     if doesNotExistError(w, "EVENTS_DURATION", "event_index", exists) { return }
     duration, err := readInt32(r.Body)
     if readError(w, "EVENTS_DURATION", "duration", err) { return }
@@ -919,7 +919,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       if doesNotExistError(w, "VENUES:DELETE", "index", exists) { return }
       deleteValue(state.VenuesId, &state.VenuesFreeId, &state.VenuesFreeList, id)
       deleteOccurrences(state.EventsVenues, id);
-      slog.Info("DATA", "venue_id", id)
+      slog.Info("DATA", "venue_identifier", id)
 
     case UPDATE:
       slog.Info("UPDATE")
@@ -963,7 +963,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       if doesNotExistError(w, "ROLES:DELETE", "index", exists) { return }
       deleteValue(state.RolesId, &state.RolesFreeId, &state.RolesFreeList, id)
       deleteOccurrences(state.EventsRole, id)
-      slog.Info("DATA", "role_id", id)
+      slog.Info("DATA", "role_identifier", id)
     default:
       noSupport(w, "ROLES:default")
     }

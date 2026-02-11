@@ -41,7 +41,7 @@ Calendar.init();
         binary => {
           const reader = new BufferReader(binary);
           Global.data.read(reader)
-          SideMenu.composeList(Global.data.events_identifier, Global.data.events_name, Global.zones_identifier.EVENT);
+          SideMenu.composeList(Global.data.events_identifier_to_index_map, Global.data.events_name, Global.zones_identifier.EVENT);
           SideMenu.composeUsersList();
           SideMenu.composeList(Global.data.venues_identifier, Global.data.venues_name, Global.zones_identifier.VENUE);
           EventInformation.loadTemplate();

@@ -69,12 +69,12 @@ export class DataManager {
     this.users_privilage_level = [];
     this.users_free_list = [];
 
-    this.events_identifier = new Map();
+    this.events_identifier_to_index_map = new Map();
     this.events_name = [];
     this.events_venues = [];
     this.events_roles = [];
     this.events_roles_requirements = [];
-    this.events_staff_numeric_map = [];
+    this.events_staff_number_map = [];
     this.events_duration = [];
     this.events_free_list = [];
 
@@ -121,12 +121,12 @@ export class DataManager {
     this.users_duty_station = r.readInt32Array();
     this.users_privilage_level = r.readInt32Array();
 
-    this.events_identifier = r.readMapInt32Int();
+    this.events_identifier_to_index_map = r.readMapInt32Int();
     this.events_name = r.readStringArray();
     this.events_venues = r.readArrayOfInt32Arrays();
     this.events_roles = r.readArrayOfInt32Arrays();
     this.events_roles_requirements = r.readArrayOfArrayOfInt32Arrays();
-    this.events_staff_numeric_map = r.readArrayOfArrayOfInt32Arrays();
+    this.events_staff_number_map = r.readArrayOfArrayOfInt32Arrays();
     this.events_duration = r.readInt32Array();
 
     this.venues_identifier = r.readMapInt32Int();

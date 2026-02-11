@@ -34,9 +34,10 @@ export const zones_identifier = {
   SELECTABLE: 5,
   EVENT_STAFF: 6,
   COMPETENCES: 7,
-  PERSONAL_NUMBER_MAP: 8,
-  DURATION: 9,
-  EMPLOYEES_LIMIT: 10,
+  STAFF_NUMBER_MAP: 8,
+  STAFF_NUMBER_MAP_FIELD: 9,
+  DURATION: 10,
+  EMPLOYEES_LIMIT: 11,
 };
 
 // eList is the list of buttons, that way we have a direct access to it
@@ -47,6 +48,10 @@ export let zones = [
   { selection: null, element_list: document.createElement('div') },
   { selection: null, element_list: document.createElement('div') },
 ];
+
+export function getEventSelectionIdentifier() {
+ return zones[zones_identifier.EVENT].selection._data_identifier;
+}
 
 export const data = new DM.DataManager();
 window.data = data; // @nocheckin: only in dev

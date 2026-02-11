@@ -350,7 +350,7 @@ Global.elements.calendar_body.addEventListener('mousemove', e => {
     const event_selection = Global.zones[Global.zones_identifier.EVENT].selection;
     if (event_selection != null) {
       const ev_identifier = event_selection._data_identifier;
-      const index = Global.data.events_identifier.get(ev_id);
+      const index = Global.data.events_identifier_to_index_map.get(ev_identifier);
       const name = Global.data.events_name[index];
       state.bar.textContent = name;
     }

@@ -143,7 +143,7 @@ export class BufferWriter {
   }
 
   writeString(string) {
-    const encoded = this.textEncoder.encode(str);
+    const encoded = this.textEncoder.encode(string);
     const length = encoded.length;
     this.writeInt32(length);
     this.ensureCapacity(length);

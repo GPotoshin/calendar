@@ -1,6 +1,5 @@
 import * as Global from './global.js';
 import { BufferReader, BufferWriter } from './io.js';
-import { zones, zones_identifier } from './global.js';
 import { storageIndex, deleteValue, deleteOccurrences, storeValue } from './data_manager.js';
 import * as Api from './api.js';
 import * as SideMenu from './side_menu.js';
@@ -147,16 +146,16 @@ function escOrUpdateOnEnter(event, button, inputs, old) {
 }
 
 buttons.edit.addEventListener('click', function() {
-  const button = state.edit_target;
-  const identifier = Number(button._data_identifier);
+  const target_button = state.edit_target;
+  const identifier = Number(target_button._data_identifier);
   if (identifier == undefined) {
     throw new Error('delete-target should have a property `_data_identifier` which infers to which piece of data the element is associated with');
   }
 
   let writer = new BufferWriter();
-  switch (state.edit_target.parentElement._id) {
-    case zones_identifier.STAFF: {
-      button.removeEventListener('click', SideMenu.buttonClickCallback);
+  switch (target_button.parentElement._identifier) {
+    case Global.zones_identifier.STAFF: {
+      target_button.removeEventListener('click', SideMenu.buttonClickCallback);
       const index = Global.data.users_identifier.get(identifier);
       if (index === undefined) {
         console.error('user index is not found');
@@ -173,44 +172,57 @@ buttons.edit.addEventListener('click', function() {
       inputs.surname.value = old.surname;
       inputs.matricule.value = old.matricule;
       inputs.name.addEventListener('keydown', event => {
-        escOrUpdateOnEnter(event, button, inputs, old)
+        escOrUpdateOnEnter(event, target_button, inputs, old)
       });
       inputs.surname.addEventListener('keydown', event => {
-        escOrUpdateOnEnter(event, button, inputs, old)
+        escOrUpdateOnEnter(event, target_button, inputs, old)
       });
       inputs.matricule.addEventListener('keydown', (e) => {
-        escOrUpdateOnEnter(event, button, inputs, old)
+        escOrUpdateOnEnter(event, target_button, inputs, old)
       });
-      button.replaceChildren(inputs.name, inputs.surname, inputs.matricule);
+      target_button.replaceChildren(inputs.name, inputs.surname, inputs.matricule);
       break;
     }
 
-    case zones_identifier.EVENT: {
+    case Global.zones_identifier.EVENT: {
       updateEventOrVenue(
-        button,
+        target_button,
         'Nom d\'Événement',
         Api.EVENTS_MAP,
         Global.data.bundleEventsNames(),
       );
       break;
     }
-    case zones_identifier.VENUE: {
+    case Global.zones_identifier.VENUE: {
       updateEventOrVenue(
-        button,
+        target_button,
         'Nom de Lieu',
         Api.VENUES_MAP,
         Global.data.bundleVenuesNames(),
       );
       break;
     }
-    case zones_identifier.DURATION: {
-      const event_identifier = zones[zones_identifier.EVENT].selection._data_identifier;
-      const event_index = Global.data.events_identifier.get(event_identifier);
+    case Global.zones_identifier.STAFF_NUMBER_MAP_FIELD: {
+      const event_identifier = Global.getEventSelectionIdentifier();
+      const event_index = Global.data.events_identifier_to_index_map.get(event_identifier);
+      const line_index = target_button.parentElement.parentElement._data_identifier;
+      const field_index = target_button._data_identifier;
+      numeric_input.endOfWriting = () => {
+        EventInformation.endOfButtonWriting(target_button, line_index, event_identifier, event_index);
+      };
+      numeric_input.element.value = target_button.value;
+      numeric_input.replace(target_button);
+       
+      break;
+    }
+    case Global.zones_identifier.DURATION: {
+      const event_identifier = Global.getEventSelectionIdentifier();
+      const event_index = Global.data.events_identifier_to_index_map.get(event_identifier);
       if (event_index === undefined) { throw new Error('[updating duration]: event_identifier does not exist'); }
       const old_duration = Global.data.events_duration[event_index];
 
       numeric_input.endOfWriting = () => {
-        const duration = swapBackNumberButtonAndReturnNewValue(button);
+        const duration = swapBackNumberButtonAndReturnNewValue(target_button);
         if (duration === undefined) { return; }
         const writer = EventInformation.createDurationBuffer(duration, Api.UPDATE, event_identifier);
         Api.request(writer)
@@ -219,17 +231,17 @@ buttons.edit.addEventListener('click', function() {
           Global.data.events_duration[event_index] = duration;
         })
         .catch(error => {
-          button.textContent = old_duration;
+          target_button.textContent = old_duration;
         });
       };
-      swapNumberButtonToInputAndLatterToOldValue(button, old_duration);
+      swapNumberButtonToInputAndLatterToOldValue(target_button, old_duration);
       break;
     }
-    case zones_identifier.EMPLOYEES_LIMIT: {
+    case Global.zones_identifier.EMPLOYEES_LIMIT: {
       const old_limit = Global.data.employees_limit;
 
       numeric_input.endOfWriting = () => {
-        const new_limit = swapBackNumberButtonAndReturnNewValue(button);
+        const new_limit = swapBackNumberButtonAndReturnNewValue(target_button);
         if (new_limit === undefined) { return; }
 
         const writer = Api.createBufferWriter(Api.UPDATE, Api.EMPLOYEES_LIMIT);
@@ -240,10 +252,10 @@ buttons.edit.addEventListener('click', function() {
           Global.data.employees_limit = new_limit;
         })
         .catch(error => {
-          button.textContent = old_limit;
+          target_button.textContent = old_limit;
         });
       };
-      swapNumberButtonToInputAndSetLatterToOldValue(button, old_limit);
+      swapNumberButtonToInputAndSetLatterToOldValue(target_button, old_limit);
       break;
     }
   }
@@ -268,51 +280,51 @@ function swapBackNumberButtonAndReturnNewValue(button) {
 }
 
 buttons.delete.addEventListener('click', function() {
-  const identifier = state.delete_target._data_identifier;
-  if (identifier == undefined) {
+  if (state.delete_target._data_identifier == undefined) {
     throw new Error('delete-target should have a property `_data_identifier` which infers with which piece of data the element is associated');
   }
+  const identifier = Number(state.delete_target._data_identifier);
   state.delete_target.classList.add('disp-none');
 
   let writer = new BufferWriter();
   switch (state.delete_target.parentElement._identifier) {
-    case zones_identifier.STAFF:
+    case Global.zones_identifier.STAFF:
       Api.writeHeader(writer, Api.DELETE, Api.USERS_MAP);
       break;
-    case zones_identifier.VENUE:
+    case Global.zones_identifier.VENUE:
       Api.writeHeader(writer, Api.DELETE, Api.VENUES_MAP);
       break;
-    case zones_identifier.EVENT:
+    case Global.zones_identifier.EVENT:
       Api.writeHeader(writer, Api.DELETE, Api.EVENTS_MAP);
       break;
-    case zones_identifier.EVENT_STAFF:
+    case Global.zones_identifier.EVENT_STAFF:
       Api.writeHeader(writer, Api.DELETE, Api.ROLES_MAP);
       break;
-    case zones_identifier.PERSONAL_NUMBER_MAP:
+    case Global.zones_identifier.PERSONAL_NUMBER_MAP:
       Api.writeHeader(writer, Api.DELETE, Api.EVENTS_PERSONAL_NUM_MAP);
-      writer.writeInt32(zones[zones_identifier.EVENT].selection._data_identifier);
+      writer.writeInt32(Global.getEventSelectionIdentifier());
       break;
     default:
       state.delete_target.classList.remove('disp-none');
-      throw new Error('delete_target\'s parent should have `_identifier` property with a value from `zones_identifier`');
+      throw new Error('delete_target\'s parent should have `_identifier` property with a value from `Global.zones_identifier`');
   }
-  writer.writeInt32(Number(identifier));
+  writer.writeInt32(identifier);
   Api.request(writer)
   .then(response => {
     Utilities.throwIfNotOk(response);
     switch (state.delete_target.parentElement._identifier) {
-      case zones_identifier.STAFF:
+      case Global.zones_identifier.STAFF:
         deleteValue(Global.data.users_identifier, Global.data.users_free_list, identifier);
         deleteOccurrences(Global.data.occurrences_participants, identifier);
         break;
-      case zones_identifier.VENUE:
+      case Global.zones_identifier.VENUE:
         deleteValue(Global.data.venues_identifier, Global.data.venues_free_list, identifier);
         deleteOccurrences(Global.data.events_venues, identifier);
         break;
-      case zones_identifier.EVENT:
-        deleteValue(Global.data.events_identifier, Global.data.events_free_list, identifier);
+      case Global.zones_identifier.EVENT:
+        deleteValue(Global.data.events_identifier_to_index_map, Global.data.events_free_list, identifier);
         break;
-      case zones_identifier.EVENT_STAFF: // we should here remove the button from a backing array
+      case Global.zones_identifier.EVENT_STAFF: // we should here remove the button from a backing array
         EventInformation.elements.event_role_list._button_list =
           EventInformation.elements.event_role_list._button_list.filter(b => b !== state.delete_target);
 
@@ -320,16 +332,18 @@ buttons.delete.addEventListener('click', function() {
         for (let i = 0; i < Global.data.events_roles.length; i++) {
           let events_roles = Global.data.events_roles[i];
           let index = events_roles.indexOf(identifier);
-          events_roles.splice(Number(identifier), 1);
-          let staff_numeric_map = Global.data.events_staff_numeric_map[i];
+          events_roles.splice(identifier, 1);
+          let staff_number_map = Global.data.events_staff_number_map[i];
           for (let j = 0; j < staff_numberic_map.length; j++) {
-            staff_numeric_map.splice(index, 1);
+            staff_number_map.splice(index, 1);
           }
         }
         EventInformation.update();
         break;
-      case zones_identifier.PERSONAL_NUMBER_MAP:
-        Global.data.eventsStaffNumericMap[zones[zones_identifier.EVENT].selection._data_identifier].splice(Number(identifier), 1)
+      case Global.zones_identifier.PERSONAL_NUMBER_MAP:
+        const event_identifier = Global.getEventSelectionIdentifier();
+        const event_index = Global.data.events_identifier_to_index_map.get(event_identifier);
+        Global.data.events_staff_number_map[event_index].splice(identifier, 1)
 
         EventInformation.update();
         break;
@@ -362,7 +376,7 @@ function setCreateInput(button, input, api, meta_data) {
         }
       }
 
-      endOfStandardInput(evenet, input, button, value);
+      endOfStandardInput(event, input, button, value);
       let writer = Api.createBufferWriter(Api.CREATE, api);
       writer.writeString(value);
       Api.request(writer)
@@ -371,13 +385,13 @@ function setCreateInput(button, input, api, meta_data) {
         response.arrayBuffer()
         .then(binary => {
           let reader = new BufferReader(binary);
-          let identifier = r.readInt32();
+          let identifier = reader.readInt32();
           let index = storageIndex(meta_data.map, meta_data.free_list);
           meta_data.map.set(identifier, index);
           meta_data.array[index] = value;
-          b.textContent = '';
+          button.textContent = '';
           Utilities.setNameAndIdentifier(button, value, identifier);
-          b.addEventListener('click', SideMenu.buttonClickCallback);
+          button.addEventListener('click', SideMenu.buttonClickCallback);
         });
       })
       .catch(error => {
@@ -451,9 +465,9 @@ function updateEventOrVenue(button, placeholder, api, meta_data) {
 }
 
 buttons.create.addEventListener('click', () => {
-  switch (state.extend_target._id) {
-    case zones_identifier.STAFF: {
-      const target = zones[zones_identifier.STAFF].element_list;
+  switch (state.extend_target._identifier) {
+    case Global.zones_identifier.STAFF: {
+      const target = Global.zones[Global.zones_identifier.STAFF].element_list;
       let button = SideMenu.createTemplateButton(); 
       const inputs = createUserDataInputs();
       inputs.name.addEventListener('keydown', event => {
@@ -472,25 +486,25 @@ buttons.create.addEventListener('click', () => {
       inputs.name.focus();
       break;
     }
-    case zones_identifier.EVENT: {
+    case Global.zones_identifier.EVENT: {
       createEventOrVenue(
-        zones[zones_identifier.EVENT].element_list, 
+        Global.zones[Global.zones_identifier.EVENT].element_list, 
         'Nouvel Événement',
         Api.EVENTS_MAP,
         Global.data.bundleEventsNames(),
       );
       break;
     }
-    case zones_identifier.VENUE: {
+    case Global.zones_identifier.VENUE: {
       createEventOrVenue(
-        zones[zones_identifier.VENUE].element_list, 
+        Global.zones[Global.zones_identifier.VENUE].element_list, 
         'Nouveau Lieu',
         Api.VENUES_MAP,
         Global.data.bundleVenuesNames(),
       );
       break;
     }
-    case zones_identifier.EVENT_STAFF: {
+    case Global.zones_identifier.EVENT_STAFF: {
       let button = SearchDisplay.createButton();
       const input = Utilities.createTextInput('Nouveau Rôle');
       button.appendChild(input);
@@ -513,12 +527,12 @@ buttons.create.addEventListener('click', () => {
 buttons.toggle.addEventListener('click', () => {
   const target = state.toggle_target;
   const turning_on = target.classList.toggle('clicked');
-  switch (state.toggle_target.parentElement._id) { // working
-    case zones_identifier.EVENT_STAFF:
-      const event_identifier = zones[zones_identifier.EVENT].selection._data_identifier; 
+  switch (state.toggle_target.parentElement._identifier) { // working
+    case Global.zones_identifier.EVENT_STAFF:
+      const event_identifier = Global.getEventSelectionIdentifier(); 
       const role_identifier = target._data_identifier;
-      const index = Global.data.events_identifier.get(event_id);
-      const role_index = Global.data.roles_identifier.get(role_id);
+      const index = Global.data.events_identifier_to_index_map.get(event_identifier);
+      const role_index = Global.data.roles_identifier.get(role_identifier);
       if (index === undefined || role_index === undefined) {
         console.error('[toggle-button:click] Incorrect event\'s or role\'s ids');
         return;
@@ -537,18 +551,18 @@ buttons.toggle.addEventListener('click', () => {
       Api.request(writer)
       .then(response => {
         Utilities.throwIfNotOk(response);
-        let staff_numeric_map = Global.data.events_staff_numeric_map;
+        let staff_number_map = Global.data.events_staff_number_map;
 
         if (turning_on) {
           Global.data.events_roles[index].push(role_identifier);
-          for (const line of staff_numeric_map[index]) {
+          for (const line of staff_number_map[index]) {
             line.push(-1);
           }
         }
         else {
-          const position = Global.data.events_roles[index].indexOf(role_id); 
+          const position = Global.data.events_roles[index].indexOf(role_identifier); 
           Global.data.events_roles[index].splice(position, 1);
-          for (let line of staff_numeric_map[index]) {
+          for (let line of staff_number_map[index]) {
             line.splice(position+2, 1);
           }
         }
