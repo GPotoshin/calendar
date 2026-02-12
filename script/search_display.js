@@ -49,13 +49,13 @@ function updateList(input, container) {
   for (const button of container._button_list) {
     const score = fuzzyMatch(query, button.textContent);
     if (score !== null) {
-      scored.push({ btn: b, score: score });
+      scored.push({ button: b, score: score });
     }
   }
   scored.sort((a, b) => b.score - a.score);
   container.innerHTML = '';
   for (const item of scored) {
-    container.append(item.btn);
+    container.append(item.button);
   }
 }
 
@@ -66,7 +66,7 @@ export function createButton(name = '') {
   return button;
 }
 
-export function createAndReturnListContainer(name, identifier) {
+export function createTemplate(name, identifier) {
   let menu = document.createElement('div');
 
   menu.className = 'm-box v-container align-items-center';
@@ -82,29 +82,28 @@ export function createAndReturnListContainer(name, identifier) {
   const objList = menu.querySelectorAll('.js-set');
   const searchInput = menu.querySelector('.searching-input');
   objList[0].textContent = name;
-  const container = objList[1];
   Utilities.setWidthInPixels(menu.children[1], 200);
   Utilities.setWidthInPixels(menu.children[2], 200);
-  objList[1]._identifier = identifier;
+  menu._container = objList[1];
+  menu._container._identifier = identifier;
 
-  searchInput.addEventListener('input', () => { updateList(searchInput, container); });
-  return [menu, objList[1]];
-}
+  menu._container._button_list = [];
+  searchInput.addEventListener('input', () => { updateList(searchInput, menu._container); });
 
-export function create(name, identifier) {
-  let [menu, ] = createAndReturnListContainer(name, identifier);
   return menu;
 }
 
-export function dynamise(menu, btnPlaceholder = '') {
-  const objList = menu.querySelectorAll('.js-set');
-  const searchInput = menu.querySelector('.searching-input');
-  const container = objList[1];
-  Utilities.setWidthInPixels(menu.children[1], 200);
-  Utilities.setWidthInPixels(menu.children[2], 200);
-  if (btnPlaceholder != '') {
-    objList[1]._btnPlaceholder = btnPlaceholder;
+export function create(name, identifier, meta_data) {
+  let menu = createTemplate(name, identifier);
+
+  for (const [identifier, index] of meta_data.map) {
+    const name = meta_data.array[index];
+    const button = createButton(); 
+    button._data_idenetifier = identifier;
+    Utilities.setNameAndIdentifier(button, name, identifier);
+    menu._container.appendChild(button);
+    menu._container._button_list.push(button);
   }
 
-  searchInput.addEventListener('input', () => { updateList(searchInput, container); });
+  return menu;
 }

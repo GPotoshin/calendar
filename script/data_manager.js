@@ -59,7 +59,7 @@ export function deleteOccurrences(array, value) {
 
 export class DataManager {
   constructor() {
-    this.users_identifier = new Map();
+    this.users_identifier_to_index_map = new Map();
     this.users_name = [];
     this.users_surname = [];
     this.users_mail = [];
@@ -78,20 +78,20 @@ export class DataManager {
     this.events_duration = [];
     this.events_free_list = [];
 
-    this.venues_identifier = new Map();
+    this.venues_identifier_to_index_map = new Map();
     this.venues_name = [];
     this.venues_free_list = [];
 
-    this.competences_identifier = new Map();
+    this.competences_identifier_to_index_map = new Map();
     this.competences_name = [];
     this.competencesFreeId = [];
     this.competences_free_list = [];
 
-    this.roles_identifier = new Map();
+    this.roles_identifier_to_index_map = new Map();
     this.roles_name = [];
     this.roles_free_list = [];
 
-    this.occurrences_identifier = new Map();
+    this.occurrences_identifier_to_index_map = new Map();
     this.occurrences_venue = [];
     this.occurrences_dates = [];
     this.occurrences_participants = [];
@@ -112,7 +112,7 @@ export class DataManager {
       throw new Error(`Format mismatch. Found: ${actual_version}, Expected: ${expected_version}`);
     }
 
-    this.users_identifier = r.readMapInt32Int();
+    this.users_identifier_to_index_map = r.readMapInt32Int();
     this.users_name = r.readStringArray();
     this.users_surname = r.readStringArray();
     this.users_mail = r.readStringArray();
@@ -129,16 +129,16 @@ export class DataManager {
     this.events_staff_number_map = r.readArrayOfArrayOfInt32Arrays();
     this.events_duration = r.readInt32Array();
 
-    this.venues_identifier = r.readMapInt32Int();
+    this.venues_identifier_to_index_map = r.readMapInt32Int();
     this.venues_name = r.readStringArray();
 
-    this.competences_identifier = r.readMapInt32Int();
+    this.competences_identifier_to_index_map = r.readMapInt32Int();
     this.competences_name = r.readStringArray();
 
-    this.roles_identifier = r.readMapInt32Int();
+    this.roles_identifier_to_index_map = r.readMapInt32Int();
     this.roles_name = r.readStringArray();
 
-    this.occurrences_identifier = r.readMapInt32Int();
+    this.occurrences_identifier_to_index_map = r.readMapInt32Int();
     this.occurrences_venue = r.readInt32Array();
     this.occurrences_dates = r.readArrayOfInt32PairArrays(); 
     this.occurrences_participants = r.readArrayOfInt32Arrays();
@@ -150,23 +150,30 @@ export class DataManager {
     this.employees_limit = r.readInt32();
   }
 
+  bundleCompetencesNames() {
+    return {
+      map: this.competences_identifier_to_index_map,
+      array: this.competences_name,
+      free_list: this.competences_free_list,
+    };
+  }
   bundleEventsNames() {
     return {
-      map: this.events_identifier,
+      map: this.events_identifier_to_index_map,
       array: this.events_name,
       free_list: this.events_free_list,
     };
   }
   bundleVenuesNames() {
     return {
-      map: this.venues_identifier,
+      map: this.venues_identifier_to_index_map,
       array: this.venues_name,
       free_list: this.venues_free_list,
     };
   }
   bundleRolesNames() {
     return {
-      map: this.roles_identifier,
+      map: this.roles_identifier_to_index_map,
       array: this.roles_name,
       free_list: this.roles_free_list,
     };

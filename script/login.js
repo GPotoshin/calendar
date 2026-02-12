@@ -20,7 +20,7 @@ async function encryptCredentials(buf) {
     buf
   );
 
-  var bw = new BufferWriter();
+  let bw = new BufferWriter();
   bw.writeUint8Array(new Uint8Array(encryptedBuffer));
 
   return bw.getBuffer();

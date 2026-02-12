@@ -73,7 +73,7 @@ function escOrCreateOnEnter(event, button, inputs, next = null) {
       event.preventDefault();
       const [name, surname, matricule] = getValuesFromUserInputs(inputs);
 
-      if (Global.data.users_identifier.has(matricule)) {
+      if (Global.data.users_identifier_to_index_map.has(matricule)) {
         Utilities.setBackgroundColor(inputs.matricule, palette.red);
         return;
       }
@@ -85,8 +85,8 @@ function escOrCreateOnEnter(event, button, inputs, next = null) {
       .then(response => {
         Utilities.throwIfNotOk(response);
 
-        let index = storageIndex(Global.data.users_identifier, Global.data.users_free_list);
-        Global.data.users_identifier.set(matricule, index);
+        let index = storageIndex(Global.data.users_identifier_to_index_map, Global.data.users_free_list);
+        Global.data.users_identifier_to_index_map.set(matricule, index);
         storeValue(Global.data.users_name, index, name);
         storeValue(Global.data.users_surname, index, surname);
         button._data_identifier = matricule;
@@ -109,7 +109,7 @@ function escOrUpdateOnEnter(event, button, inputs, old) {
       event.preventDefault();
       const [name, surname, matricule] = getValuesFromUserInputs(inputs);
 
-      if (matricule !== old.matricule && Global.data.users_identifier.has(matricule)) {
+      if (matricule !== old.matricule && Global.data.users_identifier_to_index_map.has(matricule)) {
         Utilities.setBackgroundColor(inputs.matricule, palette.red);
         return;
       }
@@ -121,14 +121,14 @@ function escOrUpdateOnEnter(event, button, inputs, old) {
       Api.request(writer)
       .then(response => {
         Utilities.throwIfNotOk(response);
-        const index = Global.data.users_identifier.get(old.matricule);
+        const index = Global.data.users_identifier_to_index_map.get(old.matricule);
         if (index === undefined) {
           console.error("old matricule does not exist locally");
           return
         }
         if (old.matricule !== matricule) {
-          Global.data.users_identifier.delete(old.matricule);
-          Global.data.users_identifier.set(matricule, index);
+          Global.data.users_identifier_to_index_map.delete(old.matricule);
+          Global.data.users_identifier_to_index_map.set(matricule, index);
         }
         Global.data.users_name[index] = name;
         Global.data.users_surname[index] = surname;
@@ -156,7 +156,7 @@ buttons.edit.addEventListener('click', function() {
   switch (target_button.parentElement._identifier) {
     case Global.zones_identifier.STAFF: {
       target_button.removeEventListener('click', SideMenu.buttonClickCallback);
-      const index = Global.data.users_identifier.get(identifier);
+      const index = Global.data.users_identifier_to_index_map.get(identifier);
       if (index === undefined) {
         console.error('user index is not found');
         return;
@@ -314,21 +314,21 @@ buttons.delete.addEventListener('click', function() {
     Utilities.throwIfNotOk(response);
     switch (state.delete_target.parentElement._identifier) {
       case Global.zones_identifier.STAFF:
-        deleteValue(Global.data.users_identifier, Global.data.users_free_list, identifier);
+        deleteValue(Global.data.users_identifier_to_index_map, Global.data.users_free_list, identifier);
         deleteOccurrences(Global.data.occurrences_participants, identifier);
         break;
       case Global.zones_identifier.VENUE:
-        deleteValue(Global.data.venues_identifier, Global.data.venues_free_list, identifier);
+        deleteValue(Global.data.venues_identifier_to_index_map, Global.data.venues_free_list, identifier);
         deleteOccurrences(Global.data.events_venues, identifier);
         break;
       case Global.zones_identifier.EVENT:
         deleteValue(Global.data.events_identifier_to_index_map, Global.data.events_free_list, identifier);
         break;
-      case Global.zones_identifier.EVENT_STAFF: // we should here remove the button from a backing array
-        EventInformation.elements.event_role_list._button_list =
-          EventInformation.elements.event_role_list._button_list.filter(b => b !== state.delete_target);
+      case Global.zones_identifier.EVENT_STAFF:
+        state.extend_target._button_list =
+          state.extend_target._button_list.filter(b => b !== state.delete_target);
 
-        deleteValue(Global.data.roles_identifier, Global.data.roles_free_list, identifier);
+        deleteValue(Global.data.roles_identifier_to_index_map, Global.data.roles_free_list, identifier);
         for (let i = 0; i < Global.data.events_roles.length; i++) {
           let events_roles = Global.data.events_roles[i];
           let index = events_roles.indexOf(identifier);
@@ -517,7 +517,23 @@ buttons.create.addEventListener('click', () => {
         Api.ROLES_MAP,
         Global.data.bundleRolesNames(),
       );
-      EventInformation.elements.event_role_list._button_list.push(button);
+      EventInformation.state.event_role_button_list.push(button);
+      break;
+    }
+    case Global.zones_identifier.COMPETENCES: {
+      let button = SearchDisplay.createButton();
+      const input = Utilities.createTextInput('Nouvelle Compétence');
+      button.appendChild(input);
+      state.extend_target.appendChild(button);
+      input.focus();
+
+      setCreateInput(
+        button,
+        input,
+        Api.COMPETENCES_MAP,
+        Global.data.bundleCompetencesNames(),
+      );
+      EventInformation.state.participant_competences_button_list.push(button);
       break;
     }
     default:
@@ -532,7 +548,7 @@ buttons.toggle.addEventListener('click', () => {
       const event_identifier = Global.getEventSelectionIdentifier(); 
       const role_identifier = target._data_identifier;
       const index = Global.data.events_identifier_to_index_map.get(event_identifier);
-      const role_index = Global.data.roles_identifier.get(role_identifier);
+      const role_index = Global.data.roles_identifier_to_index_map.get(role_identifier);
       if (index === undefined || role_index === undefined) {
         console.error('[toggle-button:click] Incorrect event\'s or role\'s ids');
         return;

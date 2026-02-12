@@ -937,7 +937,22 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     noSupport(w, "VENUES_NAME")
 
   case COMPETENCES_MAP:
-    noSupport(w, "COMPETENCES_MAP")
+    slog.Info("COMPETENCES_MAP")
+    if !isAdmin(w, privilege_level) { return }
+    switch mode {
+    case CREATE:
+      slog.Info("CREATE")
+      _ = handleSimpleCreate(
+        r.Body,
+        w,
+        state.CompetencesId,
+        &state.CompetencesName,
+        &state.CompetencesFreeId,
+        &state.CompetencesFreeList,
+      )
+    default:
+      noSupport(w, "COMPETENCES_MAP:default")
+    }
   case COMPETENCES_NAME:
     noSupport(w, "COMPETENCES_NAME")
 

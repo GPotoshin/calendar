@@ -183,7 +183,7 @@ function setMonthObserver() {
 
   let test_date = new Date(); // what is that?
   for (let i = 0; i < weeks.length; i++) {
-    var row = weeks[i];
+    let row = weeks[i];
     if (row.classList.contains('block-marker')) {
       continue;
     }
@@ -195,7 +195,7 @@ function setMonthObserver() {
     }
   }
   for (let i = weeks.length-1; i >= 0; i--) {
-    var row = weeks[i];
+    let row = weeks[i];
     if (row.classList.contains('block-marker')) {
       continue;
     }

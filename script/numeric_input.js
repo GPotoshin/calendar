@@ -1,5 +1,5 @@
 import * as Utilities from './utilities.js';
-export var numeric_input = {
+export let numeric_input = {
   element: document.createElement('input'),
   endOfWriting: null,
   replace(button) {

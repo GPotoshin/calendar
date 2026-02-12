@@ -8,9 +8,14 @@ import * as EventInformation from './event_information.js';
 
 export let dom = document.createElement('div');
 
+export const state = {
+  event_role_button_list: null,
+  participant_competences_button_list: null,
+};
+
 export const elements = {
-  event_role_list: null,
   competences_tables: null,
+  participant_competences: null,
   numeric_table_header_list: null,
   numeric_table_content: null,
 };
@@ -40,13 +45,21 @@ function createCompetencesTable() {
   table.innerHTML = `
     <div class="v-container align-items-center">
     <h3 class="txt-center">Competences de</h3>
-
     <div class="js-set h-container align-items-center">
     </div>
     `;
 
   const container = table.querySelector('.js-set');
   elements.competences_tables = container;
+
+  const participants_search_display = SearchDisplay.create(
+    'Participants',
+    Global.zones_identifier.COMPETENCES,
+    Global.data.bundleCompetencesNames(),
+  );
+  state.participant_competences_button_list =
+    participants_search_display._container._button_list;
+  elements.participant_competences = participants_search_display;
 
   return table;
 }
@@ -69,17 +82,12 @@ export function loadTemplate() {
     </div>
   `;
 
-  let [search_display, container] = SearchDisplay.createAndReturnListContainer('Personnel', Global.zones_identifier.EVENT_STAFF);
-  container._button_list = [];
-
-  for (const [identifier, index] of Global.data.roles_identifier) {
-    const name = Global.data.roles_name[index];
-    const button = SearchDisplay.createButton(); 
-    Utilities.setNameAndIdentifier(button, name, identifier);
-    container.appendChild(button);
-    container._button_list.push(button);
-  }
-  elements.event_role_list = container;
+  let search_display = SearchDisplay.create(
+    'Personnel',
+    Global.zones_identifier.EVENT_STAFF,
+    Global.data.bundleRolesNames(),
+  );
+  state.event_role_button_list = search_display._container._button_list;
 
   EventInformation.dom.children[0].append(
     search_display,
@@ -236,11 +244,11 @@ export function update() { // @working
   const event_index = Global.data.events_identifier_to_index_map.get(event_identifier);
   if (event_index === undefined) { throw new Error("[update] no entry for event_identifier"); }
   const event_roles = Global.data.events_roles[event_index];
+  const role_requirements = Global.data.events_roles_requirements[event_index];
   const staff_number_map = Global.data.events_staff_number_map;
 
-
   // actual function code
-  for (const _button of elements.event_role_list._button_list) {
+  for (const _button of state.event_role_button_list) {
     if (event_roles.includes(_button._data_identifier)) {
       _button.classList.add('clicked');
     } else {
@@ -267,7 +275,7 @@ export function update() { // @working
   // @nocheckin: we will need to merge all those iterations together
   let list = [createLocalHeader('Participants')];
   for (const role_identifier of event_roles) {
-    const role_index = Global.data.roles_identifier.get(role_identifier);
+    const role_index = Global.data.roles_identifier_to_index_map.get(role_identifier);
     if (role_index === undefined) { throw new Error('Can find role_identifier') }
     const name = Global.data.roles_name[role_index];
     list.push(createLocalHeader(name));
@@ -301,14 +309,36 @@ export function update() { // @working
   elements.numeric_table_content.replaceChildren(...list);
   addEmptyLine(staff_number_map, event_identifier, event_index, event_roles);
 
-  list = [SearchDisplay.create('Participants', Global.zones_identifier.COMPETENCES)];
-  for (const role_identifier of event_roles) {
-    const role_index = Global.data.roles_identifier.get(role_identifier);
-    if (role_index === undefined) { throw new Error("Can't find role_identifier") }; 
-    const name = Global.data.roles_name[role_index];
-    list.push(SearchDisplay.create(name, Global.zones_identifier.COMPETENCES));
+  list = [];
+  for (let role_ordinal = 0; role_ordinal < event_roles.length; role_ordinal++) {
+    const role_identifier = event_roles[role_ordinal]; 
+    const role_index = Global.data.roles_identifier_to_index_map.get(role_identifier);
+    if (role_index == undefined) {
+      throw new Error("Currupted state: role_index for id(${role_identifier} does not exist)");
+    }
+    const search_display = SearchDisplay.createTemplate(
+      Global.data.roles_name[role_index],
+      Global.zones_identifier.COMPETENCES,
+    );
+    let requirements = role_requirements[role_ordinal];
+    if (requirements === undefined) { requirements = []; }
+
+    for (const _button of state.participant_competences_button_list) {
+      const cloned_button = _button.cloneNode(true);
+      if (requirements.includes(_button._data_identifier)) {
+        cloned_button.classList.add('clicked');
+      } else {
+        cloned_button.classList.remove('clicked');
+      }
+      cloned_button._data_idetifier = _button._data_identifier;
+      search_display._container._button_list.push(cloned_button);
+    }
+    list.push(search_display);
   }
-  elements.competences_tables.replaceChildren(...list);
+  elements.competences_tables.replaceChildren(
+    elements.participant_competences,
+    ...list,
+  );
 
   let duration = Global.data.events_duration[event_index];
   if (duration === undefined) {
@@ -316,17 +346,17 @@ export function update() { // @working
     duration = -1;
   }
 
-  let button = EventInformation.dom.querySelector('#event-duration');
+  const event_duration_button = EventInformation.dom.querySelector('#event-duration');
   function localCallback() {
-    button.replaceWith(numeric_input.element);
+    event_duration_button.replaceWith(numeric_input.element);
     numeric_input.element.focus();
     numeric_input.endOfWriting = endOfWriting;
   }
 
   function endOfWriting() {
     const new_duration = Number(numeric_input.element.value);
-    button.textContent = numeric_input.element.value | '\u00A0';
-    numeric_input.element.replaceWith(button);
+    event_duration_button.textContent = numeric_input.element.value | '\u00A0';
+    numeric_input.element.replaceWith(event_duration_button);
     const event_identifier = Global.getEventSelectionIdentifier();
     const event_index = Global.data.events_identifier_to_index_map.get(event_identifier);
     if (event_index === undefined) { throw new Error('[updating duration]: event_identifier does not exist'); }
@@ -339,22 +369,22 @@ export function update() { // @working
     .then(response => {
       Utilities.throwIfNotOk(response);
       Global.data.events_duration[event_index] = duration;
-      button.classList.add('editable');
-      button.removeEventListener('click', localCallback);
+      event_duration_button.classList.add('editable');
+      event_duration_button.removeEventListener('click', localCallback);
     })
     .catch(e => {
-      button.textContent = '\u00A0'
+      event_duration_button.textContent = '\u00A0'
     });
   };
 
   if (duration === -1) {
-    button.textContent = '\u00A0';
-    button.classList.remove('editable');
-    button.addEventListener('click', localCallback);
+    event_duration_button.textContent = '\u00A0';
+    event_duration_button.classList.remove('editable');
+    event_duration_button.addEventListener('click', localCallback);
   } else {
-    button.removeEventListener('click', localCallback);
-    button.textContent = duration;
-    button.classList.add('editable');
+    event_duration_button.removeEventListener('click', localCallback);
+    event_duration_button.textContent = duration;
+    event_duration_button.classList.add('editable');
   }
 }
 

@@ -43,7 +43,7 @@ Calendar.init();
           Global.data.read(reader)
           SideMenu.composeList(Global.data.events_identifier_to_index_map, Global.data.events_name, Global.zones_identifier.EVENT);
           SideMenu.composeUsersList();
-          SideMenu.composeList(Global.data.venues_identifier, Global.data.venues_name, Global.zones_identifier.VENUE);
+          SideMenu.composeList(Global.data.venues_identifier_to_index_map, Global.data.venues_name, Global.zones_identifier.VENUE);
           EventInformation.loadTemplate();
           CalendarInformation.loadTemplate();
         });

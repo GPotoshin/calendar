@@ -148,7 +148,7 @@ export function setUserButton(button, name, surname, matricule) {
 }
 
 export function composeUsersList() {
-  for (const [matricule, index] of Global.data.users_identifier) {
+  for (const [matricule, index] of Global.data.users_identifier_to_index_map) {
     const name = Global.data.users_name[index]; // @factorout
     const surname = Global.data.users_surname[index];
     let button = createListButtonAndSetToggleCallback();
