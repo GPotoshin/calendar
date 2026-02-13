@@ -320,6 +320,7 @@ export function update() { // @working
       Global.data.roles_name[role_index],
       Global.zones_identifier.COMPETENCES,
     );
+    search_display._data_identier = role_ordinal;
     let requirements = role_requirements[role_ordinal];
     if (requirements === undefined) { requirements = []; }
 
@@ -331,6 +332,7 @@ export function update() { // @working
         cloned_button.classList.remove('clicked');
       }
       cloned_button._data_idetifier = _button._data_identifier;
+      search_display._container.appendChild(cloned_button);
       search_display._container._button_list.push(cloned_button);
     }
     list.push(search_display);

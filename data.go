@@ -1,5 +1,9 @@
 package main
 
+import(
+  "slices"
+)
+
 func isSorted(arr []int) bool {
   for i := 1; i < len(arr); i++ {
     if arr[i] < arr[i-1] {
@@ -37,10 +41,23 @@ func storeValue[T any](array *[]T, index int, value T) {
 	}
 }
 
+func sortedInsert(sorted_slice []int, value int) []int {
+  grown_slice := slices.Grow(sorted_slice, 1)
+  grown_slice = grown_slice[:len(grown_slice)+1]
+
+  i := len(grown_slice)-2
+  for i >= 0 && grown_slice[i] > value {
+    grown_slice[i+1] = grown_slice[i]
+    i--
+  }
+  grown_slice[i+1] = value
+  return grown_slice
+}
+
 func deleteToken(m map[[32]byte]int, freeList *[]int, token [32]byte) {
   index, exists := m[token]
   if exists {
-    *freeList = append(*freeList, index)
+    *freeList = sortedInsert(*freeList, index)
     delete(m, token)
   }
 }
@@ -51,7 +68,7 @@ func deleteValue(m map[int32]int, freeId *[]int32, freeList *[]int, id int32) {
     if freeId != nil {
       *freeId = append(*freeId, id)
     }
-    *freeList = append(*freeList, index)
+    *freeList = sortedInsert(*freeList, index)
     delete(m, id) 
   }
 }
@@ -70,6 +87,8 @@ func rebaseMap[K comparable](m map[K]int, freeList []int) {
   }
 }
 
+
+// Asume that free list is sorted in ascending order
 func shrinkArray[T any](array_p *[]T, free_list []int) {
   number_of_items_freed := 0
   for ;number_of_items_freed < len(free_list); number_of_items_freed++ {

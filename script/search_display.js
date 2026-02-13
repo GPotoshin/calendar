@@ -12,7 +12,7 @@ function fuzzyMatch(pattern, text) {
   while (pattern_index < pattern.length && text_index < text.length) {
     if (pattern[pattern_index] === text[text_index]) {
       matches.push(text_index);
-      if (pattern_index > 0 && matches[patternIdx - 1] === text_index - 1) {
+      if (pattern_index > 0 && matches[pattern_index - 1] === text_index - 1) {
         consecutiveMatches++;
         score += 5 + consecutiveMatches;
       } else {
@@ -36,7 +36,7 @@ function fuzzyMatch(pattern, text) {
   return score;
 }
 
-function updateList(input, container) {
+export function updateList(input, container, getText) {
   const query = input.value;
   if (!query) {
     container.innerHTML = '';
@@ -47,9 +47,9 @@ function updateList(input, container) {
   }
   const scored = [];
   for (const button of container._button_list) {
-    const score = fuzzyMatch(query, button.textContent);
+    const score = fuzzyMatch(query, getText(button));
     if (score !== null) {
-      scored.push({ button: b, score: score });
+      scored.push({ button: button, score: score });
     }
   }
   scored.sort((a, b) => b.score - a.score);
@@ -73,14 +73,14 @@ export function createTemplate(name, identifier) {
   menu.innerHTML = `
     <h4 class="js-set txt-center">Personnel</h4>
     <div class="h-container">
-      <div class="searching-field h-container disp-flex grow"><div class="arrow">></div><input class="searching-input" type="text" placeholder="Trouver"></input></div>
+      <div class="searching-field h-container disp-flex grow"><div class="arrow">></div><input class="grow" type="text" placeholder="Trouver"></input></div>
     </div>
     <div class="h-container grow">
     <div class="js-set text-box v-container scrollable-box scroll bordered grow half-wide extendable"></div>
     </div>
     `;
   const objList = menu.querySelectorAll('.js-set');
-  const searchInput = menu.querySelector('.searching-input');
+  const searchInput = menu.querySelector('input');
   objList[0].textContent = name;
   Utilities.setWidthInPixels(menu.children[1], 200);
   Utilities.setWidthInPixels(menu.children[2], 200);
@@ -88,7 +88,9 @@ export function createTemplate(name, identifier) {
   menu._container._identifier = identifier;
 
   menu._container._button_list = [];
-  searchInput.addEventListener('input', () => { updateList(searchInput, menu._container); });
+  searchInput.addEventListener('input', () => {
+    updateList(searchInput, menu._container, button => { return button.textContent; } );
+  });
 
   return menu;
 }

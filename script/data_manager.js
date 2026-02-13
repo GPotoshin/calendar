@@ -16,10 +16,24 @@ export function storeValue(array, index, value) {
   }
 }
 
+
+function sortedInsert(sorted_array, value_to_insert) {
+  let low = 0, high = sorted_array.length;
+  
+  while (low < high) {
+    const mid = (low + high) >>> 1;
+    if (sorted_array[mid] < value_to_insert) low = mid + 1;
+    else high = mid;
+  }
+  
+  sorted_array.splice(low, 0, value_to_insert);
+  return sorted_array;
+}
+
 export function deleteValue(map, free_list, identifier) {
   const index = map.get(identifier);
   if (index !== undefined) {
-    free_list.push(index);
+    sortedInsert(free_list, index);
     map.delete(identifier);
   }
 }

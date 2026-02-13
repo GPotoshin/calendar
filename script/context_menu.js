@@ -304,6 +304,9 @@ buttons.delete.addEventListener('click', function() {
       Api.writeHeader(writer, Api.DELETE, Api.EVENTS_PERSONAL_NUM_MAP);
       writer.writeInt32(Global.getEventSelectionIdentifier());
       break;
+    case Global.zones_identifier.COMPETENCES:
+      Api.writeHeader(writer, Api.DELETE, Api.COMPETENCES_MAP);
+      break;
     default:
       state.delete_target.classList.remove('disp-none');
       throw new Error('delete_target\'s parent should have `_identifier` property with a value from `Global.zones_identifier`');
@@ -316,19 +319,26 @@ buttons.delete.addEventListener('click', function() {
       case Global.zones_identifier.STAFF:
         deleteValue(Global.data.users_identifier_to_index_map, Global.data.users_free_list, identifier);
         deleteOccurrences(Global.data.occurrences_participants, identifier);
+        state.delete_target.parentElement._button_list.filter(b => b !== state.delete_target);
+        state.delete_target.remove();
         break;
       case Global.zones_identifier.VENUE:
         deleteValue(Global.data.venues_identifier_to_index_map, Global.data.venues_free_list, identifier);
         deleteOccurrences(Global.data.events_venues, identifier);
+        state.delete_target.parentElement._button_list.filter(b => b !== state.delete_target);
+        state.delete_target.remove();
         break;
       case Global.zones_identifier.EVENT:
         deleteValue(Global.data.events_identifier_to_index_map, Global.data.events_free_list, identifier);
+        state.delete_target.parentElement._button_list.filter(b => b !== state.delete_target);
+        state.delete_target.remove();
         break;
       case Global.zones_identifier.EVENT_STAFF:
         state.extend_target._button_list =
           state.extend_target._button_list.filter(b => b !== state.delete_target);
 
         deleteValue(Global.data.roles_identifier_to_index_map, Global.data.roles_free_list, identifier);
+        deleteOccurrences(Global.data.events_roles, identifier);
         for (let i = 0; i < Global.data.events_roles.length; i++) {
           let events_roles = Global.data.events_roles[i];
           let index = events_roles.indexOf(identifier);
@@ -344,7 +354,14 @@ buttons.delete.addEventListener('click', function() {
         const event_identifier = Global.getEventSelectionIdentifier();
         const event_index = Global.data.events_identifier_to_index_map.get(event_identifier);
         Global.data.events_staff_number_map[event_index].splice(identifier, 1)
-
+        EventInformation.update();
+        break;
+      case Global.zones_identifier.COMPETENCES:
+        EventInformation.state.participant_competences_button_list.push(button);
+        deleteValue(Global.data.competences_identifier_to_index_map, Global.data.competences_free_list, identifier);
+        for (const [event_identifier, event_index] in Global.data.events_identifier_to_index_map) {
+          deleteOccurrences(Global.data.events_competences[event_index], identifier);
+        }
         EventInformation.update();
         break;
       default:
@@ -411,6 +428,7 @@ function createEventOrVenue(parent, placeholder, api, meta_data) {
   const input = Utilities.createTextInput(placeholder)
   button.replaceChildren(input);
   parent.appendChild(button);
+  parent._button_list.push(button);
   setCreateInput(button, input, api, meta_data);
 }
 
@@ -480,6 +498,7 @@ buttons.create.addEventListener('click', () => {
         escOrCreateOnEnter(event, button, inputs)
       });
       target.appendChild(button);
+      target._button_list.push(button);
       button.appendChild(inputs.name);
       button.appendChild(inputs.surname);
       button.appendChild(inputs.matricule);
@@ -540,29 +559,32 @@ buttons.create.addEventListener('click', () => {
   }
 });
 
+function createConditionalApiWriter(turning_on, api) {
+  const writer = new BufferWriter();
+  if (turning_on) {
+    Api.writeHeader(writer, Api.CREATE, api);
+  } else {
+    Api.writeHeader(writer, Api.DELETE, api);
+  }
+  return writer;
+}
+
 buttons.toggle.addEventListener('click', () => {
   const target = state.toggle_target;
+  const target_identifier = target._data_identifier;
   const turning_on = target.classList.toggle('clicked');
+  const event_identifier = Global.getEventSelectionIdentifier(); 
+  const event_index = Global.data.events_identifier_to_index_map.get(event_identifier);
   switch (state.toggle_target.parentElement._identifier) { // working
-    case Global.zones_identifier.EVENT_STAFF:
-      const event_identifier = Global.getEventSelectionIdentifier(); 
-      const role_identifier = target._data_identifier;
-      const index = Global.data.events_identifier_to_index_map.get(event_identifier);
-      const role_index = Global.data.roles_identifier_to_index_map.get(role_identifier);
-      if (index === undefined || role_index === undefined) {
+    case Global.zones_identifier.EVENT_STAFF: {
+      const role_index = Global.data.roles_identifier_to_index_map.get(target_identifier);
+      if (event_index === undefined || role_index === undefined) {
         console.error('[toggle-button:click] Incorrect event\'s or role\'s ids');
         return;
       }
-      let writer = new BufferWriter();
-
-      if (turning_on) {
-        Api.writeHeader(writer, Api.CREATE, Api.EVENTS_ROLE);
-      } else {
-        Api.writeHeader(writer, Api.DELETE, Api.EVENTS_ROLE);
-      }
-
+      const writer = createConditionalApiWriter(writer, turning_on, Api.EVENTS_ROLE);
       writer.writeInt32(event_identifier);
-      writer.writeInt32(role_identifier);
+      writer.writeInt32(target_identifier);
 
       Api.request(writer)
       .then(response => {
@@ -570,15 +592,14 @@ buttons.toggle.addEventListener('click', () => {
         let staff_number_map = Global.data.events_staff_number_map;
 
         if (turning_on) {
-          Global.data.events_roles[index].push(role_identifier);
-          for (const line of staff_number_map[index]) {
+          Global.data.events_roles[event_index].push(target_identifier);
+          for (const line of staff_number_map[event_index]) {
             line.push(-1);
           }
-        }
-        else {
-          const position = Global.data.events_roles[index].indexOf(role_identifier); 
-          Global.data.events_roles[index].splice(position, 1);
-          for (let line of staff_number_map[index]) {
+        } else {
+          const position = Global.data.events_roles[event_index].indexOf(target_identifier); 
+          Global.data.events_roles[event_index].splice(position, 1);
+          for (let line of staff_number_map[event_index]) {
             line.splice(position+2, 1);
           }
         }
@@ -589,6 +610,38 @@ buttons.toggle.addEventListener('click', () => {
         console.error("fail in [toggle-button:click]", name, error);
       });
       break;
+    }
+    case Global.zones_identifier.COMPETENCES: {
+      // @working
+      const role_ordinal = target.parentElement._data_identifier; 
+      const competence_index = Global.data.competences_identifier_to_index_map.get(target_identifier);
+      if (competence_index === undefined || role_index === undefined) {
+        console.error('[toggle-button:click] Incorrect event\'s or role\'s ids');
+        return;
+      }
+      const writer = createConditionalApiWriter(writer, turning_on, Api.EVENTS_ROLES_REQUIREMENT);
+      writer.writeInt32(event_identifier);
+      writer.writeInt32(role_ordinal);
+      writer.writeInt32(target_identifier);
+
+      Api.request(writer)
+      .then(response => {
+        Utilities.throwIfNotOk(response);
+        let target_array = Global.data.events_roles_requirements[event_index][role_ordinal];
+        if (turning_on) {
+          target_array.push(target_identifier);
+        } else {
+          const position = target_array.indexOf(target_identifier);
+          target_array.splice(position, 1);
+        }
+        EventInformation.update();
+      })
+      .catch(error => {
+        target.classList.toggle('clicked');
+        console.error("fail in [toggle-button:click]", name, error);
+      });
+      break;
+    }
   }
 });
 

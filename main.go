@@ -81,7 +81,7 @@ const (
 // with subindexing in each category, its indexing is a direct mapping.
 // For exmaple, for a given event EventsRole has a list of role ids and
 // EventsRolesRequirement stores requirements at the same index.
-// There may be some ecceptions, as in EventsPersonalNumMap we are storing
+// There may be some exceptions, as in EventsPersonalNumMap we are storing
 // directly rows from UI.
 
 type State struct {
@@ -950,6 +950,22 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         &state.CompetencesFreeId,
         &state.CompetencesFreeList,
       )
+    case DELETE:
+      slog.Info("DELETE")
+      identifier_to_delete, err := readInt32(r.Body)
+      if readError(w, "COMPETENCES:DELETE", "identifier", err) { return }
+      _, exists := state.EventsId[identifier_to_delete]
+      if doesNotExistError(w, "COMPETENCES:DELETE", "index", exists) { return }
+      deleteValue(
+        state.CompetencesId,
+        &state.CompetencesFreeId,
+        &state.CompetencesFreeList,
+        identifier_to_delete,
+      )
+      for _, _index := range state.CompetencesId {
+        deleteOccurrences(state.EventsRolesRequirement[_index], identifier_to_delete)
+      }
+      slog.Info("DATA", "competence_identifier", identifier_to_delete)
     default:
       noSupport(w, "COMPETENCES_MAP:default")
     }

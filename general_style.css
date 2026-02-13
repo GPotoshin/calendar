@@ -37,6 +37,10 @@ html, body {
   font-family: 'my-ssp'; 
 }
 
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 hr {
   border: none;
   height: 1px;
@@ -119,6 +123,11 @@ button {
 
 .scroll-auto {
   scroll-behavior: auto; 
+}
+
+.no-scroll-bar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .s-box {
@@ -225,4 +234,8 @@ button {
   width: 125px;
   border-bottom: 1px solid #ccc;
   display: flex;
+}
+
+.min-height-off {
+  min-height: 0;
 }

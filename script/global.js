@@ -44,9 +44,9 @@ export const zones_identifier = {
 export let zones = [
   { selection: null, element_list: null },
   { selection: null, element_list: document.getElementById("view-type").children },
-  { selection: null, element_list: document.createElement('div') },
-  { selection: null, element_list: document.createElement('div') },
-  { selection: null, element_list: document.createElement('div') },
+  { selection: null, element_list: null, content: document.createElement('div') },
+  { selection: null, element_list: null, content: document.createElement('div') },
+  { selection: null, element_list: null, content: document.createElement('div') },
 ];
 
 export function getEventSelectionIdentifier() {
