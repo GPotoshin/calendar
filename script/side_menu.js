@@ -5,7 +5,7 @@ import * as EventInformation from './event_information.js';
 import * as CalendarInformation from './calendar_information.js';
 import * as Utilities from './utilities.js';
 import * as SearchDisplay from './search_display.js';
-import { BufferWriter } from './io.js';
+import * as Io from './io.js';
 
 function handleClickOnViewButton(button, view_zone_identifier) {
   Global.elements.dataListContainer.replaceChildren(Global.zones[view_zone_identifier].content); 

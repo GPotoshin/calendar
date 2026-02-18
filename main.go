@@ -80,7 +80,7 @@ const (
 // information stored at the index $UsersId[$usr_id]. If we are dealing
 // with subindexing in each category, its indexing is a direct mapping.
 // For exmaple, for a given event EventsRole has a list of role ids and
-// EventsRolesRequirement stores requirements at the same index.
+// EventsRolesRequirements stores requirements at the same index.
 // There may be some exceptions, as in EventsPersonalNumMap we are storing
 // directly rows from UI.
 
@@ -100,7 +100,7 @@ type State struct {
   EventsName []string
   EventsVenues [][]int32
   EventsRole [][]int32
-  EventsRolesRequirement [][][]int32
+  EventsRolesRequirements [][][]int32
   EventsPersonalNumMap [][][]int32
   EventsDuration []int32
   EventsFreeId []int32
@@ -166,7 +166,7 @@ func rebaseState() {
   shrinkArray(&state.EventsName, state.EventsFreeList)
   shrinkArray(&state.EventsVenues, state.EventsFreeList)
   shrinkArray(&state.EventsRole, state.EventsFreeList)
-  shrinkArray(&state.EventsRolesRequirement, state.EventsFreeList)
+  shrinkArray(&state.EventsRolesRequirements, state.EventsFreeList)
   shrinkArray(&state.EventsPersonalNumMap, state.EventsFreeList)
   shrinkArray(&state.EventsDuration, state.EventsFreeList)
   state.EventsFreeList = state.EventsFreeList[:0]
@@ -198,46 +198,45 @@ func readState(r io.Reader) (State, error) {
   if err != nil { return state, fmt.Errorf("Can't verify file format: %w", err) }
   if format != version { return state, fmt.Errorf("The file format `%s` is outdated. the current format is `%s`. State is zero. If you don't want to have state beeing overwritten, please kill the process or save a copy of db", format, version) }
 
-  // because this code does not carry a lot of complex information we let it exceed width limit
-  if state.UsersId,             err = readMapInt32Int(r); err != nil { return state, fmt.Errorf("failed to read UsersId: %w", err) }
-  if state.UsersPassword,       err = readHashArray(r); err != nil { return state, fmt.Errorf("failed to read UsersPassword: %w", err) }
-  if state.UsersName,           err = readStringArray(r); err != nil { return state, fmt.Errorf("failed to read UsersName: %w", err) }
-  if state.UsersSurname,        err = readStringArray(r); err != nil { return state, fmt.Errorf("failed to read UsersSurname: %w", err) }
-  if state.UsersMail,           err = readStringArray(r); err != nil { return state, fmt.Errorf("failed to read UsersMail: %w", err) }
-  if state.UsersPhone,          err = readInt32Array(r); err != nil { return state, fmt.Errorf("failed to read UsersPhone: %w", err) }
-  if state.UsersCompetences,    err = readArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read UsersCompetences: %w", err) }
-  if state.UsersDutyStation,    err = readInt32Array(r); err != nil { return state, fmt.Errorf("failed to read UsersDutyStation: %w", err) }
+  if state.UsersId, err = readMapInt32Int(r); err != nil { return state, fmt.Errorf("failed to read UsersId: %w", err) }
+  if state.UsersPassword, err = readHashArray(r); err != nil { return state, fmt.Errorf("failed to read UsersPassword: %w", err) }
+  if state.UsersName, err = readStringArray(r); err != nil { return state, fmt.Errorf("failed to read UsersName: %w", err) }
+  if state.UsersSurname, err = readStringArray(r); err != nil { return state, fmt.Errorf("failed to read UsersSurname: %w", err) }
+  if state.UsersMail, err = readStringArray(r); err != nil { return state, fmt.Errorf("failed to read UsersMail: %w", err) }
+  if state.UsersPhone, err = readInt32Array(r); err != nil { return state, fmt.Errorf("failed to read UsersPhone: %w", err) }
+  if state.UsersCompetences, err = readArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read UsersCompetences: %w", err) }
+  if state.UsersDutyStation, err = readInt32Array(r); err != nil { return state, fmt.Errorf("failed to read UsersDutyStation: %w", err) }
   if state.UsersPrivilegeLevel, err = readInt32Array(r); err != nil { return state, fmt.Errorf("failed to read UsersPrivilegeLevel: %w", err) }
 
-  if state.EventsId,               err = readMapInt32Int(r); err != nil { return state, fmt.Errorf("failed to read EventsId: %w", err) }
-  if state.EventsName,             err = readStringArray(r); err != nil { return state, fmt.Errorf("failed to read EventsName: %w", err) }
-  if state.EventsVenues,           err = readArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read EventsVenues: %w", err) }
-  if state.EventsRole,             err = readArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read EventsRole: %w", err) }
-  if state.EventsRolesRequirement, err = readArrayOfArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read EventsRolesRequirement: %w", err) }
-  if state.EventsPersonalNumMap,   err = readArrayOfArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read EventsPresonalNumMap: %w", err) }
-  if state.EventsDuration,         err = readInt32Array(r); err != nil { return state, fmt.Errorf("failed to read EventsDuration: %w", err) }
-  if state.EventsFreeId,           err = readInt32Array(r); err != nil { return state, fmt.Errorf("failed to read EventsFreeId: %w", err) }
+  if state.EventsId, err = readMapInt32Int(r); err != nil { return state, fmt.Errorf("failed to read EventsId: %w", err) }
+  if state.EventsName, err = readStringArray(r); err != nil { return state, fmt.Errorf("failed to read EventsName: %w", err) }
+  if state.EventsVenues, err = readArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read EventsVenues: %w", err) }
+  if state.EventsRole, err = readArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read EventsRole: %w", err) }
+  if state.EventsRolesRequirements, err = readArrayOfArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read EventsRolesRequirement: %w", err) }
+  if state.EventsPersonalNumMap, err = readArrayOfArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read EventsPresonalNumMap: %w", err) }
+  if state.EventsDuration, err = readInt32Array(r); err != nil { return state, fmt.Errorf("failed to read EventsDuration: %w", err) }
+  if state.EventsFreeId, err = readInt32Array(r); err != nil { return state, fmt.Errorf("failed to read EventsFreeId: %w", err) }
 
-  if state.VenuesId,     err = readMapInt32Int(r); err != nil { return state, fmt.Errorf("failed to read VenuesId: %w", err) }
-  if state.VenuesName,   err = readStringArray(r); err != nil { return state, fmt.Errorf("failed to read VenuesName: %w", err) }
+  if state.VenuesId, err = readMapInt32Int(r); err != nil { return state, fmt.Errorf("failed to read VenuesId: %w", err) }
+  if state.VenuesName, err = readStringArray(r); err != nil { return state, fmt.Errorf("failed to read VenuesName: %w", err) }
   if state.VenuesFreeId, err = readInt32Array(r); err != nil { return state, fmt.Errorf("failed to read VenuesFreeId: %w", err) }
 
-  if state.CompetencesId,     err = readMapInt32Int(r); err != nil { return state, fmt.Errorf("failed to read CompetencesId: %w", err) }
-  if state.CompetencesName,   err = readStringArray(r); err != nil { return state, fmt.Errorf("failed to read CompetencesName: %w", err) }
+  if state.CompetencesId, err = readMapInt32Int(r); err != nil { return state, fmt.Errorf("failed to read CompetencesId: %w", err) }
+  if state.CompetencesName, err = readStringArray(r); err != nil { return state, fmt.Errorf("failed to read CompetencesName: %w", err) }
   if state.CompetencesFreeId, err = readInt32Array(r); err != nil { return state, fmt.Errorf("failed to read CompetencesFreeId: %w", err) }
 
-  if state.RolesId,     err = readMapInt32Int(r); err != nil { return state, fmt.Errorf("failed to read RolesId: %w", err) }
-  if state.RolesName,   err = readStringArray(r); err != nil { return state, fmt.Errorf("failed to read RolesName: %w", err) }
+  if state.RolesId, err = readMapInt32Int(r); err != nil { return state, fmt.Errorf("failed to read RolesId: %w", err) }
+  if state.RolesName, err = readStringArray(r); err != nil { return state, fmt.Errorf("failed to read RolesName: %w", err) }
   if state.RolesFreeId, err = readInt32Array(r); err != nil { return state, fmt.Errorf("failed to read RolesFreeId: %w", err) }
 
-  if state.OccurrencesId,               err = readMapInt32Int(r); err != nil { return state, fmt.Errorf("failed to read OccerencesId: %w", err) }
-  if state.OccurrencesVenue,            err = readInt32Array(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesVenue: %w", err) }
-  if state.OccurrencesDates,            err = readArrayOfInt32PairArrays(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesDate: %w", err) }
-  if state.OccurrencesParticipant,      err = readArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesParticipant: %w", err) }
+  if state.OccurrencesId, err = readMapInt32Int(r); err != nil { return state, fmt.Errorf("failed to read OccerencesId: %w", err) }
+  if state.OccurrencesVenue, err = readInt32Array(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesVenue: %w", err) }
+  if state.OccurrencesDates, err = readArrayOfInt32PairArrays(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesDate: %w", err) }
+  if state.OccurrencesParticipant, err = readArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesParticipant: %w", err) }
   if state.OccurrencesParticipantsRole, err = readArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesParticipantsRole: %w", err) }
-  if state.OccurrencesFreeId,           err = readInt32Array(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesFreeId: %w", err) }
+  if state.OccurrencesFreeId, err = readInt32Array(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesFreeId: %w", err) }
 
-  if state.BaseDayNumber,  err = readInt32(r); err != nil { return state, fmt.Errorf("failed to read BaseDayNumber: %w", err) }
+  if state.BaseDayNumber, err = readInt32(r); err != nil { return state, fmt.Errorf("failed to read BaseDayNumber: %w", err) }
   if state.DayOccurrences, err = readArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read DayOccurrences: %w", err) }
 
   if state.EmployeesLimit, err = readInt32(r); err != nil { return state, fmt.Errorf("failed to read EmployeesLimit: %w", err) }
@@ -289,7 +288,7 @@ func writeState(w io.Writer, state State, dest int32) error {
   if err := writeStringArray(w, state.EventsName); err != nil { return fmt.Errorf("failed to write EventsName: %w", err) }
   if err := writeArrayOfInt32Arrays(w, state.EventsVenues); err != nil { return fmt.Errorf("failed to write EventsVenues: %w", err) }
   if err := writeArrayOfInt32Arrays(w, state.EventsRole); err != nil { return fmt.Errorf("failed to write EventsRole: %w", err) }
-  if err := writeArrayOfArrayOfInt32Arrays(w, state.EventsRolesRequirement); err != nil { return fmt.Errorf("failed to write EventsRolesRequirement: %w", err) }
+  if err := writeArrayOfArrayOfInt32Arrays(w, state.EventsRolesRequirements); err != nil { return fmt.Errorf("failed to write EventsRolesRequirement: %w", err) }
   if err := writeArrayOfArrayOfInt32Arrays(w, state.EventsPersonalNumMap); err != nil { return fmt.Errorf("failed to write EventsPresonalNumMap: %w", err) }
   if err := writeInt32Array(w, state.EventsDuration); err != nil { return fmt.Errorf("failed to write EventsDuration: %w", err) }
   if dest == DEST_DISK {
@@ -557,6 +556,7 @@ func noSupport(w http.ResponseWriter, loc string) {
   http.Error(w, "we do not support that", http.StatusBadRequest)
 }
 
+// fail if returned value is negative
 func handleSimpleCreate(
   r io.Reader,
   w http.ResponseWriter,
@@ -564,15 +564,15 @@ func handleSimpleCreate(
   names *[]string,
   freeId *[]int32,
   freeList *[]int,
-) bool {
+) int {
   str, err := readStringWithLimits(r, []int32{128})
-  if readError(w, "handleSimpleCreate", "name", err) { return false }
+  if readError(w, "handleSimpleCreate", "name", err) { return -1 }
 
   for _, index := range m {
     if (*names)[index] == str {
       slog.Error("collision in names")
       http.Error(w, "collision in names", http.StatusBadRequest)
-      return false
+      return -1
     }
   }
   id := newId(m, freeId)
@@ -583,7 +583,7 @@ func handleSimpleCreate(
   slog.Info("DATA", "name", str, "id", id, "index", index)
 
   writeInt32(w, id)
-  return true
+  return index
 }
 
 func handleSimpleUpdate(
@@ -750,29 +750,26 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     switch mode {
     case CREATE:
       slog.Info("CREATE")
-      if !handleSimpleCreate(
+      index := handleSimpleCreate(
         r.Body,
         w,
         state.EventsId,
         &state.EventsName,
         &state.EventsFreeId,
         &state.EventsFreeList,
-      ) { return }
+      )
+      if index < 0 { return }
 
-      state.EventsVenues = append(state.EventsVenues, []int32{})
-      state.EventsRole = append(state.EventsRole, []int32{})
-      state.EventsRolesRequirement = append(state.EventsRolesRequirement, [][]int32{})
-      state.EventsPersonalNumMap = append(state.EventsPersonalNumMap, [][]int32{})
-      state.EventsDuration = append(state.EventsDuration, -1)
+      storeValue(&state.EventsVenues, index, []int32{})
+      storeValue(&state.EventsRole, index, []int32{})
+      storeValue(&state.EventsRolesRequirements, index, [][]int32{[]int32{}})
+      storeValue(&state.EventsPersonalNumMap, index, [][]int32{})
+      storeValue(&state.EventsDuration, index, -1)
 
     case DELETE:
       slog.Info("DELETE")
       id, err := readInt32(r.Body)
-      if err != nil {
-        slog.Error("can't read id ", "cause", err)
-        http.Error(w, "incorrect api", http.StatusBadRequest)
-        return
-      }
+      if readError(w, "EVENTS_MAP", "id", err) { return }
       deleteValue(state.EventsId, &state.EventsFreeId, &state.EventsFreeList, id)
       slog.Info("DATA", "id", id)
 
@@ -819,6 +816,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         for i := 0; i < len(num_map); i++ {
           num_map[i] = append(num_map[i], -1)
         }
+        state.EventsRolesRequirements[index] = append(state.EventsRolesRequirements[index], []int32{})
       slog.Info("DATA", "event_identifier", event_identifier, "role_identifier", role_identifier)
       case DELETE:
         slog.Info("DELETE")
@@ -827,12 +825,31 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         for i := 0; i < len(num_map); i++ {
           filterIdx(&num_map[i], pos+2)
         }
+        filterIdx(&state.EventsRolesRequirements[index], pos+1) // we have an additional data for participants
         slog.Info("DATA", "event_identifier", event_identifier, "role_identifier", role_identifier, "column", pos)
+      default:
+        noSupport(w, "EVENTS_ROLES:default")
+    }
+  case EVENTS_ROLES_REQUIREMENT:
+    slog.Info("EVENTS_ROLES_REQUIREMENT")
+    if !isAdmin(w, privilege_level) { return }
+    event_identifier, err := readInt32(r.Body)
+    if readError(w, "EVENTS_ROLE", "event_identifier", err) { return }
+    event_index, exists := state.EventsId[event_identifier]
+    if doesNotExistError(w, "EVENTS_ROLE", "event_index", exists) { return }
+    role_ordinal, err := readInt32(r.Body)
+    if readError(w, "EVENTS_ROLE", "role_ordinal", err) { return }
+    competence_identifier, err := readInt32(r.Body)
+    if readError(w, "EVENTS_ROLE", "competence_identifier", err) { return }
+    requirements := &state.EventsRolesRequirements[event_index][role_ordinal]
+    switch mode {
+      case CREATE:
+        *requirements = append(*requirements, competence_identifier)
+      case DELETE:
+        filterVal(requirements, competence_identifier)
       default:
         noSupport(w, "EVENTS_ROLES_REQUIREMENT:default")
     }
-  case EVENTS_ROLES_REQUIREMENT:
-    noSupport(w, "EVENTS_ROLES_REQUIREMENT")
   case EVENTS_PERSONAL_NUM_MAP:
     slog.Info("EVENTS_PERSONAL_NUM_MAP")
     if !isAdmin(w, privilege_level) { return }
@@ -963,7 +980,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         identifier_to_delete,
       )
       for _, _index := range state.CompetencesId {
-        deleteOccurrences(state.EventsRolesRequirement[_index], identifier_to_delete)
+        deleteOccurrences(state.EventsRolesRequirements[_index], identifier_to_delete)
       }
       slog.Info("DATA", "competence_identifier", identifier_to_delete)
     default:

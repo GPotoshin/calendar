@@ -3,7 +3,7 @@ import * as Api from './api.js';
 import * as EventInformation from './event_information.js';
 import * as Utilities from './utilities.js';
 import { palette } from './color.js';
-import { BufferReader, BufferWriter } from './io.js';
+import * as Io from './io.js';
 import * as DM from './data_manager.js';
 import { numeric_input } from './numeric_input.js';
 import {} from './context_menu.js'; // we need it
@@ -25,8 +25,8 @@ Calendar.init();
 }
 
 {
-  const writer = new BufferWriter();
-  writer.writeHash(token);
+  const writer = new Io.BufferWriter();
+  Io.writeHash(writer, token);
 
   fetch("/data", {
     method: 'POST',
@@ -39,7 +39,7 @@ Calendar.init();
       Utilities.throwIfNotOk(response);
       response.arrayBuffer().then(
         binary => {
-          const reader = new BufferReader(binary);
+          const reader = new Io.BufferReader(binary);
           Global.data.read(reader)
           SideMenu.composeList(Global.data.events_identifier_to_index_map, Global.data.events_name, Global.zones_identifier.EVENT);
           SideMenu.composeUsersList();

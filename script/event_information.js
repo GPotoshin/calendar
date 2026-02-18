@@ -2,7 +2,7 @@ import * as Global from './global.js';
 import * as SearchDisplay from './search_display.js';
 import * as Utilities from './utilities.js';
 import { numeric_input } from './numeric_input.js';
-import { BufferWriter } from './io.js';
+import * as Io from './io.js';
 import * as Api from './api.js';
 import * as EventInformation from './event_information.js';
 
@@ -60,6 +60,7 @@ function createCompetencesTable() {
   state.participant_competences_button_list =
     participants_search_display._container._button_list;
   elements.participant_competences = participants_search_display;
+  elements.participant_competences._container._data_identifier = 0; // that's the first menu
 
   return table;
 }
@@ -143,10 +144,10 @@ export function endOfButtonWriting(
     const numeric_value = getNumericValue(button);
     const field_index = button._data_identifier;
     let writer = Api.createBufferWriter(Api.UPDATE, Api.EVENTS_PERSONAL_NUM_MAP);
-    writer.writeInt32(event_identifier);
-    writer.writeInt32(line_index);
-    writer.writeInt32(field_index);
-    writer.writeInt32(numeric_value);
+    Io.writeInt32(writer, event_identifier);
+    Io.writeInt32(writer, line_index);
+    Io.writeInt32(writer, field_index);
+    Io.writeInt32(writer, numeric_value);
     Api.request(writer)
       .then(response => {
         Utilities.throwIfNotOk(response);
@@ -183,15 +184,15 @@ function endOfLineWriting(
     line._data_identifier = staff_number_map[event_index].length;
     // we need to make an API store request here
     let writer = Api.createBufferWriter(Api.CREATE, Api.EVENTS_PERSONAL_NUM_MAP);
-    writer.writeInt32(event_identifier);
-    writer.writeInt32(buttons.length);
+    Io.writeInt32(writer, event_identifier);
+    Io.writeInt32(write, buttons.length);
     let data = [];
     for (let j = 0; j < buttons.length; j++) {
       const numeric_value = Number(buttons[j].textContent);
       buttons[j]._data_identifier = j;
       evolveButton(buttons[j]);
       const n = getNumericValue(buttons[j]);
-      writer.writeInt32(numeric_value); // we don't have numeric value yet
+      Io.writeInt32(write, numeric_value); // we don't have numeric value yet
       data.push(numeric_value);
     }
     Api.request(writer)
@@ -233,6 +234,13 @@ function addEmptyLine(staff_number_map, event_identifier, event_index, event_rol
   elements.numeric_table_content.appendChild(line);
 }
 
+function updateClicked(button, list) {
+  if (list.includes(button._data_identifier)) {
+    button.classList.add('clicked');
+  } else {
+    button.classList.remove('clicked');
+  }
+}
 
 export function update() { // @working
   // scoped functions
@@ -249,11 +257,7 @@ export function update() { // @working
 
   // actual function code
   for (const _button of state.event_role_button_list) {
-    if (event_roles.includes(_button._data_identifier)) {
-      _button.classList.add('clicked');
-    } else {
-      _button.classList.remove('clicked');
-    }
+    updateClicked(_button, event_roles);
   }
 
   // nummap
@@ -310,8 +314,13 @@ export function update() { // @working
   addEmptyLine(staff_number_map, event_identifier, event_index, event_roles);
 
   list = [];
-  for (let role_ordinal = 0; role_ordinal < event_roles.length; role_ordinal++) {
-    const role_identifier = event_roles[role_ordinal]; 
+  let requirements = role_requirements[0];
+  for (const _button of state.participant_competences_button_list) {
+    updateClicked(_button, requirements);
+  }
+  // GP: oridinal 0 is participants competences
+  for (let role_ordinal = 1; role_ordinal <= event_roles.length; role_ordinal++) {
+    const role_identifier = event_roles[role_ordinal-1]; 
     const role_index = Global.data.roles_identifier_to_index_map.get(role_identifier);
     if (role_index == undefined) {
       throw new Error("Currupted state: role_index for id(${role_identifier} does not exist)");
@@ -320,18 +329,17 @@ export function update() { // @working
       Global.data.roles_name[role_index],
       Global.zones_identifier.COMPETENCES,
     );
-    search_display._data_identier = role_ordinal;
-    let requirements = role_requirements[role_ordinal];
-    if (requirements === undefined) { requirements = []; }
+    search_display._container._data_identifier = role_ordinal;
+    requirements = role_requirements[role_ordinal];
+    if (requirements === undefined) { 
+      console.Error('UNREACHABLE');
+      requirements = [];
+    }
 
     for (const _button of state.participant_competences_button_list) {
       const cloned_button = _button.cloneNode(true);
-      if (requirements.includes(_button._data_identifier)) {
-        cloned_button.classList.add('clicked');
-      } else {
-        cloned_button.classList.remove('clicked');
-      }
-      cloned_button._data_idetifier = _button._data_identifier;
+      cloned_button._data_identifier = _button._data_identifier;
+      updateClicked(cloned_button, requirements);
       search_display._container.appendChild(cloned_button);
       search_display._container._button_list.push(cloned_button);
     }
@@ -396,7 +404,7 @@ export function createDurationBuffer(duration, mode, event_identifier) {
     return;
   }
   let writer = Api.createBufferWriter(Api.UPDATE, Api.EVENTS_DURATION);
-  writer.writeInt32(event_identifier);
-  writer.writeInt32(duration);
+  Io.writeInt32(write, event_identifier);
+  Io.writeInt32(write, duration);
   return writer;
 }

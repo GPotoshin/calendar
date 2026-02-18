@@ -1,5 +1,5 @@
 import * as Global from './global.js';
-import { BufferReader, BufferWriter } from './io.js';
+import * as Io from './io.js';
 import { storageIndex, deleteValue, deleteOccurrences, storeValue } from './data_manager.js';
 import * as Api from './api.js';
 import * as SideMenu from './side_menu.js';
@@ -45,10 +45,10 @@ function createUserDataInputs() {
 }
 
 function endOfUserInputs(button, writer, inputs) {
-  button.addEventListener('click', SideMenu.buttonClickCallback);
-  writer.writeInt32(Number(inputs.matricule.value));
-  writer.writeString(inputs.name.value);
-  writer.writeString(inputs.surname.value);
+  button.addEventListener('click', SideMenubuttonClickCallback);
+  Io.writeInt32(writer, Number(inputs.matricule.value));
+  Io.writeString(writer, inputs.name.value);
+  Io.writeString(writer, inputs.surname.value);
   inputs.name.remove();
   inputs.name = null;
   inputs.surname.remove();
@@ -115,7 +115,7 @@ function escOrUpdateOnEnter(event, button, inputs, old) {
       }
       SideMenu.setUserButton(button, name, surname, matricule);
       let writer = Api.createBufferWriter(Api.UPDATE, Api.USERS_MAP);
-      writer.writeInt32(old.matricule);
+      Io.writeInt32(writer, old.matricule);
 
       endOfUserInputs(button, writer, inputs);
       Api.request(writer)
@@ -152,7 +152,7 @@ buttons.edit.addEventListener('click', function() {
     throw new Error('delete-target should have a property `_data_identifier` which infers to which piece of data the element is associated with');
   }
 
-  let writer = new BufferWriter();
+  let writer = new Io.BufferWriter();
   switch (target_button.parentElement._identifier) {
     case Global.zones_identifier.STAFF: {
       target_button.removeEventListener('click', SideMenu.buttonClickCallback);
@@ -245,7 +245,7 @@ buttons.edit.addEventListener('click', function() {
         if (new_limit === undefined) { return; }
 
         const writer = Api.createBufferWriter(Api.UPDATE, Api.EMPLOYEES_LIMIT);
-        writer.writeInt32(new_limit);
+        Io.writeInt32(writer, new_limit);
         Api.request(writer)
         .then(response => {
           Utilities.throwIfNotOk(response);
@@ -286,7 +286,7 @@ buttons.delete.addEventListener('click', function() {
   const identifier = Number(state.delete_target._data_identifier);
   state.delete_target.classList.add('disp-none');
 
-  let writer = new BufferWriter();
+  let writer = new Io.BufferWriter();
   switch (state.delete_target.parentElement._identifier) {
     case Global.zones_identifier.STAFF:
       Api.writeHeader(writer, Api.DELETE, Api.USERS_MAP);
@@ -302,7 +302,7 @@ buttons.delete.addEventListener('click', function() {
       break;
     case Global.zones_identifier.PERSONAL_NUMBER_MAP:
       Api.writeHeader(writer, Api.DELETE, Api.EVENTS_PERSONAL_NUM_MAP);
-      writer.writeInt32(Global.getEventSelectionIdentifier());
+      writeInt32(writer, Global.getEventSelectionIdentifier());
       break;
     case Global.zones_identifier.COMPETENCES:
       Api.writeHeader(writer, Api.DELETE, Api.COMPETENCES_MAP);
@@ -311,7 +311,7 @@ buttons.delete.addEventListener('click', function() {
       state.delete_target.classList.remove('disp-none');
       throw new Error('delete_target\'s parent should have `_identifier` property with a value from `Global.zones_identifier`');
   }
-  writer.writeInt32(identifier);
+  Io.writeInt32(writer, identifier);
   Api.request(writer)
   .then(response => {
     Utilities.throwIfNotOk(response);
@@ -395,13 +395,13 @@ function setCreateInput(button, input, api, meta_data) {
 
       endOfStandardInput(event, input, button, value);
       let writer = Api.createBufferWriter(Api.CREATE, api);
-      writer.writeString(value);
+      Io.writeString(writer, value);
       Api.request(writer)
       .then(response => {
         Utilities.throwIfNotOk(response);
         response.arrayBuffer()
         .then(binary => {
-          let reader = new BufferReader(binary);
+          let reader = new Io.BufferReader(binary);
           let identifier = reader.readInt32();
           let index = storageIndex(meta_data.map, meta_data.free_list);
           meta_data.map.set(identifier, index);
@@ -456,8 +456,8 @@ function updateEventOrVenue(button, placeholder, api, meta_data) {
 
       endOfStandardInput(event, input, button, value);
       let writer = Api.createBufferWriter(Api.UPDATE, api);
-      writer.writeInt32(identifier);
-      writer.writeString(value);
+      Io.writeInt32(writer, identifier);
+      Io.writeString(writer, value);
       Api.request(writer)
       .then(response => {
         Utilities.throwIfNotOk(response);
@@ -553,6 +553,7 @@ buttons.create.addEventListener('click', () => {
         Global.data.bundleCompetencesNames(),
       );
       EventInformation.state.participant_competences_button_list.push(button);
+      EventInformation.update();
       break;
     }
     default:
@@ -560,7 +561,7 @@ buttons.create.addEventListener('click', () => {
 });
 
 function createConditionalApiWriter(turning_on, api) {
-  const writer = new BufferWriter();
+  const writer = new Io.BufferWriter();
   if (turning_on) {
     Api.writeHeader(writer, Api.CREATE, api);
   } else {
@@ -582,9 +583,9 @@ buttons.toggle.addEventListener('click', () => {
         console.error('[toggle-button:click] Incorrect event\'s or role\'s ids');
         return;
       }
-      const writer = createConditionalApiWriter(writer, turning_on, Api.EVENTS_ROLE);
-      writer.writeInt32(event_identifier);
-      writer.writeInt32(target_identifier);
+      const writer = createConditionalApiWriter(turning_on, Api.EVENTS_ROLE);
+      Io.writeInt32(writer, event_identifier);
+      Io.writeInt32(writer, target_identifier);
 
       Api.request(writer)
       .then(response => {
@@ -596,9 +597,11 @@ buttons.toggle.addEventListener('click', () => {
           for (const line of staff_number_map[event_index]) {
             line.push(-1);
           }
+          Global.datat.events_roles_requirements[event_index].push([]);
         } else {
           const position = Global.data.events_roles[event_index].indexOf(target_identifier); 
           Global.data.events_roles[event_index].splice(position, 1);
+          Global.data.events_roles_requirements[event_index].splice(position, 1);
           for (let line of staff_number_map[event_index]) {
             line.splice(position+2, 1);
           }
@@ -615,14 +618,14 @@ buttons.toggle.addEventListener('click', () => {
       // @working
       const role_ordinal = target.parentElement._data_identifier; 
       const competence_index = Global.data.competences_identifier_to_index_map.get(target_identifier);
-      if (competence_index === undefined || role_index === undefined) {
-        console.error('[toggle-button:click] Incorrect event\'s or role\'s ids');
+      if (competence_index === undefined || role_ordinal === undefined) {
+        console.error('[toggle-button:click] Incorrect event\'s id or role\'s ordinal');
         return;
       }
-      const writer = createConditionalApiWriter(writer, turning_on, Api.EVENTS_ROLES_REQUIREMENT);
-      writer.writeInt32(event_identifier);
-      writer.writeInt32(role_ordinal);
-      writer.writeInt32(target_identifier);
+      const writer = createConditionalApiWriter(turning_on, Api.EVENTS_ROLES_REQUIREMENT);
+      Io.writeInt32(writer, event_identifier);
+      Io.writeInt32(writer, role_ordinal);
+      Io.writeInt32(writer, target_identifier);
 
       Api.request(writer)
       .then(response => {

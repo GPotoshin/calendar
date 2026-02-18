@@ -1,3 +1,5 @@
+import * as Io from './io.js';
+
 export function storageIndex(map, free_list) {
   if (free_list.length > 0) {
     return free_list.pop();
@@ -71,6 +73,16 @@ export function deleteOccurrences(array, value) {
   }
 }
 
+function readEventRole(r) {
+  return {
+    identifer: Io.readInt32(r),
+    requirements: Io.readInt32Array(r),
+  };
+}
+function readArrayOfEventRole(r) {
+  return Io.readArray(r, readEventRole);
+}
+
 export class DataManager {
   constructor() {
     this.users_identifier_to_index_map = new Map();
@@ -120,48 +132,48 @@ export class DataManager {
 
   read(r) {
     const expected_version = "admin_data.v0.0.5";
-    const actual_version = r.readString();
+    const actual_version = Io.readString(r);
     
     if (expected_version !== actual_version) {
       throw new Error(`Format mismatch. Found: ${actual_version}, Expected: ${expected_version}`);
     }
 
-    this.users_identifier_to_index_map = r.readMapInt32Int();
-    this.users_name = r.readStringArray();
-    this.users_surname = r.readStringArray();
-    this.users_mail = r.readStringArray();
-    this.users_phone = r.readInt32Array();
-    this.users_competences = r.readArrayOfInt32Arrays();
-    this.users_duty_station = r.readInt32Array();
-    this.users_privilage_level = r.readInt32Array();
+    this.users_identifier_to_index_map = Io.readMapInt32Int(r);
+    this.users_name = Io.readStringArray(r);
+    this.users_surname = Io.readStringArray(r);
+    this.users_mail = Io.readStringArray(r);
+    this.users_phone = Io.readInt32Array(r);
+    this.users_competences = Io.readArrayOfInt32Arrays(r);
+    this.users_duty_station = Io.readInt32Array(r);
+    this.users_privilage_level = Io.readInt32Array(r);
 
-    this.events_identifier_to_index_map = r.readMapInt32Int();
-    this.events_name = r.readStringArray();
-    this.events_venues = r.readArrayOfInt32Arrays();
-    this.events_roles = r.readArrayOfInt32Arrays();
-    this.events_roles_requirements = r.readArrayOfArrayOfInt32Arrays();
-    this.events_staff_number_map = r.readArrayOfArrayOfInt32Arrays();
-    this.events_duration = r.readInt32Array();
+    this.events_identifier_to_index_map = Io.readMapInt32Int(r);
+    this.events_name = Io.readStringArray(r);
+    this.events_venues = Io.readArrayOfInt32Arrays(r);
+    this.events_roles = Io.readArrayOfInt32Arrays(r);
+    this.events_roles_requirements = Io.readArrayOfArrayOfInt32Arrays(r);
+    this.events_staff_number_map = Io.readArrayOfArrayOfInt32Arrays(r);
+    this.events_duration = Io.readInt32Array(r);
 
-    this.venues_identifier_to_index_map = r.readMapInt32Int();
-    this.venues_name = r.readStringArray();
+    this.venues_identifier_to_index_map = Io.readMapInt32Int(r);
+    this.venues_name = Io.readStringArray(r);
 
-    this.competences_identifier_to_index_map = r.readMapInt32Int();
-    this.competences_name = r.readStringArray();
+    this.competences_identifier_to_index_map = Io.readMapInt32Int(r);
+    this.competences_name = Io.readStringArray(r);
 
-    this.roles_identifier_to_index_map = r.readMapInt32Int();
-    this.roles_name = r.readStringArray();
+    this.roles_identifier_to_index_map = Io.readMapInt32Int(r);
+    this.roles_name = Io.readStringArray(r);
 
-    this.occurrences_identifier_to_index_map = r.readMapInt32Int();
-    this.occurrences_venue = r.readInt32Array();
-    this.occurrences_dates = r.readArrayOfInt32PairArrays(); 
-    this.occurrences_participants = r.readArrayOfInt32Arrays();
-    this.occurrences_participantssRole = r.readArrayOfInt32Arrays();
+    this.occurrences_identifier_to_index_map = Io.readMapInt32Int(r);
+    this.occurrences_venue = Io.readInt32Array(r);
+    this.occurrences_dates = Io.readArrayOfInt32PairArrays(r); 
+    this.occurrences_participants = Io.readArrayOfInt32Arrays(r);
+    this.occurrences_participantssRole = Io.readArrayOfInt32Arrays(r);
 
-    this.base_day_number = r.readInt32();
-    this.day_occurrences = r.readArrayOfInt32Arrays();
+    this.base_day_number = Io.readInt32(r);
+    this.day_occurrences = Io.readArrayOfInt32Arrays(r);
 
-    this.employees_limit = r.readInt32();
+    this.employees_limit = Io.readInt32(r);
   }
 
   bundleCompetencesNames() {

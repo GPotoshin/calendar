@@ -4,107 +4,122 @@ export class BufferReader {
       this.offset = 0;
       this.text_decoder = new TextDecoder('utf-8');
   }
+}
 
-  readInt32() {
-    if (this.offset + 4 > this.view.byteLength) {
-      throw new Error("Buffer overrun reading Int32");
-    }
-    const value = this.view.getInt32(this.offset, true);
-    this.offset += 4;
-    return value;
+export function readInt32(reader) {
+  if (reader.offset + 4 > reader.view.byteLength) {
+    throw new Error("Buffer overrun reading Int32");
+  }
+  const value = reader.view.getInt32(reader.offset, true);
+  reader.offset += 4;
+  return value;
+}
+
+export function readHash(reader) {
+  const length = 32;
+  if (reader.offset + length > reader.view.byteLength) {
+    throw new Error(`Buffer overrun reading Hash: expected ${length} bytes`);
+  }
+  const hash = new Uint8Array(reader.view.buffer.slice(reader.offset, reader.offset + length));
+  reader.offset += length;
+
+  return hash;
+}
+
+export function readBytes(reader) {
+  const length = readInt32(reader);
+  if (length < 0) {
+    throw new Error(`Invalid byte array length: ${length}`);
+  }
+  if (reader.offset + length > reader.view.byteLength) {
+    throw new Error(`Buffer overrun reading Bytes of length ${length}`);
   }
 
-  readHash() {
-    const length = 32;
-    if (this.offset + length > this.view.byteLength) {
-      throw new Error(`Buffer overrun reading Hash: expected ${length} bytes`);
-    }
-    const hash = new Uint8Array(this.view.buffer.slice(this.offset, this.offset + length));
-    this.offset += length;
+  const bytes = new Uint8Array(reader.view.buffer.slice(reader.offset, reader.offset + length));
+  reader.offset += length;
+  return bytes;
+}
 
-    return hash;
+export function readMapInt32Int(reader) {
+  const size = readInt32(reader);
+  const map = new Map();
+  for (let i = 0; i < size; i++) {
+    const key = readInt32(reader);
+    const value = readInt32(reader);
+    map.set(key, value);
+  }
+  return map;
+}
+
+export function readString(reader) {
+  const length = readInt32(reader);
+  if (length < 0) {
+    throw new Error(`Invalid string length: ${length}`);
+  }
+  if (reader.offset + length > reader.view.byteLength) {
+    throw new Error(`Buffer overrun reading String of length ${length}`);
   }
 
-  readBytes() {
-    const length = this.readInt32();
-    if (length < 0) {
-      throw new Error(`Invalid byte array length: ${length}`);
-    }
-    if (this.offset + length > this.view.byteLength) {
-      throw new Error(`Buffer overrun reading Bytes of length ${length}`);
-    }
+  const string_bytes = new Uint8Array(reader.view.buffer, reader.offset, length);
+  const value = reader.text_decoder.decode(string_bytes);
+  reader.offset += length;
+  return value;
+}
 
-    const bytes = new Uint8Array(this.view.buffer.slice(this.offset, this.offset + length));
-    this.offset += length;
-    return bytes;
+export function readStringWithLimit(reader, limit) {
+  const length = readInt32(reader);
+  if (length < 0 || length > limit) {
+    throw new Error(`Invalid string length: ${length}`);
+  }
+  if (reader.offset + length > reader.view.byteLength) {
+    throw new Error(`Buffer overrun reading String of length ${length}`);
   }
 
-  readMapInt32Int() {
-    const size = this.readInt32();
-    const map = new Map();
-    for (let i = 0; i < size; i++) {
-      const key = this.readInt32();
-      const value = this.readInt32();
-      map.set(key, value);
-    }
-    return map;
+  const string_bytes = new Uint8Array(reader.view.buffer, reader.offset, length);
+  const value = reader.text_decoder.decode(string_bytes);
+  reader.offset += length;
+  return value;
+}
+
+export function readArray(reader, readChild) {
+  const N = readInt32(reader);
+  if (N < 0) {
+    throw new Error(`Invalid array length: ${arrayLength}`);
   }
+  const array = [];
 
-  readString() {
-    const length = this.readInt32();
-    if (length < 0) {
-      throw new Error(`Invalid string length: ${length}`);
-    }
-    if (this.offset + length > this.view.byteLength) {
-      throw new Error(`Buffer overrun reading String of length ${length}`);
-    }
-
-    const string_bytes = new Uint8Array(this.view.buffer, this.offset, length);
-    const value = this.text_decoder.decode(string_bytes);
-    this.offset += length;
-    return value;
+  for (let i = 0; i < N; i++) {
+    array.push(readChild(reader));
   }
+  return array;
+}
 
-  readArray(readChild) {
-    const N = this.readInt32();
-    if (N < 0) {
-      throw new Error(`Invalid array length: ${arrayLength}`);
-    }
-    const array = [];
+export function readStringArray(reader) {
+  return readArray(reader, readString);
+}
 
-    for (let i = 0; i < N; i++) {
-      array.push(readChild.call(this));
-    }
-    return array;
-  }
+export function readInt32Array(reader) {
+  return readArray(reader, readInt32);
+}
 
-  readStringArray() {
-    return this.readArray(this.readString);
-  }
+export function readArrayOfInt32Arrays(reader) {
+  return readArray(reader, readInt32Array);
+}
 
-  readInt32Array() {
-    return this.readArray(this.readInt32);
-  }
+export function readArrayOfArrayOfInt32Arrays(reader) {
+  return readArray(reader, readArrayOfInt32Arrays);
+}
 
-  readArrayOfInt32Arrays() {
-    return this.readArray(this.readInt32Array);
-  }
+export function readInt32Pair(reader) {
+  return [readInt32(reader), readInt32(reader)];
+}
 
-  readArrayOfArrayOfInt32Arrays() {
-    return this.readArray(this.readArrayOfInt32Arrays);
-  }
+export function readInt32PairArray(reader) {
+  return readArray(reader, readInt32Pair);
+}
 
-  readInt32Pair() {
-    return [this.readInt32(), this.readInt32()];
-  }
-
-  readInt32PairArray() {
-    return this.readArray(this.readInt32Pair);
-  }
-
-  readArrayOfInt32PairArrays() {
-    return this.readArray(this.readInt32PairArray);
-  }
+export function readArrayOfInt32PairArrays(reader) {
+  return readArray(reader, readInt32PairArray);
 }
 
 export class BufferWriter {
@@ -127,58 +142,59 @@ export class BufferWriter {
     }
   }
 
-  writeInt32(value) {
-    this.ensureCapacity(4);
-    this.view.setInt32(this.offset, value, true);
-    this.offset += 4;
-  }
-
-  writeHash(hash_bytes) {
-    if (hash_bytes.length !== 32) {
-      throw new Error(`Invalid hash length: expected 32, got ${hash_bytes.length}`);
-    }
-    this.ensureCapacity(32);
-    new Uint8Array(this.buffer, this.offset, 32).set(hash_bytes);
-    this.offset += 32;
-  }
-
-  writeString(string) {
-    const encoded = this.textEncoder.encode(string);
-    const length = encoded.length;
-    this.writeInt32(length);
-    this.ensureCapacity(length);
-    new Uint8Array(this.buffer, this.offset, length).set(encoded);
-    this.offset += length;
-  }
-
-  writeArray(array, writeChild) {
-    this.writeInt32(array.length);
-    for (const item of array) {
-      writeChild.call(this, item);
-    }
-  }
-
-  writeUint8Array(array) {
-    this.writeInt32(array.length);
-    this.ensureCapacity(array.length);
-    new Uint8Array(this.buffer, this.offset, array.length).set(array);
-    this.offset += array.length;
-  }
-
-  writeStringArray(array) {
-    this.writeArray(array, this.writeString);
-  }
-
-  writeInt32Array(array) {
-    this.writeArray(array, this.writeInt32);
-  }
-
-  writeArrayOfInt32Arrays(arrays) {
-    this.writeArray(arrays, this.writeInt32Array);
-  }
-
   // Get the final buffer with only the written data
   getBuffer() {
     return this.buffer.slice(0, this.offset);
   }
 }
+
+export function writeInt32(writer, value) {
+  writer.ensureCapacity(4);
+  writer.view.setInt32(writer.offset, value, true);
+  writer.offset += 4;
+}
+
+export function writeHash(writer, hash_bytes) {
+  if (hash_bytes.length !== 32) {
+    throw new Error(`Invalid hash length: expected 32, got ${hash_bytes.length}`);
+  }
+  writer.ensureCapacity(32);
+  new Uint8Array(writer.buffer, writer.offset, 32).set(hash_bytes);
+  writer.offset += 32;
+}
+
+export function writeString(writer, string) {
+  const encoded = writer.textEncoder.encode(string);
+  const length = encoded.length;
+  writeInt32(writer, length);
+  writer.ensureCapacity(length);
+  new Uint8Array(writer.buffer, writer.offset, length).set(encoded);
+  writer.offset += length;
+}
+
+export function writeArray(writer, writeChild) { 
+  writeInt32(writer, array.length);
+  for (const item of array) {
+    writeChild(writer, item);
+  }
+}
+
+export function writeUint8Array(writer, array) {
+  writeInt32(writer, array.length);
+  writer.ensureCapacity(array.length);
+  new Uint8Array(writer.buffer, writer.offset, array.length).set(array);
+  writer.offset += array.length;
+}
+
+export function writeStringArray(writer, array) {
+  writeArray(writer, array, writeString(writer));
+}
+
+export function writeInt32Array(writer, array) {
+  writeArray(writer, array, writeInt32(writer));
+}
+
+export function writeArrayOfInt32Arrays(writer, arrays) {
+  writeArray(writer, arrays, writeInt32Array(writer));
+}
+

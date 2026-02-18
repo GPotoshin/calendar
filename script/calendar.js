@@ -31,7 +31,7 @@ export function init() {
   state.top_month_week_observer = new IntersectionObserver((entries) => {
     let entry = entries[0]
     if (entry.isIntersecting) {
-      focused_day_date.setMonth(focus.date.getMonth()-1);
+      state.focused_day_date.setMonth(state.focused_day_date.getMonth()-1);
       refocusMonth();
       setMonthObserver();
     }
@@ -43,7 +43,7 @@ export function init() {
   state.bottom_month_week_observer = new IntersectionObserver((entries) => {
     let entry = entries[0];
     if (entry.isIntersecting) {
-      focused_day_date.setMonth(focus.date.getMonth()+1);
+      state.focused_day_date.setMonth(state.focused_day_date.getMonth()+1);
       refocusMonth();
       setMonthObserver();
     }
@@ -57,7 +57,7 @@ export function init() {
       if (entry.isIntersecting) {
         if (state.is_updating) return;
         state.is_updating = true;
-        Global.elements.today_frame.classList.remove('today');
+        elements.today_frame.classList.remove('today');
         const SHIFTING_BY = 5;
         let shifting_by = SHIFTING_BY;
         if (entry.target === Global.elements.marker_blocks[0]) {
@@ -67,16 +67,16 @@ export function init() {
         Global.elements.calendar_body.classList.replace('scroll-smooth', 'scroll-auto');
         // @nocheckin: We should scroll by a variable offset determined after
         // dom content modification.
-          Global.elements.calendar_body.scrollTop -= shiftingBy*week.offsetHeight;
+          Global.elements.calendar_body.scrollTop -= shifting_by*week.offsetHeight;
         Global.elements.calendar_body.classList.replace('scroll-auto', 'scroll-smooth');
         requestAnimationFrame(() => {
-          state.base_day_number += shiftingBy*7;
+          state.base_day_number += shifting_by*7;
           let date = new Date();
           const today = Math.floor(date.getTime()/MS_IN_DAY);
           const offset = today - state.base_day_number;
 
           date.setTime(state.base_day_number*MS_IN_DAY);
-          const focusMonth = focus.date.getMonth();
+          const focusMonth = state.focused_day_date.getMonth();
           iterateOverDays((day) => {
             day.children[0].textContent = date.getDate();
             day._day_number = Math.floor(date.getTime() / MS_IN_DAY);
@@ -100,7 +100,7 @@ export function init() {
   state.calendar_scrolling_observer.observe(Global.elements.marker_blocks[0]);
   state.calendar_scrolling_observer.observe(Global.elements.marker_blocks[1]);
   let date = new Date();
-  focus.date = new Date();
+  state.focused_day_date = new Date();
   const today_epoch = Math.floor(date.getTime() / MS_IN_DAY);
   const today_weekday = (date.getDay()+6)%7;
   elements.today_frame = Global.elements.calendar_content.children[8].children[today_weekday];
@@ -109,8 +109,8 @@ export function init() {
   state.base_day_number = today_epoch-today_weekday-7*7;
   date.setTime(state.base_day_number*MS_IN_DAY);
 
-  setMonthDisplay(focus.date);
-  const focusMonth = focus.date.getMonth();
+  setMonthDisplay(state.focused_day_date);
+  const focusMonth = state.focused_day_date.getMonth();
   iterateOverDays((day) => {
     day.children[0].textContent = date.getDate();
     day._day_number = Math.floor(date.getTime() / MS_IN_DAY);
@@ -161,10 +161,10 @@ function iterateOverDays(dayCallback) {
 
 
 function refocusMonth() {
-  setMonthDisplay(focus.date);
+  setMonthDisplay(state.focused_day_date);
   let date = new Date();
   date.setTime(Number(Global.elements.calendar_content.children[0].children[0]._day_number)*MS_IN_DAY)
-  const focusMonth = focus.date.getMonth();
+  const focusMonth = state.focused_day_date.getMonth();
   iterateOverDays((day) => {
     if (date.getMonth() == focusMonth) {
       day.classList.add('focused-month');
@@ -179,7 +179,7 @@ function setMonthObserver() {
   state.top_month_week_observer.disconnect();
   state.bottom_month_week_observer.disconnect();
   const weeks = Global.elements.calendar_content.children;
-  const month = focus.date.getMonth();
+  const month = state.focused_day_date.getMonth();
 
   let test_date = new Date(); // what is that?
   for (let i = 0; i < weeks.length; i++) {
@@ -214,18 +214,18 @@ function setMonthObserver() {
 // related to calendar rendering here and refactor and compress it if
 // possible
 export function update() {
-  setMonthDisplay(focused_day_date);
+  setMonthDisplay(state.focused_day_date);
   let date = new Date();
   const today = Math.floor(date.getTime()/MS_IN_DAY);
   const offset = today - state.base_day_number;
   date.setTime(state.base_day_number*MS_IN_DAY);
-  const focusMonth = focus.date.getMonth();
+  const focusMonth = state.focused_day_date.getMonth();
   iterateOverDays((day) => {
     day.children[0].textContent = date.getDate();
     day._day_number = Math.floor(date.getTime() / MS_IN_DAY);
     if (day._day_number == today) {
       day.classList.add('today');
-      Global.elements.today_frame = day;
+      elements.today_frame = day;
     }
     date.setDate(date.getDate() + 1);
   });

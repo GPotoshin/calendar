@@ -1,42 +1,27 @@
-import { BufferReader, BufferWriter } from './io.js';
+import * as Io from './io.js';
 import * as Utilities from './utilities.js';
-const idInput = document.getElementById('id');
-const passwordInput = document.getElementById('password');
-const connectButton = document.getElementById('connect');
+const matricule_input = document.getElementById('id');
+const password_input = document.getElementById('password');
+const connect_button = document.getElementById('connect');
 
-idInput.addEventListener('input', () => {
-  idInput.value = Utilities.digitise(idInput.value);
+matricule_input.addEventListener('input', () => {
+  matricule_input.value = Utilities.digitise(matricule_input.value);
 });
 
-let publicKey = null;
+let public_key = null;
 export let token = null;
-
-async function encryptCredentials(buf) {
-  const encryptedBuffer = await crypto.subtle.encrypt(
-    {
-      name: 'RSA-OAEP'
-    },
-    publicKey,
-    buf
-  );
-
-  let bw = new BufferWriter();
-  bw.writeUint8Array(new Uint8Array(encryptedBuffer));
-
-  return bw.getBuffer();
-}
 
 (async function initializeAuth() {
   try {
     const response = await fetch('/api/public-key');
     if (!response.ok) throw new Error('Network response was not ok');
     const buffer = await response.arrayBuffer();
-    const reader = new BufferReader(buffer);
+    const reader = new Io.BufferReader(buffer);
 
-    const publicKeyBytes = reader.readBytes();
-    publicKey = await window.crypto.subtle.importKey(
+    const public_key_bytes = Io.readBytes(reader);
+    public_key = await crypto.subtle.importKey(
       "spki",
-      publicKeyBytes,
+      public_key_bytes,
       {
         name: "RSA-OAEP",
         hash: "SHA-256",
@@ -50,61 +35,70 @@ async function encryptCredentials(buf) {
   }
 })();
 
-connectButton.addEventListener('click', async () => {
-  const username = idInput.value.trim();
-  const password = passwordInput.value;
+connect_button.addEventListener('click', async () => {
+  const username = matricule_input.value.trim();
+  const password = password_input.value;
 
   // Validate input
   if (!username || !password) {
-    alert('Please enter both username and password'); // @nocheckin
+    alert('Please enter both username and password'); // @nocheckin: we should have a custom menu
     return;
   }
 
-  if (!publicKey) {
+  if (!public_key) {
     alert('Authentication not ready. Please wait or refresh the page.'); // @nocheckin
     return;
   }
 
-  connectButton.disabled = true;
-  const originalText = connectButton.textContent;
-  connectButton.textContent = 'Connecting...';
+  connect_button.disabled = true;
+  const originalText = connect_button.textContent;
+  connect_button.textContent = 'Connecting...';
 
   try {
-    if (!publicKey) {
-      throw new Error('Public key not loaded');
-    }
-
-    let bw = new BufferWriter();
-    bw.writeInt32(Number(username))
+    const buffer_writer = new Io.BufferWriter();
+    Io.writeInt32(buffer_writer, Number(username))
 
     const encoder = new TextEncoder();
     const passwordData = encoder.encode(password);
     const hashBuffer = await window.crypto.subtle.digest('SHA-256', passwordData);
     const hashBytes = new Uint8Array(hashBuffer);
 
-    bw.writeHash(hashBytes);
+    Io.writeHash(buffer_writer, hashBytes);
 
     const timestamp = Math.floor(Date.now() / 1000);
-    bw.writeInt32(timestamp);
+    Io.writeInt32(buffer_writer, timestamp);
 
-    const encryptedData = await encryptCredentials(bw.getBuffer());
-    const resp = await fetch('/api/login', {
+    const encrypted_buffer = await crypto.subtle.encrypt(
+      {
+        name: 'RSA-OAEP'
+      },
+      public_key,
+      buffer_writer.getBuffer(),
+    );
+
+    // we need it to write a prefixed size. but maybe we don't need
+    // prefixed size
+    const encrypted_buffer_writer = new Io.BufferWriter();
+    Io.writeUint8Array(
+      encrypted_buffer_writer,
+      new Uint8Array(encrypted_buffer),
+    );
+
+    const response = await fetch('/api/login', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/octet-stream',
       },
-      body: encryptedData,
+      body: encrypted_buffer_writer.getBuffer(),
     });
 
-    Utilities.throwIfNotOk(resp);
-    const bin = await resp.arrayBuffer();
-    const r = new BufferReader(bin);
+    Utilities.throwIfNotOk(response);
+    const binary = await response.arrayBuffer();
+    const reader = new Io.BufferReader(binary);
 
-    token = r.readHash();
-    // all transactions are tokenised. Fucking browser with a full security
-    // policy leaves me no choice. But we run the check from the loaded script
-    // and anyway all transations are tokenised
-    let privilege = r.readInt32();  
+    token = Io.readHash(reader);
+    const privilege = Io.readInt32(reader);  
+
     let entrypoint = '';
     if (privilege == -2) {
       entrypoint = './entry_point_admin.js';
@@ -114,26 +108,26 @@ connectButton.addEventListener('click', async () => {
       entrypoint = './entry_point_chef.js';
     }
 
-    let html = r.readString();
-    passwordInput.value = '';
+    let html = Io.readStringWithLimit(reader, 1<<16);
+    password_input.value = '';
     document.body.innerHTML = html;
     document.body.className = "";
     Utilities.appendMeasure();
 
     import(entrypoint)
-    .catch((err) => {
-      console.error("Failed to load entrypoint:", err);
+    .catch(error => {
+      console.error("Failed to load entrypoint:", error);
     });
   } catch (error) {
     alert('Login failed: ' + error.message);
   } finally {
-    connectButton.disabled = false;
-    connectButton.textContent = originalText;
+    connect_button.disabled = false;
+    connect_button.textContent = originalText;
   }
 });
 
-passwordInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') {
-    connectButton.click();
+password_input.addEventListener('keypress', event => {
+  if (event.key === 'Enter') {
+    connect_button.click();
   }
 });

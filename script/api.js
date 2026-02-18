@@ -1,5 +1,5 @@
 import { token } from './login.js';
-import { BufferWriter } from './io.js';
+import * as Io from './io.js';
 
 export const CREATE  = 0;
 export const REQUEST = 1;
@@ -43,14 +43,14 @@ export const EMPLOYEES_LIMIT = 26;
 export const STATE_FIELD_COUNT = 27;
 
 export function writeHeader(writer, operation_identifier, field_identifier) {
-  writer.writeString("bin_api.v0.0.0");
-  writer.writeHash(token);
-  writer.writeInt32(operation_identifier);
-  writer.writeInt32(field_identifier);
+  Io.writeString(writer, "bin_api.v0.0.0");
+  Io.writeHash(writer, token);
+  Io.writeInt32(writer, operation_identifier);
+  Io.writeInt32(writer, field_identifier);
 }
 
 export function createBufferWriter(operation_identifier, field_identifier) {
-  let writer = new BufferWriter();
+  let writer = new Io.BufferWriter();
   writeHeader(writer, operation_identifier, field_identifier);
   return writer;
 }

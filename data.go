@@ -137,6 +137,9 @@ func filterVal[T comparable](arr *[]T, val T) {
 }
 
 func filterIdx[T any](arr *[]T, index int) {
+  if index < 0 || index >= len(*arr) {
+    return
+  }
   for i := index; i < len(*arr)-1; i++ {
     (*arr)[i] = (*arr)[i+1];
   }

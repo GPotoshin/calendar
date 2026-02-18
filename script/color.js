@@ -1,3 +1,5 @@
+// author: Georgii K. Potoshin <george.potoshin@gmail.com>
+
 const s = getComputedStyle(document.documentElement);
 
 export const palette = {
