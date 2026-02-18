@@ -79,8 +79,13 @@ function readEventRole(r) {
     requirements: Io.readInt32Array(r),
   };
 }
-function readArrayOfEventRole(r) {
+
+function readEventRoleArray(r) {
   return Io.readArray(r, readEventRole);
+}
+
+function readArrayOfEventRoleArray(r) {
+  return Io.readArray(r, readEventRoleArray);
 }
 
 export class DataManager {

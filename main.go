@@ -932,7 +932,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       slog.Info("DELETE")
       id, err := readInt32(r.Body)
       if readError(w, "VENUES:DELETE", "id", err) { return }
-      _, exists := state.EventsId[id]
+      _, exists := state.VenuesId[id]
       if doesNotExistError(w, "VENUES:DELETE", "index", exists) { return }
       deleteValue(state.VenuesId, &state.VenuesFreeId, &state.VenuesFreeList, id)
       deleteOccurrences(state.EventsVenues, id);
@@ -971,7 +971,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       slog.Info("DELETE")
       identifier_to_delete, err := readInt32(r.Body)
       if readError(w, "COMPETENCES:DELETE", "identifier", err) { return }
-      _, exists := state.EventsId[identifier_to_delete]
+      _, exists := state.CompetencesId[identifier_to_delete]
       if doesNotExistError(w, "COMPETENCES:DELETE", "index", exists) { return }
       deleteValue(
         state.CompetencesId,
@@ -1007,7 +1007,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       slog.Info("DELETE")
       id, err := readInt32(r.Body)
       if readError(w, "ROLES:DELETE", "id", err) { return }
-      _, exists := state.EventsId[id]
+      _, exists := state.RolesId[id]
       if doesNotExistError(w, "ROLES:DELETE", "index", exists) { return }
       deleteValue(state.RolesId, &state.RolesFreeId, &state.RolesFreeList, id)
       deleteOccurrences(state.EventsRole, id)

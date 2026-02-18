@@ -45,7 +45,7 @@ function createUserDataInputs() {
 }
 
 function endOfUserInputs(button, writer, inputs) {
-  button.addEventListener('click', SideMenubuttonClickCallback);
+  button.addEventListener('click', SideMenu.buttonClickCallback);
   Io.writeInt32(writer, Number(inputs.matricule.value));
   Io.writeString(writer, inputs.name.value);
   Io.writeString(writer, inputs.surname.value);
@@ -258,7 +258,7 @@ buttons.edit.addEventListener('click', function() {
       swapNumberButtonToInputAndSetLatterToOldValue(target_button, old_limit);
       break;
     }
-  }
+  button}
 });
 
 function swapNumberButtonToInputAndSetLatterToOldValue(button, old_value) {
@@ -290,89 +290,122 @@ buttons.delete.addEventListener('click', function() {
   switch (state.delete_target.parentElement._identifier) {
     case Global.zones_identifier.STAFF:
       Api.writeHeader(writer, Api.DELETE, Api.USERS_MAP);
+      Io.writeInt32(writer, identifier);
+      Api.request(writer)
+        .then(response => {
+          Utilities.throwIfNotOk(response);
+          deleteValue(Global.data.users_identifier_to_index_map, Global.data.users_free_list, identifier);
+          deleteOccurrences(Global.data.occurrences_participants, identifier);
+          state.delete_target.parentElement._button_list.filter(b => b !== state.delete_target);
+          state.delete_target.remove();
+        })
+        .catch(e => {
+          state.delete_target.classList.remove('disp-none');
+          console.error("Could not delete ", e);
+          return;
+        });
       break;
     case Global.zones_identifier.VENUE:
       Api.writeHeader(writer, Api.DELETE, Api.VENUES_MAP);
+      Io.writeInt32(writer, identifier);
+      Api.request(writer)
+        .then(response => {
+          Utilities.throwIfNotOk(response);
+          deleteValue(Global.data.venues_identifier_to_index_map, Global.data.venues_free_list, identifier);
+          deleteOccurrences(Global.data.events_venues, identifier);
+          state.delete_target.parentElement._button_list.filter(b => b !== state.delete_target);
+          state.delete_target.remove();
+        })
+        .catch(e => {
+          state.delete_target.classList.remove('disp-none');
+          console.error("Could not delete ", e);
+          return;
+        });
       break;
     case Global.zones_identifier.EVENT:
       Api.writeHeader(writer, Api.DELETE, Api.EVENTS_MAP);
+      Io.writeInt32(writer, identifier);
+      Api.request(writer)
+        .then(response => {
+          Utilities.throwIfNotOk(response);
+          deleteValue(Global.data.events_identifier_to_index_map, Global.data.events_free_list, identifier);
+          state.delete_target.parentElement._button_list.filter(b => b !== state.delete_target);
+          state.delete_target.remove();
+        })
+        .catch(e => {
+          state.delete_target.classList.remove('disp-none');
+          console.error("Could not delete ", e);
+          return;
+        });
       break;
     case Global.zones_identifier.EVENT_STAFF:
       Api.writeHeader(writer, Api.DELETE, Api.ROLES_MAP);
+      Io.writeInt32(writer, identifier);
+      Api.request(writer)
+        .then(response => {
+          Utilities.throwIfNotOk(response);
+          state.extend_target._button_list =
+            state.extend_target._button_list.filter(b => b !== state.delete_target);
+          deleteValue(Global.data.roles_identifier_to_index_map, Global.data.roles_free_list, identifier);
+          deleteOccurrences(Global.data.events_roles, identifier);
+          for (let i = 0; i < Global.data.events_roles.length; i++) {
+            let events_roles = Global.data.events_roles[i];
+            let index = events_roles.indexOf(identifier);
+            events_roles.splice(identifier, 1);
+            let staff_number_map = Global.data.events_staff_number_map[i];
+            for (let j = 0; j < staff_number_map.length; j++) {
+              staff_number_map.splice(index, 1);
+            }
+          }
+          EventInformation.update();
+        })
+        .catch(e => {
+          state.delete_target.classList.remove('disp-none');
+          console.error("Could not delete ", e);
+          return;
+        });
       break;
     case Global.zones_identifier.PERSONAL_NUMBER_MAP:
       Api.writeHeader(writer, Api.DELETE, Api.EVENTS_PERSONAL_NUM_MAP);
-      writeInt32(writer, Global.getEventSelectionIdentifier());
+      Io.writeInt32(writer, Global.getEventSelectionIdentifier());
+      Io.writeInt32(writer, identifier);
+      Api.request(writer)
+        .then(response => {
+          Utilities.throwIfNotOk(response);
+          const event_identifier = Global.getEventSelectionIdentifier();
+          const event_index = Global.data.events_identifier_to_index_map.get(event_identifier);
+          Global.data.events_staff_number_map[event_index].splice(identifier, 1)
+          EventInformation.update();
+        })
+        .catch(e => {
+          state.delete_target.classList.remove('disp-none');
+          console.error("Could not delete ", e);
+          return;
+        });
       break;
     case Global.zones_identifier.COMPETENCES:
       Api.writeHeader(writer, Api.DELETE, Api.COMPETENCES_MAP);
+      Io.writeInt32(writer, identifier);
+      Api.request(writer)
+        .then(response => {
+          Utilities.throwIfNotOk(response);
+          EventInformation.state.participant_competences_button_list.push(button);
+          deleteValue(Global.data.competences_identifier_to_index_map, Global.data.competences_free_list, identifier);
+          for (const [event_identifier, event_index] in Global.data.events_identifier_to_index_map) {
+            deleteOccurrences(Global.data.events_competences[event_index], identifier);
+          }
+          EventInformation.update();
+        })
+        .catch(e => {
+          state.delete_target.classList.remove('disp-none');
+          console.error("Could not delete ", e);
+          return;
+        });
       break;
     default:
       state.delete_target.classList.remove('disp-none');
       throw new Error('delete_target\'s parent should have `_identifier` property with a value from `Global.zones_identifier`');
   }
-  Io.writeInt32(writer, identifier);
-  Api.request(writer)
-  .then(response => {
-    Utilities.throwIfNotOk(response);
-    switch (state.delete_target.parentElement._identifier) {
-      case Global.zones_identifier.STAFF:
-        deleteValue(Global.data.users_identifier_to_index_map, Global.data.users_free_list, identifier);
-        deleteOccurrences(Global.data.occurrences_participants, identifier);
-        state.delete_target.parentElement._button_list.filter(b => b !== state.delete_target);
-        state.delete_target.remove();
-        break;
-      case Global.zones_identifier.VENUE:
-        deleteValue(Global.data.venues_identifier_to_index_map, Global.data.venues_free_list, identifier);
-        deleteOccurrences(Global.data.events_venues, identifier);
-        state.delete_target.parentElement._button_list.filter(b => b !== state.delete_target);
-        state.delete_target.remove();
-        break;
-      case Global.zones_identifier.EVENT:
-        deleteValue(Global.data.events_identifier_to_index_map, Global.data.events_free_list, identifier);
-        state.delete_target.parentElement._button_list.filter(b => b !== state.delete_target);
-        state.delete_target.remove();
-        break;
-      case Global.zones_identifier.EVENT_STAFF:
-        state.extend_target._button_list =
-          state.extend_target._button_list.filter(b => b !== state.delete_target);
-
-        deleteValue(Global.data.roles_identifier_to_index_map, Global.data.roles_free_list, identifier);
-        deleteOccurrences(Global.data.events_roles, identifier);
-        for (let i = 0; i < Global.data.events_roles.length; i++) {
-          let events_roles = Global.data.events_roles[i];
-          let index = events_roles.indexOf(identifier);
-          events_roles.splice(identifier, 1);
-          let staff_number_map = Global.data.events_staff_number_map[i];
-          for (let j = 0; j < staff_number_map.length; j++) {
-            staff_number_map.splice(index, 1);
-          }
-        }
-        EventInformation.update();
-        break;
-      case Global.zones_identifier.PERSONAL_NUMBER_MAP:
-        const event_identifier = Global.getEventSelectionIdentifier();
-        const event_index = Global.data.events_identifier_to_index_map.get(event_identifier);
-        Global.data.events_staff_number_map[event_index].splice(identifier, 1)
-        EventInformation.update();
-        break;
-      case Global.zones_identifier.COMPETENCES:
-        EventInformation.state.participant_competences_button_list.push(button);
-        deleteValue(Global.data.competences_identifier_to_index_map, Global.data.competences_free_list, identifier);
-        for (const [event_identifier, event_index] in Global.data.events_identifier_to_index_map) {
-          deleteOccurrences(Global.data.events_competences[event_index], identifier);
-        }
-        EventInformation.update();
-        break;
-      default:
-        throw new Error('that zones_identifier does not support local storage');
-    }
-  })
-  .catch(e => {
-    state.delete_target.classList.remove('disp-none');
-    console.error("Could not delete ", e);
-    return;
-  });
 });
 
 function endOfStandardInput(event, input, button, value) {
@@ -382,7 +415,7 @@ function endOfStandardInput(event, input, button, value) {
   button.textContent = value;
 }
 
-function setCreateInput(button, input, api, meta_data) {
+function setCreateInput(button, input, api, meta_data, endCallback) {
   input.addEventListener('keydown', event => {
     if (event.key === 'Enter') {
       const value = input.value;
@@ -402,13 +435,14 @@ function setCreateInput(button, input, api, meta_data) {
         response.arrayBuffer()
         .then(binary => {
           let reader = new Io.BufferReader(binary);
-          let identifier = reader.readInt32();
+          let identifier = Io.readInt32(reader);
           let index = storageIndex(meta_data.map, meta_data.free_list);
           meta_data.map.set(identifier, index);
           meta_data.array[index] = value;
           button.textContent = '';
           Utilities.setNameAndIdentifier(button, value, identifier);
           button.addEventListener('click', SideMenu.buttonClickCallback);
+          if (endCallback) endCallback(button);
         });
       })
       .catch(error => {
@@ -429,7 +463,7 @@ function createEventOrVenue(parent, placeholder, api, meta_data) {
   button.replaceChildren(input);
   parent.appendChild(button);
   parent._button_list.push(button);
-  setCreateInput(button, input, api, meta_data);
+  setCreateInput(button, input, api, meta_data, null);
 }
 
 function updateEventOrVenue(button, placeholder, api, meta_data) {
@@ -535,8 +569,8 @@ buttons.create.addEventListener('click', () => {
         input,
         Api.ROLES_MAP,
         Global.data.bundleRolesNames(),
+        (button) => { EventInformation.state.event_role_button_list.push(button); },
       );
-      EventInformation.state.event_role_button_list.push(button);
       break;
     }
     case Global.zones_identifier.COMPETENCES: {
@@ -551,9 +585,11 @@ buttons.create.addEventListener('click', () => {
         input,
         Api.COMPETENCES_MAP,
         Global.data.bundleCompetencesNames(),
+        (button) => {
+          EventInformation.state.participant_competences_button_list.push(button);
+          EventInformation.update();
+        }
       );
-      EventInformation.state.participant_competences_button_list.push(button);
-      EventInformation.update();
       break;
     }
     default:
