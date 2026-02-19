@@ -6,6 +6,7 @@ import * as SideMenu from './side_menu.js';
 import * as Utilities from './utilities.js';
 import * as SearchDisplay from './search_display.js';
 import * as EventInformation from './event_information.js';
+import * as Calendar from './calendar.js';
 import { numeric_input } from './numeric_input.js';
 import { palette } from './color.js';
 
@@ -14,6 +15,7 @@ let buttons = {
   edit: document.getElementById('edit-button'),
   toggle: document.getElementById('toggle-button'),
   create: document.getElementById('create-button'),
+  instantiate: document.getElementById('instantiate-button'),
 };
 
 let state = {
@@ -21,16 +23,8 @@ let state = {
   extend_target: null,
   edit_target: null,
   toggle_target: null,
+  instantiate_target: null,
 };
-
-function handleClickForContextMenu() {
-  let menu = Global.elements.right_click_menu;
-  menu.classList.replace('disp-flex', 'disp-none');
-  document.removeEventListener('click', handleClickForContextMenu);
-  for (const child of menu.children) {
-    child.classList.replace('disp-block', 'disp-none');
-  }
-}
 
 function createUserDataInputs() {
   const inputs = {
@@ -612,7 +606,7 @@ buttons.toggle.addEventListener('click', () => {
   const turning_on = target.classList.toggle('clicked');
   const event_identifier = Global.getEventSelectionIdentifier(); 
   const event_index = Global.data.events_identifier_to_index_map.get(event_identifier);
-  switch (state.toggle_target.parentElement._identifier) { // working
+  switch (target.parentElement._identifier) {
     case Global.zones_identifier.EVENT_STAFF: {
       const role_index = Global.data.roles_identifier_to_index_map.get(target_identifier);
       if (event_index === undefined || role_index === undefined) {
@@ -684,9 +678,35 @@ buttons.toggle.addEventListener('click', () => {
   }
 });
 
+buttons.instantiate.addEventListener('click', () => {
+  const target = state.instantiate_target;
+  const target_identifier = target._data_identifier;
+  switch (target.parentElement._identifier) {
+    case Global.zones_identifier.EVENT: {
+      const week_rows = Global.elements.calendar_content.querySelectorAll('.week-row');
+      Calendar.public_state.is_instantiating = true;
+      Calendar.renderBars();
+      break;
+    }
+    default: {
+      console.error('this object is not instantiatable');
+      break;
+    }
+  }
+});
+
 function display(local_state, button) {
   button.classList.replace('disp-none', 'disp-block');
   local_state.show = true;
+}
+
+function handleClickForContextMenu() {
+  let menu = Global.elements.right_click_menu;
+  menu.classList.replace('disp-flex', 'disp-none');
+  document.removeEventListener('click', handleClickForContextMenu);
+  for (const child of menu.children) {
+    child.classList.replace('disp-block', 'disp-none');
+  }
 }
 
 document.addEventListener('contextmenu', event => {
@@ -705,6 +725,9 @@ document.addEventListener('contextmenu', event => {
   }
   if (state.extend_target = target.closest('.extendable')) {
     display(local_state, buttons.create);
+  }
+  if (state.instantiate_target = target.closest('.instantiatable')) {
+    display(local_state, buttons.instantiate);
   }
 
   if (local_state.show) {

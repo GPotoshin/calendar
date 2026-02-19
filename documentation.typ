@@ -36,7 +36,16 @@ _ and are _camel_case.
 
 === Calendar View
 
+==== day-cell
+Properties:
+* _index – index of the day in the week
+it's set in \@set(day-cell._index)
+
 ==== Event Bars
-Event bars are attached to days and grow in the left direction. For consistency,
-their size is calculated on the fly from information recieved from
-getBoundingRectangle() called on day cells.
+Properties:
+* _width – number of cells the item takes. It's used in width recalculation,
+if container is resized. It's set in \@set(bar._width)
+
+Event bars are attached to `days-cell.barholder` and grow in the right
+direction. For consistency, their size is calculated on the fly from information
+recieved from getBoundingRectangle() called on day cells.

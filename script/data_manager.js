@@ -129,7 +129,7 @@ export class DataManager {
     this.occurrences_participantssRole = [];
     this.occurrences_free_list = [];
 
-    this.base_day_number = [];
+    this.base_day_number = -1;
     this.day_occurrences = [];
 
     this.employees_limit = -1;

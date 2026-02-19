@@ -50,7 +50,11 @@ export let zones = [
 ];
 
 export function getEventSelectionIdentifier() {
- return zones[zones_identifier.EVENT].selection._data_identifier;
+  const selection = zones[zones_identifier.EVENT].selection;
+  if (selection) {
+    return zones[zones_identifier.EVENT].selection._data_identifier;
+  }
+  return undefined;
 }
 
 export const data = new DM.DataManager();

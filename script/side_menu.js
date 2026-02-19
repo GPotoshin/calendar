@@ -102,7 +102,6 @@ export function buttonClickCallback(event) {
     if (Global.zones[Global.zones_identifier.VIEW_TYPE].selection._data_identifier === Global.view_identifier.INFORMATION) {
       Global.elements.views[Global.view_identifier.INFORMATION].replaceChildren(CalendarInformation.dom);
     } else {
-
     }
     return;
   } else {
@@ -116,21 +115,6 @@ export function buttonClickCallback(event) {
       EventInformation.update();
       Global.elements.views[Global.view_identifier.INFORMATION].replaceChildren(EventInformation.dom);
     } else {
-      const list = Global.elements.calendar_content.children;
-      for (let i = 0; i < list.length; i++) {
-        let row = list[i];
-        if (row.classList.contains('block-marker')) {
-          continue;
-        }
-        let line = document.createElement('div');
-        line.classList = 'event-occurence event-single no-select';
-        line.style.top = '0%';
-        Utilities.setBackgroundColor(line, palette.green);
-        let new_width = row.children[6].getBoundingClientRect().right-
-          row.children[0].getBoundingClientRect().left-1;
-        line.style.width = new_width+'px';
-        row.children[0].getElementsByClassName('bar-holder')[0].prepend(line);
-      }
     }
   }
 }
@@ -147,16 +131,6 @@ export function createListButtonAndSetToggleCallback() {
   return button;
 }
 
-export function composeList(map, names, list_identifier) {
-  for (const [identifier, index] of map) {
-    const name = names[index];
-    let button = createListButtonAndSetToggleCallback();
-    Utilities.setNameAndIdentifier(button, name, identifier);
-    Global.zones[list_identifier].element_list.appendChild(button);
-    Global.zones[list_identifier].element_list._button_list.push(button);
-  }
-}
-
 export function setUserButton(button, name, surname, matricule) {
   button._data_identifier = matricule;
   let left = document.createElement('span');
@@ -167,13 +141,36 @@ export function setUserButton(button, name, surname, matricule) {
   button.replaceChildren(left, right);
 }
 
+function appendButtonToZone(zone_identifier, button) {
+    Global.zones[zone_identifier].element_list.appendChild(button);
+    Global.zones[zone_identifier].element_list._button_list.push(button);
+}
+
+export function composeVenueList(map, names, list_identifier) {
+  for (const [identifier, index] of Global.data.venues_identifier_to_index_map) {
+    const name = Global.data.venues_name[index];
+    let button = createListButtonAndSetToggleCallback();
+    Utilities.setNameAndIdentifier(button, name, identifier);
+    appendButtonToZone(Global.zones_identifier.VENUE, button);
+  }
+}
+
+export function composeEventList() {
+  for (const [identifier, index] of Global.data.events_identifier_to_index_map) {
+    const name = Global.data.events_name[index];
+    let button = createListButtonAndSetToggleCallback();
+    button.classList.add('instantiatable');
+    Utilities.setNameAndIdentifier(button, name, identifier);
+    appendButtonToZone(Global.zones_identifier.EVENT, button);
+  }
+}
+
 export function composeUsersList() {
   for (const [matricule, index] of Global.data.users_identifier_to_index_map) {
-    const name = Global.data.users_name[index]; // @factorout
+    const name = Global.data.users_name[index];
     const surname = Global.data.users_surname[index];
     let button = createListButtonAndSetToggleCallback();
     setUserButton(button, name, surname, matricule);
-    Global.zones[Global.zones_identifier.STAFF].element_list.appendChild(button);
-    Global.zones[Global.zones_identifier.STAFF].element_list._button_list.push(button);
+    appendButtonToZone(Global.zones_identifier.STAFF, button);
   }
 }
