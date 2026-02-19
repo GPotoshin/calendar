@@ -685,6 +685,7 @@ buttons.instantiate.addEventListener('click', () => {
     case Global.zones_identifier.EVENT: {
       const week_rows = Global.elements.calendar_content.querySelectorAll('.week-row');
       Calendar.public_state.is_instantiating = true;
+      Calendar.public_state.instantiating_event_identifier = target._data_identifier;
       Calendar.renderBars();
       break;
     }

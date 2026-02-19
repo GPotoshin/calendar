@@ -197,14 +197,14 @@
 }
 
 .event-occurence {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   height: 19%;
-  width: 100%;
   min-height: 20px;
   max-height: 30px;
-  text-align: center;
   position: absolute;
-  background-color: #F7CEDD; /* @nocheckin */
-  color: #772338;
+  color: #000000;
   z-index: 1;
 }
 

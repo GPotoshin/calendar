@@ -15,6 +15,8 @@
   --green-color: #A3BE8C;
   --violet-color: #B48EAD;
   --blue-color: #88C0D0;
+
+  --glow-color: rgba(136, 192, 208, 0.6)
 }
 
 @font-face {
@@ -90,6 +92,13 @@ button {
   border-radius: 5px;
   text-align: left;
   font-size: 12px;
+}
+
+.highlight-border {
+  outline: none;
+  box-shadow: 
+  0 0 0 4px var(--glow-color);
+  z-index: 10;
 }
 
 .std-min {

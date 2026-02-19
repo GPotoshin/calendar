@@ -27,6 +27,7 @@ function getColor(type) {
 
 // there is a mode of instantiating an event. it shows free day slots and etc.
 export const public_state = {
+  instantiating_event_identifier: undefined,
   is_instantiating: false,
   base_day_number: 0,
   view_day_data: new Uint32Array(WEEK_COUNT*7),
@@ -34,15 +35,14 @@ export const public_state = {
 };
 
 const state = {
+  target: null,
   cells: null,
-  backed_week: null,
   week: null,
   start_cell_num: 0,
   is_updating: false,
   is_created: false,
   is_dragging: false,
   start_x: 0,
-  start_y: 0,
   bar_holder: null,
   bar: null,
   prev_focus_num: 0,
@@ -307,7 +307,6 @@ export function setMonthScrollPosition() {
 
 function getCellNum(pos_x) {
   const week_rect = state.week.getBoundingClientRect(); 
-
   const rel_pos_x = pos_x-week_rect.left;
   return Math.floor(rel_pos_x/(week_rect.width/7.0));
 }
@@ -317,25 +316,40 @@ Global.elements.calendar_body.addEventListener('mousedown', e => {
 
   state.is_dragging = true;
   state.start_x = e.clientX;
-  state.start_y = e.clientY;
+  state.target = e.target;
 
-  let cell = e.target.closest(".day-cell");
-  state.week = cell.closest(".week-row");
-  state.backed_week = state.week.cloneNode(true);
+
+  state.week = e.target.closest('.week-row');
   state.cells = state.week.getElementsByClassName('day-cell');
-  state.start_cell_num = getCellNum(e.clientX);
-  state.prev_focus_num = state.start_cell_num;
+
+  const clicked_cell_num = getCellNum(e.clientX);
+
+  let bar = null;
+  if (bar = e.target.closest('.event-occurence')) {
+    const rect = bar.getBoundingClientRect();
+    state.is_created = true;
+    if (rect.right - e.clientX < e.clientX - rect.left) { // dragging right end
+      state.start_cell_num = bar.closest('.day-cell')._index;
+      state.prev_focus_num = state.start_cell_num + bar._width;
+    } else { // dragging left end
+      state.start_cell_num = state.start_cell_num + bar._width;
+      state.prev_focus_num = bar.closest('.day-cell')._index;
+    }
+  } else {
+    state.start_cell_num = clicked_cell_num;
+    state.prev_focus_num = state.start_cell_num;
+  }
 });
 
 Global.elements.calendar_body.addEventListener('mouseup', e => {
+  let bar = null
+  if (!state.is_creating && (bar = state.target.closest('.event-occurence'))) {
+    bar.classList.toggle('highlight-border');
+  }
+
   state.is_created = false;
   state.is_dragging = false;
 });
-
-function shiftBarBy(bar, n) {
-  bar._top = Number(bar._top)+n;
-  bar.style.top = Number(bar._top)*20+'%';
-}
 
 function getEvents(cell) {
   const list = cell.getElementsByClassName('bar-holder');
@@ -343,48 +357,6 @@ function getEvents(cell) {
     return list;
   }
   return list[0].getElementsByClassName('event-occurence');
-}
-
-function addBarToCell(state) {
-  let cell = state.cells[state.bar._left_cell_num];
-  let list = cell.getElementsByClassName('bar-holder');
-  state.bar_holder = list[0];
-
-  let i = 0;
-  let rightMax = -1;
-  for (i=0; i<state.bar._left_cell_num; i++) {
-    let list = getEvents(state.cells[i]);
-    let shifting = false;
-    let shiftingFrom = 99;
-    for (let bar of list) {
-      if (!shifting) {
-        if (bar._right_cell_num >= state.bar._left_cell_num) {
-          shifting = true;
-          shiftingFrom = Math.min(bar._top, shiftingFrom);
-          rightMax = Math.max(bar._right_cell_num, rightMax);
-          shiftBarBy(bar, 1);
-        } else if (bar._top > shiftingFrom) {
-          shifting = true;
-          rightMax = Math.max(bar._right_cell_num, rightMax);
-          shiftBarBy(bar, 1);
-        }
-      } else {
-          rightMax = Math.max(bar._right_cell_num, rightMax);
-          shiftBarBy(bar, 1);
-      }
-    }
-  }
-
-  rightMax = Math.max(state.bar._right_cell_num, rightMax);
-  for (i=state.bar._left_cell_num; i<=rightMax;i++) {
-    let list = getEvents(state.cells[i]);
-    for (let bar of list) {
-      rightMax = Math.max(bar._right_cell_num, rightMax);
-      shiftBarBy(bar,1);
-    }
-  }
-
-  state.bar_holder.insertBefore(state.bar, state.bar_holder.firstChild);
 }
 
 function createBar(position, color) {
@@ -419,6 +391,16 @@ export function renderBars() {
         public_state.bar_list.push(bar);
 
         resizeBar(bar, start_day, end_day);
+        if (region_type == TAKEN) {
+          const event_indetifier = public_state.instantiating_event_identifier;
+          if (!event_indetifier) {
+            console.error('unreachable');
+          }
+          const event_index = Global.data.events_identifier_to_index_map.get(event_indetifier);
+          bar.textContent = Global.data.events_name[event_index];
+        } else {
+          bar.textContent = 'Disponible';
+        }
         bar._width = end_day-start_day+1; // docs: @set(bar._width)
         week.children[start_day].getElementsByClassName('bar-holder')[0].prepend(bar);
       }
@@ -471,7 +453,7 @@ Global.elements.calendar_body.addEventListener('mousemove', e => {
         }
       }
     } else {
-      for (let i = state.start_cell_numi+week_shift; i >= num+week_shift; i--) {
+      for (let i = state.start_cell_num+week_shift; i >= num+week_shift; i--) {
         if (public_state.view_day_data[i] === AVAILABLE) {
           public_state.view_day_data[i] = TAKEN;
         }
