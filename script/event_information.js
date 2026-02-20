@@ -404,7 +404,7 @@ export function createDurationBuffer(duration, mode, event_identifier) {
     return;
   }
   let writer = Api.createBufferWriter(Api.UPDATE, Api.EVENTS_DURATION);
-  Io.writeInt32(write, event_identifier);
-  Io.writeInt32(write, duration);
+  Io.writeInt32(writer, event_identifier);
+  Io.writeInt32(writer, duration);
   return writer;
 }

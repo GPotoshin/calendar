@@ -57,5 +57,13 @@ export function getEventSelectionIdentifier() {
   return undefined;
 }
 
+export function getEventsDuration(identifier) {
+  const event_index = data.events_identifier_to_index_map.get(identifier);    
+  if (event_index) {
+    return data.events_duration[event_index];
+  }
+  return undefined;
+}
+
 export const data = new DM.DataManager();
 window.data = data; // @nocheckin: only in dev

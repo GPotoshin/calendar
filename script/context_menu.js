@@ -228,7 +228,7 @@ buttons.edit.addEventListener('click', function() {
           target_button.textContent = old_duration;
         });
       };
-      swapNumberButtonToInputAndLatterToOldValue(target_button, old_duration);
+      swapNumberButtonToInputAndSetLatterToOldValue(target_button, old_duration);
       break;
     }
     case Global.zones_identifier.EMPLOYEES_LIMIT: {
@@ -686,6 +686,7 @@ buttons.instantiate.addEventListener('click', () => {
       const week_rows = Global.elements.calendar_content.querySelectorAll('.week-row');
       Calendar.public_state.is_instantiating = true;
       Calendar.public_state.instantiating_event_identifier = target._data_identifier;
+      Calendar.public_state.selected_day_counter = 0;
       Calendar.renderBars();
       break;
     }

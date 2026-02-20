@@ -32,6 +32,7 @@ export const public_state = {
   base_day_number: 0,
   view_day_data: new Uint32Array(WEEK_COUNT*7),
   bar_list: [], // contains all bars.
+  selected_day_counter: 0,
 };
 
 const state = {
@@ -42,6 +43,7 @@ const state = {
   is_updating: false,
   is_created: false,
   is_dragging: false,
+  is_selected: false,
   start_x: 0,
   bar_holder: null,
   bar: null,
@@ -314,28 +316,42 @@ function getCellNum(pos_x) {
 Global.elements.calendar_body.addEventListener('mousedown', e => {
   if (e.button !== 0 || !public_state.is_instantiating) return;
 
+  // handle highlighting
+  let new_bar = e.target.closest('.event-occurence');
+  if (state.is_selected) {
+    let old_bar = state.target.closest('.event-occurence');
+    if (new_bar !== old_bar) {
+      state.target.closest('.event-occurence').classList.remove('highlight-border');
+      state.is_selected = false;
+    }
+  }
+
   state.is_dragging = true;
   state.start_x = e.clientX;
   state.target = e.target;
-
 
   state.week = e.target.closest('.week-row');
   state.cells = state.week.getElementsByClassName('day-cell');
 
   const clicked_cell_num = getCellNum(e.clientX);
 
-  let bar = null;
-  if (bar = e.target.closest('.event-occurence')) {
-    const rect = bar.getBoundingClientRect();
+  if (new_bar && new_bar._type === TAKEN) {
+    const rect = new_bar.getBoundingClientRect();
     state.is_created = true;
     if (rect.right - e.clientX < e.clientX - rect.left) { // dragging right end
-      state.start_cell_num = bar.closest('.day-cell')._index;
-      state.prev_focus_num = state.start_cell_num + bar._width;
+      state.start_cell_num = new_bar.closest('.day-cell')._index;
+      state.prev_focus_num = state.start_cell_num + new_bar._width-1;
     } else { // dragging left end
-      state.start_cell_num = state.start_cell_num + bar._width;
-      state.prev_focus_num = bar.closest('.day-cell')._index;
+      state.prev_focus_num = new_bar.closest('.day-cell')._index;
+      state.start_cell_num = state.prev_focus_num + new_bar._width-1;
     }
   } else {
+    const duration = Global.getEventsDuration(public_state.instantiating_event_identifier);
+    if (duration <= public_state.selected_day_counter) {
+      state.is_dragging = false;
+      return;
+    }
+
     state.start_cell_num = clicked_cell_num;
     state.prev_focus_num = state.start_cell_num;
   }
@@ -343,13 +359,35 @@ Global.elements.calendar_body.addEventListener('mousedown', e => {
 
 Global.elements.calendar_body.addEventListener('mouseup', e => {
   let bar = null
-  if (!state.is_creating && (bar = state.target.closest('.event-occurence'))) {
+  if (!state.is_creating && (bar = state.target.closest('.event-occurence')) &&
+  bar._type === TAKEN) {
     bar.classList.toggle('highlight-border');
+    if (state.is_selected ^= true) {
+      document.addEventListener("keydown", deleteSelectedElement);
+    } else {
+      document.removeEventListener("keydown", deleteSelectedElement);
+    }
   }
 
   state.is_created = false;
   state.is_dragging = false;
 });
+
+function deleteSelectedElement(e) {
+  if (e.key === "Backspace") {
+    const bar = state.target.closest('.event-occurence');
+    const day = bar.closest('.day-cell');
+    const week = day.closest('.week-row');
+    const week_shift = week._index*7;
+    const start = day._index+week_shift;
+    const end = start+bar._width-1;
+    for (let i = start; i <= end; i++) {
+      public_state.view_day_data[i]=AVAILABLE;
+    }
+    public_state.selected_day_counter -= bar._width;
+    renderBars();
+  }
+}
 
 function getEvents(cell) {
   const list = cell.getElementsByClassName('bar-holder');
@@ -368,6 +406,7 @@ function createBar(position, color) {
 }
 
 export function renderBars() {
+  console.log("counter: ", public_state.selected_day_counter);
   for (const bar of public_state.bar_list) {
     bar.remove();
   }
@@ -389,8 +428,8 @@ export function renderBars() {
 
         let bar = createBar(0, getColor(region_type));
         public_state.bar_list.push(bar);
-
         resizeBar(bar, start_day, end_day);
+        bar._type = region_type;
         if (region_type == TAKEN) {
           const event_indetifier = public_state.instantiating_event_identifier;
           if (!event_indetifier) {
@@ -426,43 +465,55 @@ Global.elements.calendar_body.addEventListener('mousemove', e => {
     
     if (public_state.view_day_data[state.start_cell_num+week_shift] === AVAILABLE) {
       public_state.view_day_data[state.start_cell_num+week_shift] = TAKEN;
+      public_state.selected_day_counter += 1;
       renderBars();
     }
-
     state.is_created = true;
+
   } else if (state.is_created) {
     const num = getCellNum(e.clientX);
+    // we don't do anything, if user points to the same position
     if (num === state.prev_focus_num) {
       return;
     }
-    {
-      let start = Math.min(state.prev_focus_num, num)+week_shift;
-      let end = Math.max(state.prev_focus_num, num)+week_shift;
-      for (let i = start; i <= end; i++) {
-        if (view_day_data[i] === TAKEN) {
-          view_day_data[i] = AVAILABLE;
-        }
+
+    let delete_start = Math.min(state.prev_focus_num, num)+week_shift;
+    let delete_end = Math.max(state.prev_focus_num, num)+week_shift;
+    let fill_start = Math.min(state.start_cell_num, num)+week_shift;
+    let fill_end = Math.max(state.start_cell_num, num)+week_shift;
+
+    let change_counter = 0;
+    const undo_list = [];
+    for (let i = delete_start; i <= delete_end; i++) {
+      if (view_day_data[i] === TAKEN) {
+        undo_list.push(i);
+        view_day_data[i] = AVAILABLE;
+        change_counter--;
       }
     }
+    for (let i = fill_start; i <= fill_end; i++) {
+      if (public_state.view_day_data[i] === AVAILABLE) {
+        change_counter++;
+      }
+    }
+
+    const duration = Global.getEventsDuration(public_state.instantiating_event_identifier);
+    if (duration < public_state.selected_day_counter+change_counter) {
+      for (const i of undo_list) {
+        view_day_data[i] = TAKEN;
+      }
+      return;
+    }
+
+    for (let i = fill_start; i <= fill_end; i++) {
+      if (public_state.view_day_data[i] === AVAILABLE) {
+        public_state.view_day_data[i] = TAKEN;
+      }
+    }
+    public_state.selected_day_counter += change_counter;
+
+
     state.prev_focus_num = num;
-
-    if (state.start_cell_num <= num) {
-      for (let i = state.start_cell_num+week_shift; i <= num+week_shift; i++) {
-        if (public_state.view_day_data[i] === AVAILABLE) {
-          public_state.view_day_data[i] = TAKEN;
-        }
-      }
-    } else {
-      for (let i = state.start_cell_num+week_shift; i >= num+week_shift; i--) {
-        if (public_state.view_day_data[i] === AVAILABLE) {
-          public_state.view_day_data[i] = TAKEN;
-        }
-      }
-    }
-
-    const left = Math.min(num, state.start_cell_num);
-    const right = Math.max(num, state.start_cell_num);
-
     renderBars();
   }
 });
