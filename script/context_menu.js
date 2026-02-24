@@ -687,6 +687,8 @@ buttons.instantiate.addEventListener('click', () => {
       Calendar.public_state.is_instantiating = true;
       Calendar.public_state.instantiating_event_identifier = target._data_identifier;
       Calendar.public_state.selected_day_counter = 0;
+      Calendar.public_state.selection_intervals.length = 0;
+      Calendar.public_state.view_day_data.fill(0);
       Calendar.renderBars();
       break;
     }

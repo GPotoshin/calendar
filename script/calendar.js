@@ -31,6 +31,7 @@ export const public_state = {
   is_instantiating: false,
   base_day_number: 0,
   view_day_data: new Uint32Array(WEEK_COUNT*7),
+  selection_intervals: [],
   bar_list: [], // contains all bars.
   selected_day_counter: 0,
 };
@@ -40,6 +41,7 @@ const state = {
   cells: null,
   week: null,
   start_cell_num: 0,
+  prev_focus_num: 0,
   is_updating: false,
   is_created: false,
   is_dragging: false,
@@ -47,7 +49,6 @@ const state = {
   start_x: 0,
   bar_holder: null,
   bar: null,
-  prev_focus_num: 0,
   focused_day_date: null,
   top_month_week_observer: null,
   bottom_month_week_observer: null,
@@ -323,6 +324,7 @@ Global.elements.calendar_body.addEventListener('mousedown', e => {
     if (new_bar !== old_bar) {
       state.target.closest('.event-occurence').classList.remove('highlight-border');
       state.is_selected = false;
+      document.removeEventListener("keydown", deleteSelectedElement);
     }
   }
 
@@ -405,14 +407,18 @@ function createBar(position, color) {
   return bar;
 }
 
+// `renderBars` renders all bars for the current view of calendar as a function
+// of public_state.view_day_data. Currently all bars are recreated from 0 and
+// their references are stored in `public_state.bar_list` to be deleted on the
+// next render call. As this funciton is called only once per modification, we
+// don't really care for now how expensive it may be.
 export function renderBars() {
-  console.log("counter: ", public_state.selected_day_counter);
+  console.log("intervals: ", public_state.selection_intervals);
   for (const bar of public_state.bar_list) {
     bar.remove();
   }
   public_state.bar_list.length = 0;
 
-  const base_day_number = public_state.base_day_number;
   const view_day_data = public_state.view_day_data;
 
   let start = 0;
@@ -453,6 +459,18 @@ export function renderBars() {
   }
 }
 
+function mergeIntervals() {
+  const intervals = public_state.selection_intervals;
+  intervals.sort((a, b) => a[0] - b[0]);
+  let i = 0
+  while (i < intervals.length-1) {
+    if (intervals[i][1] >= intervals[i+1][0]-1) {
+      intervals[i][1] = Math.max(intervals[i][1], intervals[i+1][1]);
+      intervals.splice(i+1, 1);
+    }
+    i++;
+  }
+}
 
 Global.elements.calendar_body.addEventListener('mousemove', e => {
   if (!state.is_dragging) return;
@@ -463,10 +481,13 @@ Global.elements.calendar_body.addEventListener('mousemove', e => {
   if ((state.start_x-e.clientX>d || state.start_x-e.clientX<-d)
     && !state.is_created) {
     
-    if (public_state.view_day_data[state.start_cell_num+week_shift] === AVAILABLE) {
-      public_state.view_day_data[state.start_cell_num+week_shift] = TAKEN;
+    const day_number = state.target.closest('.day-cell')._day_number;
+    if (view_day_data[state.start_cell_num+week_shift] === AVAILABLE) {
+      view_day_data[state.start_cell_num+week_shift] = TAKEN;
       public_state.selected_day_counter += 1;
       renderBars();
+      public_state.selection_intervals.push([day_number, day_number]);
+      mergeIntervals();
     }
     state.is_created = true;
 
@@ -491,8 +512,9 @@ Global.elements.calendar_body.addEventListener('mousemove', e => {
         change_counter--;
       }
     }
+
     for (let i = fill_start; i <= fill_end; i++) {
-      if (public_state.view_day_data[i] === AVAILABLE) {
+      if (view_day_data[i] === AVAILABLE) {
         change_counter++;
       }
     }
@@ -506,12 +528,52 @@ Global.elements.calendar_body.addEventListener('mousemove', e => {
     }
 
     for (let i = fill_start; i <= fill_end; i++) {
-      if (public_state.view_day_data[i] === AVAILABLE) {
-        public_state.view_day_data[i] = TAKEN;
+      if (view_day_data[i] === AVAILABLE) {
+        view_day_data[i] = TAKEN;
       }
     }
     public_state.selected_day_counter += change_counter;
 
+    const week_start = state.week.querySelector('.day-cell')._day_number;
+    const week_end = week_start+6;
+    
+    const intervals = public_state.selection_intervals;
+
+    // deliting all weeks intervals
+    let i = 0;
+    while (i < intervals.length) {
+      if (intervals[i][0] <= week_end && intervals[i][1] >= week_start) { // overlapping with the current week
+        if (intervals[i][0] < week_shift && intervals[i][1] > week_shift+6) {
+          intervals.push([week_shift+7, intervals[i][1]]);
+          intervals[i][1] = week_shift-1;
+        } else if (intervals[i][0] < week_shift) {
+          intervals[i][1] = week_shift-1;
+        } else if (intervals[i][1] > week_shift+6) {
+          intervals[i][0] = week_shift+7;
+        } else {
+          intervals.splice(i, 1);
+        }
+      }
+      i++;
+    }
+    // setting new weeks intervals;
+    let start = week_shift;
+    let type = view_day_data[start];
+    let end = week_shift + 1;
+
+    for (; end < week_shift+7; end++) {
+      if (view_day_data[end] != type) {
+        if (type === TAKEN) {
+          intervals.push([start, end-1]);
+        }
+        start = end;
+        type = view_day_data[end];
+      }
+    }
+    if (type === TAKEN) {
+      intervals.push([start, end-1]);
+    }
+    mergeIntervals();
 
     state.prev_focus_num = num;
     renderBars();
