@@ -683,13 +683,7 @@ buttons.instantiate.addEventListener('click', () => {
   const target_identifier = target._data_identifier;
   switch (target.parentElement._identifier) {
     case Global.zones_identifier.EVENT: {
-      const week_rows = Global.elements.calendar_content.querySelectorAll('.week-row');
-      Calendar.public_state.is_instantiating = true;
-      Calendar.public_state.instantiating_event_identifier = target._data_identifier;
-      Calendar.public_state.selected_day_counter = 0;
-      Calendar.public_state.selection_intervals.length = 0;
-      Calendar.public_state.view_day_data.fill(0);
-      Calendar.renderBars();
+      Calendar.startInstantiating(target._data_identifier);
       break;
     }
     default: {

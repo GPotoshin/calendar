@@ -1,5 +1,7 @@
 import * as Global from './global.js';
 import * as Utilities from './utilities.js';
+import * as Api from './api.js';
+import * as Io from './io.js';
 import { palette } from './color.js';
 
 let elements = {
@@ -25,17 +27,6 @@ function getColor(type) {
   }
 }
 
-// there is a mode of instantiating an event. it shows free day slots and etc.
-export const public_state = {
-  instantiating_event_identifier: undefined,
-  is_instantiating: false,
-  base_day_number: 0,
-  view_day_data: new Uint32Array(WEEK_COUNT*7),
-  selection_intervals: [],
-  bar_list: [], // contains all bars.
-  selected_day_counter: 0,
-};
-
 const state = {
   target: null,
   cells: null,
@@ -46,21 +37,28 @@ const state = {
   is_created: false,
   is_dragging: false,
   is_selected: false,
+  is_instantiating: false,
   start_x: 0,
   bar_holder: null,
   bar: null,
   focused_day_date: null,
+  selection_intervals: [],
   top_month_week_observer: null,
   bottom_month_week_observer: null,
   calendar_scrolling_observer: null,
   calendar_resize_observer: null,
+  instantiating_event_identifier: undefined,
+  view_day_data: new Uint32Array(WEEK_COUNT*7),
+  base_day_number: 0,
+  bar_list: [], // contains all bars.
+  selected_day_counter: 0,
 };
 
 
 export function init() {
   setMonthScrollPosition();
   state.calendar_resize_observer = new ResizeObserver(() => {
-    for (const bar of public_state.bar_list) {
+    for (const bar of state.bar_list) {
       const start = bar.closest('.day-cell')._index;
       const end = start+bar._width-1;
       resizeBar(bar, start, end);
@@ -110,12 +108,12 @@ export function init() {
           Global.elements.calendar_body.scrollTop -= shifting_by*week.offsetHeight;
         Global.elements.calendar_body.classList.replace('scroll-auto', 'scroll-smooth');
         requestAnimationFrame(() => {
-          public_state.base_day_number += shifting_by*7;
+          state.base_day_number += shifting_by*7;
           let date = new Date();
           const today = Math.floor(date.getTime()/MS_IN_DAY);
-          const offset = today - public_state.base_day_number;
+          const offset = today - state.base_day_number;
 
-          date.setTime(public_state.base_day_number*MS_IN_DAY);
+          date.setTime(state.base_day_number*MS_IN_DAY);
           const focusMonth = state.focused_day_date.getMonth();
           iterateOverDays((day) => {
             day.children[0].textContent = date.getDate();
@@ -146,8 +144,8 @@ export function init() {
   elements.today_frame = Global.elements.calendar_content.children[8].children[today_weekday];
   elements.today_frame.classList.add('today');
 
-  public_state.base_day_number = today_epoch-today_weekday-7*7;
-  date.setTime(public_state.base_day_number*MS_IN_DAY);
+  state.base_day_number = today_epoch-today_weekday-7*7;
+  date.setTime(state.base_day_number*MS_IN_DAY);
 
   setMonthDisplay(state.focused_day_date);
   const focusMonth = state.focused_day_date.getMonth();
@@ -170,6 +168,15 @@ export function init() {
     date.setDate(date.getDate() + 1);
   });
   setMonthObserver(focus.month);
+}
+
+export function startInstantiating(identifier) {
+  state.is_instantiating = true;
+  state.instantiating_event_identifier = identifier;
+  state.selected_day_counter = 0;
+  state.selection_intervals.length = 0;
+  renderBars();
+  document.addEventListener("keydown", saveSelectionsCallback);
 }
 
 function resizeBar(bar, start, end) {
@@ -274,8 +281,8 @@ export function update() {
   setMonthDisplay(state.focused_day_date);
   let date = new Date();
   const today = Math.floor(date.getTime()/MS_IN_DAY);
-  const offset = today - public_state.base_day_number;
-  date.setTime(public_state.base_day_number*MS_IN_DAY);
+  const offset = today - state.base_day_number;
+  date.setTime(state.base_day_number*MS_IN_DAY);
   const focusMonth = state.focused_day_date.getMonth();
   iterateOverDays((day) => {
     day.children[0].textContent = date.getDate();
@@ -315,7 +322,7 @@ function getCellNum(pos_x) {
 }
 
 Global.elements.calendar_body.addEventListener('mousedown', e => {
-  if (e.button !== 0 || !public_state.is_instantiating) return;
+  if (e.button !== 0 || !state.is_instantiating) return;
 
   // handle highlighting
   let new_bar = e.target.closest('.event-occurence');
@@ -348,8 +355,8 @@ Global.elements.calendar_body.addEventListener('mousedown', e => {
       state.start_cell_num = state.prev_focus_num + new_bar._width-1;
     }
   } else {
-    const duration = Global.getEventsDuration(public_state.instantiating_event_identifier);
-    if (duration <= public_state.selected_day_counter) {
+    const duration = Global.getEventsDuration(state.instantiating_event_identifier);
+    if (duration <= state.selected_day_counter) {
       state.is_dragging = false;
       return;
     }
@@ -375,19 +382,78 @@ Global.elements.calendar_body.addEventListener('mouseup', e => {
   state.is_dragging = false;
 });
 
+
+/**
+ * erases [start, end] from all entreis of `intervals`
+ * 
+ @param {number[][]} intervals
+ @param {number}     start
+ @param {number}     end
+*/
+function eraseInterval(intervals, start, end) {
+  for (let i = 0; i < intervals.length; i++) {
+    if (intervals[i][0] <= end && intervals[i][1] >= start) {
+      if (intervals[i][0] < start && intervals[i][1] > end) {
+        intervals.push([end+1, intervals[i][1]]);
+        intervals[i][1] = start-1;
+      } else if (intervals[i][0] < start) {
+        intervals[i][1] = start-1;
+      } else if (intervals[i][1] > end) {
+        intervals[i][0] = end+1;
+      } else {
+        intervals.splice(i, 1);
+      }
+    }
+  }
+}
+
 function deleteSelectedElement(e) {
   if (e.key === "Backspace") {
     const bar = state.target.closest('.event-occurence');
     const day = bar.closest('.day-cell');
+    const day_number = day._day_number;
     const week = day.closest('.week-row');
     const week_shift = week._index*7;
     const start = day._index+week_shift;
     const end = start+bar._width-1;
     for (let i = start; i <= end; i++) {
-      public_state.view_day_data[i]=AVAILABLE;
+      state.view_day_data[i]=AVAILABLE;
     }
-    public_state.selected_day_counter -= bar._width;
+    state.selected_day_counter -= bar._width;
+    const intervals = state.selection_intervals;
+    eraseInterval(intervals, day_number, day_number+bar._width-1);
     renderBars();
+  }
+}
+
+/**
+ @param {Event} e
+*/
+function saveSelectionsCallback(e) {
+  if (e.key === "Enter") {
+    state.is_instantiating = false;
+    document.removeEventListener("keydown", saveSelectionsCallback);
+    renderBars();
+    
+    const writer = Api.createBufferWriter(Api.CREATE, Api.OCCURRENCES_MAP);
+    Io.writeInt32(writer, state.instantiating_event_identifier);
+    Io.writeArrayOfInt32PairArrays(writer, state.selection_intervals);
+    Api.request(writer).then(response => {
+      Utilities.throwIfNotOk(response);
+      response.arrayBuffer().then(binary => {
+        const reader = new Io.BufferReader(binary);
+        const identifier = Io.readInt32(reader);
+        const free_list = Global.data.occurrences_free_list;
+        const map = Global.data.occurrences_identifier_to_index_map;
+        const index = storageIndex(map, free_list);
+        map.set(identifier, index);
+
+        // @working
+        state.view_day_data.fill(0);
+      });
+    }).catch(e => {
+        console.error("Could not store ", e);
+    });
   }
 }
 
@@ -408,36 +474,35 @@ function createBar(position, color) {
 }
 
 // `renderBars` renders all bars for the current view of calendar as a function
-// of public_state.view_day_data. Currently all bars are recreated from 0 and
-// their references are stored in `public_state.bar_list` to be deleted on the
+// of state.view_day_data. Currently all bars are recreated from 0 and
+// their references are stored in `state.bar_list` to be deleted on the
 // next render call. As this funciton is called only once per modification, we
 // don't really care for now how expensive it may be.
-export function renderBars() {
-  console.log("intervals: ", public_state.selection_intervals);
-  for (const bar of public_state.bar_list) {
+function renderBars() {
+  for (const bar of state.bar_list) {
     bar.remove();
   }
-  public_state.bar_list.length = 0;
+  state.bar_list.length = 0;
 
-  const view_day_data = public_state.view_day_data;
+  const view_day_data = state.view_day_data;
 
   let start = 0;
   let end = 1;
   let region_type = view_day_data[0];
   for (; end < view_day_data.length; end++) {
     if (region_type !== view_day_data[end] || end % 7 === 0) {
-      if (region_type !== NOT_AVAILABLE) {
+      if (region_type !== NOT_AVAILABLE && (region_type === TAKEN || state.is_instantiating)) {
         const week_number = Math.floor(start / 7);
         const week = elements.weeks[week_number];
         const start_day = start % 7;
         let end_day = (end-1) % 7;
 
         let bar = createBar(0, getColor(region_type));
-        public_state.bar_list.push(bar);
+        state.bar_list.push(bar);
         resizeBar(bar, start_day, end_day);
         bar._type = region_type;
         if (region_type == TAKEN) {
-          const event_indetifier = public_state.instantiating_event_identifier;
+          const event_indetifier = state.instantiating_event_identifier;
           if (!event_indetifier) {
             console.error('unreachable');
           }
@@ -460,7 +525,7 @@ export function renderBars() {
 }
 
 function mergeIntervals() {
-  const intervals = public_state.selection_intervals;
+  const intervals = state.selection_intervals;
   intervals.sort((a, b) => a[0] - b[0]);
   let i = 0
   while (i < intervals.length-1) {
@@ -470,6 +535,7 @@ function mergeIntervals() {
     }
     i++;
   }
+  console.log("intervals: ", state.selection_intervals);
 }
 
 Global.elements.calendar_body.addEventListener('mousemove', e => {
@@ -477,16 +543,17 @@ Global.elements.calendar_body.addEventListener('mousemove', e => {
 
   const d = 50;
   const week_shift = state.week._index*7; 
-  const view_day_data = public_state.view_day_data;
+  const view_day_data = state.view_day_data;
+  const intervals = state.selection_intervals;
   if ((state.start_x-e.clientX>d || state.start_x-e.clientX<-d)
     && !state.is_created) {
     
     const day_number = state.target.closest('.day-cell')._day_number;
     if (view_day_data[state.start_cell_num+week_shift] === AVAILABLE) {
       view_day_data[state.start_cell_num+week_shift] = TAKEN;
-      public_state.selected_day_counter += 1;
+      state.selected_day_counter += 1;
       renderBars();
-      public_state.selection_intervals.push([day_number, day_number]);
+      intervals.push([day_number, day_number]); // correct
       mergeIntervals();
     }
     state.is_created = true;
@@ -519,8 +586,8 @@ Global.elements.calendar_body.addEventListener('mousemove', e => {
       }
     }
 
-    const duration = Global.getEventsDuration(public_state.instantiating_event_identifier);
-    if (duration < public_state.selected_day_counter+change_counter) {
+    const duration = Global.getEventsDuration(state.instantiating_event_identifier);
+    if (duration < state.selected_day_counter+change_counter) {
       for (const i of undo_list) {
         view_day_data[i] = TAKEN;
       }
@@ -532,30 +599,15 @@ Global.elements.calendar_body.addEventListener('mousemove', e => {
         view_day_data[i] = TAKEN;
       }
     }
-    public_state.selected_day_counter += change_counter;
+    state.selected_day_counter += change_counter;
 
     const week_start = state.week.querySelector('.day-cell')._day_number;
     const week_end = week_start+6;
-    
-    const intervals = public_state.selection_intervals;
 
+    const base_day = state.base_day_number;
     // deliting all weeks intervals
-    let i = 0;
-    while (i < intervals.length) {
-      if (intervals[i][0] <= week_end && intervals[i][1] >= week_start) { // overlapping with the current week
-        if (intervals[i][0] < week_shift && intervals[i][1] > week_shift+6) {
-          intervals.push([week_shift+7, intervals[i][1]]);
-          intervals[i][1] = week_shift-1;
-        } else if (intervals[i][0] < week_shift) {
-          intervals[i][1] = week_shift-1;
-        } else if (intervals[i][1] > week_shift+6) {
-          intervals[i][0] = week_shift+7;
-        } else {
-          intervals.splice(i, 1);
-        }
-      }
-      i++;
-    }
+
+    eraseInterval(intervals, week_start, week_end);
     // setting new weeks intervals;
     let start = week_shift;
     let type = view_day_data[start];
@@ -564,14 +616,14 @@ Global.elements.calendar_body.addEventListener('mousemove', e => {
     for (; end < week_shift+7; end++) {
       if (view_day_data[end] != type) {
         if (type === TAKEN) {
-          intervals.push([start, end-1]);
+          intervals.push([start+base_day, end-1+base_day]);
         }
         start = end;
         type = view_day_data[end];
       }
     }
     if (type === TAKEN) {
-      intervals.push([start, end-1]);
+      intervals.push([start+base_day, end-1+base_day]);
     }
     mergeIntervals();
 
