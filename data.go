@@ -13,7 +13,14 @@ func isSorted(arr []int) bool {
   return true
 }
 
-func newId[K, V comparable](m map[K]V, freeId *[]int32) int32 {
+func newEntry(m map[int32]int, freeList *[]int, freeId *[]int32) (int32, int) {
+  id := newId(m, freeId)
+  index := storageIndex(m, freeList)
+  m[id] = index
+  return id, index
+}
+
+func newId(m map[int32]int, freeId *[]int32) int32 {
 	if len(*freeId) > 0 {
     id := (*freeId)[len(*freeId)-1]
     *freeId = (*freeId)[:len(*freeId)-1]

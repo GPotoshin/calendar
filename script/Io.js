@@ -163,6 +163,17 @@ export function writeHash(writer, hash_bytes) {
   writer.offset += 32;
 }
 
+export function writeInt32Pair(writer, pair) {
+  if (pair.length !== 2) {
+    throw new Error(`Invalid pair length: expected 2, got ${pair.length}`);
+  }
+  writer.ensureCapacity(8);
+  writer.view.setInt32(writer.offset, pair[0], true);
+  writer.offset += 4;
+  writer.view.setInt32(writer.offset, pair[1], true);
+  writer.offset += 4;
+}
+
 export function writeString(writer, string) {
   const encoded = writer.textEncoder.encode(string);
   const length = encoded.length;
@@ -172,7 +183,7 @@ export function writeString(writer, string) {
   writer.offset += length;
 }
 
-export function writeArray(writer, writeChild) { 
+export function writeArray(writer, array, writeChild) { 
   writeInt32(writer, array.length);
   for (const item of array) {
     writeChild(writer, item);
@@ -187,14 +198,17 @@ export function writeUint8Array(writer, array) {
 }
 
 export function writeStringArray(writer, array) {
-  writeArray(writer, array, writeString(writer));
+  writeArray(writer, array, writeString);
 }
 
 export function writeInt32Array(writer, array) {
-  writeArray(writer, array, writeInt32(writer));
+  writeArray(writer, array, writeInt32);
 }
 
 export function writeArrayOfInt32Arrays(writer, arrays) {
-  writeArray(writer, arrays, writeInt32Array(writer));
+  writeArray(writer, arrays, writeInt32Array);
 }
 
+export function writeArrayOfInt32Pairs(writer, array) {
+  writeArray(writer, array, writeInt32Pair)
+}

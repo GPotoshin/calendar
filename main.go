@@ -122,6 +122,7 @@ type State struct {
   RolesFreeList []int
 
   OccurrencesId map[int32]int
+  OccurrencesEventId []int32
   OccurrencesVenue []int32
   OccurrencesDates [][][2]int32 // idea is that every event can happen in intervals and we store the borders of those intervals
   OccurrencesParticipant [][]int32
@@ -184,6 +185,7 @@ func rebaseState() {
   state.RolesFreeList = state.RolesFreeList[:0]
 
   rebaseMap(state.OccurrencesId, state.OccurrencesFreeList)
+  shrinkArray(&state.OccurrencesEventId, state.OccurrencesFreeList)
   shrinkArray(&state.OccurrencesVenue, state.OccurrencesFreeList)
   shrinkArray(&state.OccurrencesDates, state.OccurrencesFreeList)
   shrinkArray(&state.OccurrencesParticipant, state.OccurrencesFreeList)
@@ -193,7 +195,7 @@ func rebaseState() {
 
 func readState(r io.Reader) (State, error) {
   var state State
-  version := "bin_state.v0.0.8"
+  version := "bin_state.v0.0.9"
   format, err := readString(r)
   if err != nil { return state, fmt.Errorf("Can't verify file format: %w", err) }
   if format != version { return state, fmt.Errorf("The file format `%s` is outdated. the current format is `%s`. State is zero. If you don't want to have state beeing overwritten, please kill the process or save a copy of db", format, version) }
@@ -230,6 +232,7 @@ func readState(r io.Reader) (State, error) {
   if state.RolesFreeId, err = readInt32Array(r); err != nil { return state, fmt.Errorf("failed to read RolesFreeId: %w", err) }
 
   if state.OccurrencesId, err = readMapInt32Int(r); err != nil { return state, fmt.Errorf("failed to read OccerencesId: %w", err) }
+  if state.OccurrencesEventId, err = readInt32Array(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesEventId: %w", err) }
   if state.OccurrencesVenue, err = readInt32Array(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesVenue: %w", err) }
   if state.OccurrencesDates, err = readArrayOfInt32PairArrays(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesDate: %w", err) }
   if state.OccurrencesParticipant, err = readArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesParticipant: %w", err) }
@@ -252,9 +255,9 @@ func writeState(w io.Writer, state State, dest int32) error {
   var version string
   switch dest {
   case DEST_DISK:
-    version = "bin_state.v0.0.8"
+    version = "bin_state.v0.0.9"
   case DEST_ADMIN:
-    version = "admin_data.v0.0.5"
+    version = "admin_data.v0.0.6"
   default:
     return fmt.Errorf("Unsupported destination\n")
   }
@@ -313,7 +316,8 @@ func writeState(w io.Writer, state State, dest int32) error {
     if err := writeInt32Array(w, state.RolesFreeId); err != nil { return fmt.Errorf("failed to write RolesFreeId: %w", err) }
   }
 
-  if err := writeMapInt32Int(w, state.OccurrencesId); err != nil { return fmt.Errorf("failed to write OccerencesId: %w", err) }
+  if err := writeMapInt32Int(w, state.OccurrencesId); err != nil { return fmt.Errorf("failed to write OccurencesId: %w", err) }
+  if err := writeInt32Array(w, state.OccurrencesEventId); err != nil { return fmt.Errorf("failed to write OccurrencesEventId: %w", err) }
   if err := writeInt32Array(w, state.OccurrencesVenue); err != nil { return fmt.Errorf("failed to write OccurrencesVenue: %w", err) }
   if err := writeArrayOfInt32PairArrays(w, state.OccurrencesDates); err != nil { return fmt.Errorf("failed to write OccurrencesDate: %w", err) }
   if err := writeArrayOfInt32Arrays(w, state.OccurrencesParticipant); err != nil { return fmt.Errorf("failed to write OccurrencesParticipant: %w", err) }
@@ -575,9 +579,7 @@ func handleSimpleCreate(
       return -1
     }
   }
-  id := newId(m, freeId)
-  index := storageIndex(m, freeList)
-  m[id] = index
+  id, index := newEntry(m, freeList, freeId)
   storeValue(names, index, str)
 
   slog.Info("DATA", "name", str, "id", id, "index", index)
@@ -1019,7 +1021,92 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     noSupport(w, "ROLES_NAME")
 
   case OCCURRENCES_MAP:
-    noSupport(w, "OCCURRENCES_MAP")
+    slog.Info("OCCURRENCES_MAP");
+    if !isAdmin(w, privilege_level) { return }
+    switch mode {
+    case CREATE:
+      slog.Info("CREATE")
+      event_identifier, err := readInt32(r.Body)
+      if readError(w, "OCCURRENCES_MAP:CREATE", "event_identifier", err) { return }
+      intervals, err := readInt32PairArrayWithLimits(r.Body, []int32{64})
+      if readError(w, "OCCURRENCES_MAP:CREATE", "intervals", err) { return }
+
+      if len(intervals) == 0 {
+        fmt.Println("[OCCURRENCES_MAP:CREATE] there should be at least 1 interval")
+        http.Error(w, "incorrect api", http.StatusBadRequest)
+        return
+      }
+
+      is_ordered := true
+
+      if intervals[0][0] > intervals[0][1] {
+        is_ordered = false
+      }
+
+      for i := 1; i < len(intervals) && is_ordered; i++ {
+        if intervals[i-1][1] > intervals[i][0] || intervals[i][0] > intervals[i][1] {
+          is_ordered = false
+        }
+      }
+
+      if !is_ordered {
+        fmt.Println("[OCCURRENCES_MAP:CREATE] intervals must be ordered")
+        http.Error(w, "incorrect api", http.StatusBadRequest)
+        return
+      }
+
+      // storing
+      id, index := newEntry(
+        state.OccurrencesId,
+        &state.OccurrencesFreeList,
+        &state.OccurrencesFreeId,
+      )
+      storeValue(&state.OccurrencesVenue, index, -1)
+      storeValue(&state.OccurrencesDates, index, intervals)
+      storeValue(&state.OccurrencesParticipant, index, []int32{})
+      storeValue(&state.OccurrencesEventId, index, event_identifier)
+      storeValue(&state.OccurrencesParticipantsRole, index, []int32{})
+
+      if len(state.DayOccurrences) == 0 {
+        state.BaseDayNumber = intervals[0][0]
+      }
+
+      last_idx := len(intervals)-1
+      end_day := int(state.BaseDayNumber) + len(state.DayOccurrences)-1
+      prefix_diff := int(max(state.BaseDayNumber-intervals[0][0], 0))
+      postfix_diff := int(max(int(intervals[last_idx][1])-end_day, 0))
+      old_len := len(state.DayOccurrences)
+      diff := prefix_diff+postfix_diff
+      new_len := old_len + diff
+
+      state.DayOccurrences = slices.Grow(state.DayOccurrences, diff)
+      state.DayOccurrences = state.DayOccurrences[:new_len]
+      for i := old_len; i < new_len; i++ {
+        state.DayOccurrences[i] = nil
+      }
+
+      if prefix_diff > 0 {
+        state.BaseDayNumber = intervals[0][0]
+        copy(state.DayOccurrences[prefix_diff:], state.DayOccurrences[:old_len])
+
+        for i := 0; i < prefix_diff; i++ {
+          state.DayOccurrences[i] = nil
+        }
+      }
+
+      for _, interval := range intervals {
+        start := interval[0]-state.BaseDayNumber
+        end   := interval[1]-state.BaseDayNumber
+        for i := start; i <= end; i++ {
+          state.DayOccurrences[i] = append(state.DayOccurrences[i], id)
+        }
+      }
+      
+      writeInt32(w, id)
+    
+    default:
+      noSupport(w, "OCCURRENCES_MAP:default")
+    }
   case OCCURRENCES_VENUE:
     noSupport(w, "OCCURRENCES_VENUE")
   case OCCURRENCES_DATES:

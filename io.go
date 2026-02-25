@@ -331,6 +331,10 @@ func readInt32PairArray(r io.Reader) ([][2]int32, error) {
   return readArray(r, readInt32Pair)
 }
 
+func readInt32PairArrayWithLimits(r io.Reader, limits []int32) ([][2]int32, error) {
+  return readWithLimitsArray(r, readInt32Pair, limits)
+}
+
 func readArrayOfInt32PairArrays(r io.Reader) ([][][2]int32, error) {
   return readArray(r, readInt32PairArray)
 }

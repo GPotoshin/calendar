@@ -123,6 +123,7 @@ export class DataManager {
     this.roles_free_list = [];
 
     this.occurrences_identifier_to_index_map = new Map();
+    this.occurrences_event_identifiers = [];
     this.occurrences_venue = [];
     this.occurrences_dates = [];
     this.occurrences_participants = [];
@@ -136,7 +137,7 @@ export class DataManager {
   }
 
   read(r) {
-    const expected_version = "admin_data.v0.0.5";
+    const expected_version = "admin_data.v0.0.6";
     const actual_version = Io.readString(r);
     
     if (expected_version !== actual_version) {
@@ -170,6 +171,7 @@ export class DataManager {
     this.roles_name = Io.readStringArray(r);
 
     this.occurrences_identifier_to_index_map = Io.readMapInt32Int(r);
+    this.occurrences_event_identifiers = Io.readInt32Array(r);
     this.occurrences_venue = Io.readInt32Array(r);
     this.occurrences_dates = Io.readArrayOfInt32PairArrays(r); 
     this.occurrences_participants = Io.readArrayOfInt32Arrays(r);

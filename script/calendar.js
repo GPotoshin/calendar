@@ -2,14 +2,17 @@ import * as Global from './global.js';
 import * as Utilities from './utilities.js';
 import * as Api from './api.js';
 import * as Io from './io.js';
+import * as DM from './data_manager.js';
 import { palette } from './color.js';
 
 let elements = {
   weeks: Global.elements.calendar_content.querySelectorAll('.week-row'),
+  days:  Global.elements.calendar_content.querySelectorAll('.day-cell'),
   today_frame: null,
 };
 
 export const WEEK_COUNT = elements.weeks.length;
+const DAY_COUNT = WEEK_COUNT*7;
 const MS_IN_DAY = 86400000;
 
 const AVAILABLE = 0;
@@ -174,7 +177,7 @@ export function startInstantiating(identifier) {
   state.is_instantiating = true;
   state.instantiating_event_identifier = identifier;
   state.selected_day_counter = 0;
-  state.selection_intervals.length = 0;
+  state.selection_intervals = [];
   renderBars();
   document.addEventListener("keydown", saveSelectionsCallback);
 }
@@ -368,7 +371,7 @@ Global.elements.calendar_body.addEventListener('mousedown', e => {
 
 Global.elements.calendar_body.addEventListener('mouseup', e => {
   let bar = null
-  if (!state.is_creating && (bar = state.target.closest('.event-occurence')) &&
+  if (!state.is_creating && !state.is_instantiating && (bar = state.target.closest('.event-occurence')) &&
   bar._type === TAKEN) {
     bar.classList.toggle('highlight-border');
     if (state.is_selected ^= true) {
@@ -434,10 +437,12 @@ function saveSelectionsCallback(e) {
     state.is_instantiating = false;
     document.removeEventListener("keydown", saveSelectionsCallback);
     renderBars();
-    
+    const event_identifier = state.instantiating_event_identifier; 
+    const intervals = state.selection_intervals;
     const writer = Api.createBufferWriter(Api.CREATE, Api.OCCURRENCES_MAP);
-    Io.writeInt32(writer, state.instantiating_event_identifier);
-    Io.writeArrayOfInt32PairArrays(writer, state.selection_intervals);
+    Io.writeInt32(writer, event_identifier);
+    Io.writeArrayOfInt32Pairs(writer, intervals);
+
     Api.request(writer).then(response => {
       Utilities.throwIfNotOk(response);
       response.arrayBuffer().then(binary => {
@@ -445,11 +450,47 @@ function saveSelectionsCallback(e) {
         const identifier = Io.readInt32(reader);
         const free_list = Global.data.occurrences_free_list;
         const map = Global.data.occurrences_identifier_to_index_map;
-        const index = storageIndex(map, free_list);
-        map.set(identifier, index);
+        const index = DM.storageIndex(map, free_list);
 
-        // @working
+        map.set(identifier, index);
+        Global.data.occurrences_venue[index] = -1;
+        Global.data.occurrences_event_identifiers[index] = event_identifier;
+        Global.data.occurrences_dates[index] = intervals;
+        Global.data.occurrences_participants[index] = [];
+
+        const day_occurrences = Global.data.day_occurrences;
+        if (day_occurrences.length === 0) {
+          Global.data.base_day_number = intervals[0][0];
+        }
+        const base_day = Global.data.base_day_number;
+        const last_idx = intervals.length - 1;
+        const end_day = base_day + day_occurrences.length - 1;
+        const prefix_diff = Math.max(base_day - intervals[0][0], 0);
+        const postfix_diff = Math.max(intervals[last_idx][1] - end_day, 0);
+        const old_len = day_occurrences.length;
+        const diff = prefix_diff+postfix_diff;
+        const new_len = old_len+diff;
+        
+        if (prefix_diff > 0) {
+          Global.data.base_day_number = intervals[0][0];
+          for (let i = old_len-1; i >= 0; i--) {
+            day_occurrences[i + prefix_diff] = day_occurrences[i] || [];
+          }
+        }
+
+        for (const interval of intervals) {
+          const start = interval[0]-Global.data.base_day_number;
+          const end   = interval[1]-Global.data.base_day_number;
+          for (let i = start; i <= end; i++) {
+            if (!day_occurrences[i]) {
+              day_occurrences[i] = [];
+            }
+            day_occurrences[i].push(identifier);
+          }
+        }
+
         state.view_day_data.fill(0);
+        renderBars();
       });
     }).catch(e => {
         console.error("Could not store ", e);
@@ -521,6 +562,23 @@ function renderBars() {
       start = end;
       region_type = view_day_data[end];
     }
+  }
+
+  const diff = state.base_day_number - Global.data.base_day_number;
+  const occurrences_start = Math.max(diff, 0);
+  const occurrences_end   = Math.min(diff+DAY_COUNT, Global.data.day_occurences.length);
+
+  const view_start = Math.max(-diff, 0);
+  const view_end   = Math.max(DAY_COUNT-diff, 0);
+
+  let occurrences_index = occurrences_start;
+  let view_index = view_start;
+  const tracking_events = [];
+  while (occurrences_index < occurrences_end && view_index < view_end) {
+    // @working: we need to generate displayed events
+
+    occurrences_index++;
+    view_index++;
   }
 }
 
