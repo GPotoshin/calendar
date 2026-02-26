@@ -5,6 +5,8 @@ import * as Io from './io.js';
 import * as DM from './data_manager.js';
 import { palette } from './color.js';
 
+const Int32Slice = DM.Int32Slice;
+
 let elements = {
   weeks: Global.elements.calendar_content.querySelectorAll('.week-row'),
   days:  Global.elements.calendar_content.querySelectorAll('.day-cell'),
@@ -328,11 +330,11 @@ Global.elements.calendar_body.addEventListener('mousedown', e => {
   if (e.button !== 0 || !state.is_instantiating) return;
 
   // handle highlighting
-  let new_bar = e.target.closest('.event-occurence');
+  let new_bar = e.target.closest('.event-occurrence');
   if (state.is_selected) {
-    let old_bar = state.target.closest('.event-occurence');
+    let old_bar = state.target.closest('.event-occurrence');
     if (new_bar !== old_bar) {
-      state.target.closest('.event-occurence').classList.remove('highlight-border');
+      state.target.closest('.event-occurrence').classList.remove('highlight-border');
       state.is_selected = false;
       document.removeEventListener("keydown", deleteSelectedElement);
     }
@@ -371,7 +373,7 @@ Global.elements.calendar_body.addEventListener('mousedown', e => {
 
 Global.elements.calendar_body.addEventListener('mouseup', e => {
   let bar = null
-  if (!state.is_creating && !state.is_instantiating && (bar = state.target.closest('.event-occurence')) &&
+  if (!state.is_creating && !state.is_instantiating && (bar = state.target.closest('.event-occurrence')) &&
   bar._type === TAKEN) {
     bar.classList.toggle('highlight-border');
     if (state.is_selected ^= true) {
@@ -412,7 +414,7 @@ function eraseInterval(intervals, start, end) {
 
 function deleteSelectedElement(e) {
   if (e.key === "Backspace") {
-    const bar = state.target.closest('.event-occurence');
+    const bar = state.target.closest('.event-occurrence');
     const day = bar.closest('.day-cell');
     const day_number = day._day_number;
     const week = day.closest('.week-row');
@@ -449,7 +451,7 @@ function saveSelectionsCallback(e) {
         const reader = new Io.BufferReader(binary);
         const identifier = Io.readInt32(reader);
         const free_list = Global.data.occurrences_free_list;
-        const map = Global.data.occurrences_identifier_to_index_map;
+        const map = Global.data.occurrences_map;
         const index = DM.storageIndex(map, free_list);
 
         map.set(identifier, index);
@@ -503,22 +505,28 @@ function getEvents(cell) {
   if (list.length == 0) {
     return list;
   }
-  return list[0].getElementsByClassName('event-occurence');
+  return list[0].getElementsByClassName('event-occurrence');
 }
 
-function createBar(position, color) {
+function createBar(position, start_day, end_day, color) {
   let bar = document.createElement('div');
-  bar.classList = 'event-occurence event-single no-select';
+  bar.classList = 'event-occurrence event-single no-select';
   bar.style.top = (20*position)+'%';
   Utilities.setBackgroundColor(bar, color);
+  resizeBar(bar, start_day, end_day);
+  bar._width = end_day-start_day+1; // docs: @set(bar._width)
+
+  state.bar_list.push(bar);
   return bar;
 }
 
-// `renderBars` renders all bars for the current view of calendar as a function
-// of state.view_day_data. Currently all bars are recreated from 0 and
-// their references are stored in `state.bar_list` to be deleted on the
-// next render call. As this funciton is called only once per modification, we
-// don't really care for now how expensive it may be.
+/**
+ * renders all bars for the current view of calendar as a function
+ * of `state.view_day_data`. All bars are recreated from 0 and
+ * their references are stored in `state.bar_list` to be deleted on the
+ * next render call. As this funciton is called only once per modification, we
+ * don't really care for now how expensive it may be.
+ */
 function renderBars() {
   for (const bar of state.bar_list) {
     bar.remove();
@@ -538,21 +546,18 @@ function renderBars() {
         const start_day = start % 7;
         let end_day = (end-1) % 7;
 
-        let bar = createBar(0, getColor(region_type));
-        state.bar_list.push(bar);
-        resizeBar(bar, start_day, end_day);
+        let bar = createBar(0, start_day, end_day, getColor(region_type));
         bar._type = region_type;
         if (region_type == TAKEN) {
           const event_indetifier = state.instantiating_event_identifier;
           if (!event_indetifier) {
             console.error('unreachable');
           }
-          const event_index = Global.data.events_identifier_to_index_map.get(event_indetifier);
+          const event_index = Global.data.events_map.get(event_indetifier);
           bar.textContent = Global.data.events_name[event_index];
         } else {
           bar.textContent = 'Disponible';
         }
-        bar._width = end_day-start_day+1; // docs: @set(bar._width)
         week.children[start_day].getElementsByClassName('bar-holder')[0].prepend(bar);
       }
 
@@ -565,19 +570,73 @@ function renderBars() {
   }
 
   const diff = state.base_day_number - Global.data.base_day_number;
-  const occurrences_start = Math.max(diff, 0);
-  const occurrences_end   = Math.min(diff+DAY_COUNT, Global.data.day_occurences.length);
+  const day_start = Math.max(diff, 0);
+  const day_end   = Math.min(diff+DAY_COUNT, Global.data.day_occurrences.length);
 
   const view_start = Math.max(-diff, 0);
   const view_end   = Math.max(DAY_COUNT-diff, 0);
 
-  let occurrences_index = occurrences_start;
+  let day_index = day_start;
   let view_index = view_start;
-  const tracking_events = [];
-  while (occurrences_index < occurrences_end && view_index < view_end) {
-    // @working: we need to generate displayed events
 
-    occurrences_index++;
+  const tracked_events = {
+    occurrence_identifiers: new Int32Slice(512),
+    start_positions: new Int32Slice(512),
+    free_list: new Int32Slice(32),
+  };
+
+  while (day_index < day_end && view_index < view_end) {
+    // @working: we need to generate displayed events
+    const occurrences = Global.data.day_occurrences[day_index]
+
+    // pushing events to UI
+    const tracked_event_index = 0;
+    while (tracked_event_index < tracked_events.length) {
+      const occurrence_identifier = tracked_events.occurrence_identifiers.view[tracked_event_index];
+      const start_position = tracked_events.start_positions.view[tracked_event_index];
+      if (occurrences.includes(event.occurrence_identifier)) {
+        continue;
+      }
+
+      const week_number = Math.floor(start_position/7);
+      for (let level = 0; level < 5; level++) {
+        let level_is_ok = true;
+        for (let day = week_number*7; day < day_index; day++) {
+          const day_occrs = elements.days[day].querySelectorAll('.event-occurrence');
+          for (const occr of day_occrs) {
+            if (day+occr._width >= start_position) {
+              level_is_ok = false;
+              break;
+            }
+          }
+          if (!level_is_ok) {
+            break;
+          }
+        }
+        if (level_is_ok) {
+          // setting at correct level
+          const bar = createBar(
+            level,
+            start_position%7,
+            (day_index-1)%7,
+            palette.grey,
+          );
+          const occurrence_index = Global.data.occurrences_map.get(occurrence_identifier);
+          const event_identifier = Global.data.occurrences_event_identifiers[occurrence_index];
+          const event_index = Global.data.events_map.get(event_identifier);
+          const event_name = Global.data.events_name[event_index];
+
+          bar.textContent = event_name;
+          elements.days[start_position].getElementsByClassName('bar-holder')[0].append(bar);
+          break;
+        }
+        // @working: we need to push the data we track and delete the data we
+        // are no longer tracking (it is pushed to the free list and then it
+        // is deleted in a single call
+      }
+    }
+
+    day_index++;
     view_index++;
   }
 }

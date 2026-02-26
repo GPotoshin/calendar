@@ -196,7 +196,7 @@
   color: white;
 }
 
-.event-occurence {
+.event-occurrence {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -208,7 +208,7 @@
   z-index: 1;
 }
 
-.event-occurence.event-single {
+.event-occurrence.event-single {
   border-radius: 9999px;
   margin-left: 0;
   margin-right: 0;

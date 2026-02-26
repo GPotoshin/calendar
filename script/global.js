@@ -58,7 +58,7 @@ export function getEventSelectionIdentifier() {
 }
 
 export function getEventsDuration(identifier) {
-  const event_index = data.events_identifier_to_index_map.get(identifier);    
+  const event_index = data.events_map.get(identifier);    
   if (event_index) {
     return data.events_duration[event_index];
   }

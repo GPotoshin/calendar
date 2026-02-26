@@ -90,7 +90,7 @@ function readArrayOfEventRoleArray(r) {
 
 export class DataManager {
   constructor() {
-    this.users_identifier_to_index_map = new Map();
+    this.users_map = new Map();
     this.users_name = [];
     this.users_surname = [];
     this.users_mail = [];
@@ -100,7 +100,7 @@ export class DataManager {
     this.users_privilage_level = [];
     this.users_free_list = [];
 
-    this.events_identifier_to_index_map = new Map();
+    this.events_map = new Map();
     this.events_name = [];
     this.events_venues = [];
     this.events_roles = [];
@@ -109,20 +109,20 @@ export class DataManager {
     this.events_duration = [];
     this.events_free_list = [];
 
-    this.venues_identifier_to_index_map = new Map();
+    this.venues_map = new Map();
     this.venues_name = [];
     this.venues_free_list = [];
 
-    this.competences_identifier_to_index_map = new Map();
+    this.competences_map = new Map();
     this.competences_name = [];
     this.competencesFreeId = [];
     this.competences_free_list = [];
 
-    this.roles_identifier_to_index_map = new Map();
+    this.roles_map = new Map();
     this.roles_name = [];
     this.roles_free_list = [];
 
-    this.occurrences_identifier_to_index_map = new Map();
+    this.occurrences_map = new Map();
     this.occurrences_event_identifiers = [];
     this.occurrences_venue = [];
     this.occurrences_dates = [];
@@ -144,7 +144,7 @@ export class DataManager {
       throw new Error(`Format mismatch. Found: ${actual_version}, Expected: ${expected_version}`);
     }
 
-    this.users_identifier_to_index_map = Io.readMapInt32Int(r);
+    this.users_map = Io.readMapInt32Int(r);
     this.users_name = Io.readStringArray(r);
     this.users_surname = Io.readStringArray(r);
     this.users_mail = Io.readStringArray(r);
@@ -153,7 +153,7 @@ export class DataManager {
     this.users_duty_station = Io.readInt32Array(r);
     this.users_privilage_level = Io.readInt32Array(r);
 
-    this.events_identifier_to_index_map = Io.readMapInt32Int(r);
+    this.events_map = Io.readMapInt32Int(r);
     this.events_name = Io.readStringArray(r);
     this.events_venues = Io.readArrayOfInt32Arrays(r);
     this.events_roles = Io.readArrayOfInt32Arrays(r);
@@ -161,16 +161,16 @@ export class DataManager {
     this.events_staff_number_map = Io.readArrayOfArrayOfInt32Arrays(r);
     this.events_duration = Io.readInt32Array(r);
 
-    this.venues_identifier_to_index_map = Io.readMapInt32Int(r);
+    this.venues_map = Io.readMapInt32Int(r);
     this.venues_name = Io.readStringArray(r);
 
-    this.competences_identifier_to_index_map = Io.readMapInt32Int(r);
+    this.competences_map = Io.readMapInt32Int(r);
     this.competences_name = Io.readStringArray(r);
 
-    this.roles_identifier_to_index_map = Io.readMapInt32Int(r);
+    this.roles_map = Io.readMapInt32Int(r);
     this.roles_name = Io.readStringArray(r);
 
-    this.occurrences_identifier_to_index_map = Io.readMapInt32Int(r);
+    this.occurrences_map = Io.readMapInt32Int(r);
     this.occurrences_event_identifiers = Io.readInt32Array(r);
     this.occurrences_venue = Io.readInt32Array(r);
     this.occurrences_dates = Io.readArrayOfInt32PairArrays(r); 
@@ -185,30 +185,45 @@ export class DataManager {
 
   bundleCompetencesNames() {
     return {
-      map: this.competences_identifier_to_index_map,
+      map: this.competences_map,
       array: this.competences_name,
       free_list: this.competences_free_list,
     };
   }
   bundleEventsNames() {
     return {
-      map: this.events_identifier_to_index_map,
+      map: this.events_map,
       array: this.events_name,
       free_list: this.events_free_list,
     };
   }
   bundleVenuesNames() {
     return {
-      map: this.venues_identifier_to_index_map,
+      map: this.venues_map,
       array: this.venues_name,
       free_list: this.venues_free_list,
     };
   }
   bundleRolesNames() {
     return {
-      map: this.roles_identifier_to_index_map,
+      map: this.roles_map,
       array: this.roles_name,
       free_list: this.roles_free_list,
     };
+  }
+}
+
+export class Int32Slice {
+  constructor(initialCapacity) {
+    this.buffer = new ArrayBuffer(initialCapacity * 4);
+    this.view = new Int32Array(this.buffer);
+    this.lenght = 0;
+  }
+
+  push(value) {
+    if (this.length >= this.view.length) {
+      throw new Error('capacity of a slice is exceded');
+    }
+    this.view[this.length++] = value;
   }
 }

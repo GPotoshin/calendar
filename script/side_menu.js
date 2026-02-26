@@ -147,7 +147,7 @@ function appendButtonToZone(zone_identifier, button) {
 }
 
 export function composeVenueList(map, names, list_identifier) {
-  for (const [identifier, index] of Global.data.venues_identifier_to_index_map) {
+  for (const [identifier, index] of Global.data.venues_map) {
     const name = Global.data.venues_name[index];
     let button = createListButtonAndSetToggleCallback();
     Utilities.setNameAndIdentifier(button, name, identifier);
@@ -156,7 +156,7 @@ export function composeVenueList(map, names, list_identifier) {
 }
 
 export function composeEventList() {
-  for (const [identifier, index] of Global.data.events_identifier_to_index_map) {
+  for (const [identifier, index] of Global.data.events_map) {
     const name = Global.data.events_name[index];
     let button = createListButtonAndSetToggleCallback();
     button.classList.add('instantiatable');
@@ -166,7 +166,7 @@ export function composeEventList() {
 }
 
 export function composeUsersList() {
-  for (const [matricule, index] of Global.data.users_identifier_to_index_map) {
+  for (const [matricule, index] of Global.data.users_map) {
     const name = Global.data.users_name[index];
     const surname = Global.data.users_surname[index];
     let button = createListButtonAndSetToggleCallback();

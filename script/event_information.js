@@ -249,7 +249,7 @@ export function update() { // @working
     return;
   }
   const event_identifier = zone.selection._data_identifier;
-  const event_index = Global.data.events_identifier_to_index_map.get(event_identifier);
+  const event_index = Global.data.events_map.get(event_identifier);
   if (event_index === undefined) { throw new Error("[update] no entry for event_identifier"); }
   const event_roles = Global.data.events_roles[event_index];
   const role_requirements = Global.data.events_roles_requirements[event_index];
@@ -279,7 +279,7 @@ export function update() { // @working
   // @nocheckin: we will need to merge all those iterations together
   let list = [createLocalHeader('Participants')];
   for (const role_identifier of event_roles) {
-    const role_index = Global.data.roles_identifier_to_index_map.get(role_identifier);
+    const role_index = Global.data.roles_map.get(role_identifier);
     if (role_index === undefined) { throw new Error('Can find role_identifier') }
     const name = Global.data.roles_name[role_index];
     list.push(createLocalHeader(name));
@@ -321,7 +321,7 @@ export function update() { // @working
   // GP: oridinal 0 is participants competences
   for (let role_ordinal = 1; role_ordinal <= event_roles.length; role_ordinal++) {
     const role_identifier = event_roles[role_ordinal-1]; 
-    const role_index = Global.data.roles_identifier_to_index_map.get(role_identifier);
+    const role_index = Global.data.roles_map.get(role_identifier);
     if (role_index == undefined) {
       throw new Error("Currupted state: role_index for id(${role_identifier} does not exist)");
     }
@@ -368,7 +368,7 @@ export function update() { // @working
     event_duration_button.textContent = numeric_input.element.value | '\u00A0';
     numeric_input.element.replaceWith(event_duration_button);
     const event_identifier = Global.getEventSelectionIdentifier();
-    const event_index = Global.data.events_identifier_to_index_map.get(event_identifier);
+    const event_index = Global.data.events_map.get(event_identifier);
     if (event_index === undefined) { throw new Error('[updating duration]: event_identifier does not exist'); }
     if (numeric_input.element.value === '') {
       Global.data.events_duration[event_identifier] = -1;
