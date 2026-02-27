@@ -14,22 +14,10 @@ Code is marked with references of the form `docs: @set(bar._width)`. You can
 search source for such string and get the precise location discussed in this
 documentation.
 
-=== Phylosophy
-The code is written with a handmade phylosophy `https://handmade.network/manifesto`
-and with compression and data oriented style `https://caseymuratori.com/blog_0015`.
-That means that functions exists only if they are called twice, structures exists
-only if variables should be passed around in groups (except for grouping state
-variables), additionally those patterns are mandatory, if something is passed
-often together its been put into structure, if the same code repeats twice, its
-beeing put in a function. The project uses no dependencies except for languages
-its written in (go and js) and their standart libraries. All those approaches
-increases perforamance and reduces surface area.
-
 === Style
-Names are never abriviated. In js variable are `snake_case`, function are
-`camelCase`, types and namespaces are `BigCamelCase`, additional dynamic
-properties start with `_` and are `_camel_case`. In go we follow the standard
-go convetions.
+In js variable are `snake_case`, function are `camelCase`, types and namespaces
+are `BigCamelCase`, additional dynamic properties start with `_` and are
+`_camel_case`. In go we follow the standard go convetions.
 
 === Architecture
 The application is mainly client side. Server manages the shared state and

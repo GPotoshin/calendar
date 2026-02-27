@@ -14,14 +14,16 @@ const pool = {
 
 const elements = {
   today_frame: null,
-  backing_buffer: Global.elements.calendar_content.clone(true),
-  backing_weeks: this.backing_buffer.querySelectorAll('.week-row'),
-  backing_days:  this.backing_buffer.querySelectorAll('.day-cell'),
-  current_days:  Global.elements.calendar_content.querySelectorAll('.day-cell'),
-  current_weeks: Global.elements.calendar_content.querySelectorAll('.week-row'),
 };
 
-export const WEEK_COUNT = elements.current_weeks.length;
+let backing_buffer = Global.elements.calendar_content.cloneNode(true);
+let backing_weeks = backing_buffer.querySelectorAll('.week-row');
+let backing_days = backing_buffer.querySelectorAll('.day-cell');
+let current_days = Global.elements.calendar_content.querySelectorAll('.day-cell');
+let current_weeks = Global.elements.calendar_content.querySelectorAll('.week-row');
+let backing_marker_blocks = Global.elements.calendar_content.querySelectorAll('.block-marker');
+
+export const WEEK_COUNT = current_weeks.length;
 const DAY_COUNT = WEEK_COUNT*7;
 const MS_IN_DAY = 86400000;
 
@@ -72,16 +74,16 @@ const monthDisplay = {
   names: ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet',
   'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'],
   month_holder: document.createElement('strong'),
-  year_holder: document.createTextNode(),
   month_buffer: document.createElement('strong'),
-  year_buffer: document.createTextNode(),
+  year_holder: document.createTextNode(""),
+  year_buffer: document.createTextNode(""),
   
   /**
    * @param {Date} date 
    */
   set(date) {
     this.month_buffer.textContent = this.names[date.getMonth()];
-    this.year_buffer.textContent = " " + date.getFullYear();
+    this.year_buffer.nodeValue = " " + date.getFullYear();
     Global.elements.month_display.replaceChildren(this.month_buffer, this.year_buffer);
     const month_holder = this.month_holder;
     this.month_holder = this.month_buffer;
@@ -112,12 +114,12 @@ export function init() {
   const calendar_content = Global.elements.calendar_content;
   const original_scroll_behavior = calendar_body.style.scrollBehavior;
   calendar_body.style.scrollBehavior = 'auto';
-  const week = elements.current_weeks[0];
+  const week = current_weeks[0];
   calendar_body.scrollTop = week.offsetHeight*7;
   calendar_body.style.scrollBehavior = original_scroll_behavior;
 
   state.calendar_resize_observer = new ResizeObserver(() => {
-    const week = elements.current_weeks[0];
+    const week = current_weeks[0];
     let new_width = week.children[1].getBoundingClientRect().right-
       week.children[0].getBoundingClientRect().left;
     for (const bar of state.bar_list) {
@@ -142,7 +144,7 @@ export function init() {
     let entry = entries[0];
     if (entry.isIntersecting) {
       state.focused_day_date.setMonth(state.focused_day_date.getMonth()+1);
-      refocusMonth(curret_days);
+      refocusMonth(current_days);
       setMonthObserver();
     }
   }, {
@@ -161,7 +163,7 @@ export function init() {
         if (entry.target === Global.elements.marker_blocks[0]) {
           shifting_by = -SHIFTING_BY;
         }
-        const week = elements.current_weeks[0];
+        const week = current_weeks[0];
 
         state.base_day_number += shifting_by*7;
         let date = new Date();
@@ -170,7 +172,7 @@ export function init() {
 
         date.setTime(state.base_day_number*MS_IN_DAY);
         const focusMonth = state.focused_day_date.getMonth();
-        elements.backing_days.forEach((day, index) => {
+        backing_days.forEach((day, index) => {
           day.children[0].textContent = date.getDate();
           day._day_number = Math.floor(date.getTime() / MS_IN_DAY);
           if (day._day_number == today) {
@@ -179,28 +181,11 @@ export function init() {
           }
           date.setDate(date.getDate() + 1);
         });
-        refocusMonth(elements.backing_days);
+        refocusMonth(backing_days);
         renderBars();
 
         // swapping UI
-        const backing_calendar = Global.elements.calendar_body;
-        Global.elements.calendar_body.replaceWith(elements.backing_buffer);
-        Global.elements.calendar_body = elements.backing_buffer;
-        elements.backing_buffer = backing_calendar;
-
-        Global.elements.calendar_body.classList.replace('scroll-smooth', 'scroll-auto');
-        Global.elements.calendar_body.scrollTop -= shifting_by*week.offsetHeight;
-        Global.elements.calendar_body.classList.replace('scroll-auto', 'scroll-smooth');
-
-        // swaping meta data
-        const backing_days = elements.backing_days;
-        elements.backing_days = elements.current_days;
-        elements.current_days = backing_days;
-        const backing_weeks = elements.backing_weeks;
-        elements.backing_weeks = elements.current_weeks;
-        element.current_weeks = backing_weels;
-
-        setMonthObserver();
+        swapBuffers(shifting_by*week.offsetHeight);
       }
     });
   }, {
@@ -221,7 +206,7 @@ export function init() {
   monthDisplay.set(state.focused_day_date);
   const focusMonth = state.focused_day_date.getMonth();
   
-  const weeks = elements.current_weeks;
+  const weeks = current_weeks;
   for (let i = 0; i < weeks.length; i++) {
     weeks[i]._index = i;
     const days = weeks[i].querySelectorAll('.day-cell');
@@ -230,7 +215,7 @@ export function init() {
     }
   }
 
-  elements.current_day.forEach((day, index) => {
+  current_days.forEach((day, index) => {
     day.children[0].textContent = date.getDate();
     day._day_number = Math.floor(date.getTime() / MS_IN_DAY);
     if (date.getMonth() == focusMonth) {
@@ -266,6 +251,37 @@ export function update() {
   setMonthObserver();
 }
 
+export function swapBuffers(shift) {
+  const new_top = Global.elements.calendar_body.scrollTop - shift;
+
+  const backing_calendar = Global.elements.calendar_body;
+  Global.elements.calendar_body.replaceWith(backing_buffer);
+  Global.elements.calendar_body = backing_buffer;
+  backing_buffer = backing_calendar;
+  Global.elements.calendar_body.classList.replace('scroll-smooth', 'scroll-auto');
+  Global.elements.calendar_body.scrollTop = new_top;
+  Global.elements.calendar_body.classList.replace('scroll-auto', 'scroll-smooth');
+
+  // swaping meta data
+  const swap_days = backing_days;
+  backing_days = current_days;
+  current_days = swap_days;
+  const swap_weeks = backing_weeks;
+  backing_weeks = current_weeks;
+  current_weeks = swap_weeks;
+  const backing_blocks = backing_marker_blocks;
+  backing_marker_blocks = Global.elements.marker_blocks;
+  Global.elements.marker_blocks = backing_marker_blocks;
+
+  state.calendar_resize_observer.disconnect();
+  state.calendar_resize_observer.observe(Global.elements.calendar_body);
+  state.calendar_scrolling_observer.disconnect();
+  state.calendar_scrolling_observer.observe(Global.elements.marker_blocks[0]);
+  state.calendar_scrolling_observer.observe(Global.elements.marker_blocks[1]);
+
+  setMonthObserver();
+}
+
 export function startInstantiating(identifier) {
   state.is_instantiating = true;
   state.instantiating_event_identifier = identifier;
@@ -277,7 +293,7 @@ export function startInstantiating(identifier) {
 
 // @nocheckin: We should call get bounding Rect only once
 function resizeBar(bar, start, end) {
-  const week = elements.current_weeks[0];
+  const week = current_weeks[0];
   let new_width = week.children[end].getBoundingClientRect().right-
     week.children[start].getBoundingClientRect().left-1;
   bar.style.width = new_width+'px';
@@ -556,7 +572,7 @@ export function renderBars() {
       if (region_type !== view_day_data[end] || end % 7 === 0) {
         if (region_type !== NOT_AVAILABLE && (region_type === TAKEN || state.is_instantiating)) {
           const week_number = Math.floor(start / 7);
-          const week = elements.backing_weeks[week_number];
+          const week = backing_weeks[week_number];
           const start_day = start % 7;
           let end_day = (end-1) % 7;
 
@@ -624,7 +640,7 @@ export function renderBars() {
       for (let level = 0; level < 5; level++) {
         let level_is_ok = true;
         for (let day = week_number*7; day < day_view_index; day++) {
-          const day_occrs = elements.backing_days[day].querySelectorAll('.event-occurrence');
+          const day_occrs = backing_days[day].querySelectorAll('.event-occurrence');
           for (const occr of day_occrs) {
             if (day+occr._width >= start_view_pos) {
               level_is_ok = false;
@@ -649,7 +665,7 @@ export function renderBars() {
           const event_name = Global.data.events_name[event_index];
 
           bar.textContent = event_name;
-          elements.backing_days[start_view_pos].getElementsByClassName('bar-holder')[0].append(bar);
+          backing_days[start_view_pos].getElementsByClassName('bar-holder')[0].append(bar);
           break;
         }
       }
