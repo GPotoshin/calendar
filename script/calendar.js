@@ -108,8 +108,6 @@ export function init() {
         }
         const week = elements.weeks[0];
         Global.elements.calendar_body.classList.replace('scroll-smooth', 'scroll-auto');
-        // @nocheckin: We should scroll by a variable offset determined after
-        // dom content modification.
           Global.elements.calendar_body.scrollTop -= shifting_by*week.offsetHeight;
         Global.elements.calendar_body.classList.replace('scroll-auto', 'scroll-smooth');
         requestAnimationFrame(() => {
@@ -131,6 +129,7 @@ export function init() {
           });
           refocusMonth();
           setMonthObserver();
+          renderBars();
           setTimeout(() => {
             state.is_updating = false;
           }, 100);
@@ -527,57 +526,59 @@ function createBar(position, start_day, end_day, color) {
  * next render call. As this funciton is called only once per modification, we
  * don't really care for now how expensive it may be.
  */
-function renderBars() {
+export function renderBars() {
   for (const bar of state.bar_list) {
     bar.remove();
   }
   state.bar_list.length = 0;
+  
+  if (state.is_instantiating) {
+    const view_day_data = state.view_day_data;
 
-  const view_day_data = state.view_day_data;
+    let start = 0;
+    let end = 1;
+    let region_type = view_day_data[0];
+    for (; end < view_day_data.length; end++) {
+      if (region_type !== view_day_data[end] || end % 7 === 0) {
+        if (region_type !== NOT_AVAILABLE && (region_type === TAKEN || state.is_instantiating)) {
+          const week_number = Math.floor(start / 7);
+          const week = elements.weeks[week_number];
+          const start_day = start % 7;
+          let end_day = (end-1) % 7;
 
-  let start = 0;
-  let end = 1;
-  let region_type = view_day_data[0];
-  for (; end < view_day_data.length; end++) {
-    if (region_type !== view_day_data[end] || end % 7 === 0) {
-      if (region_type !== NOT_AVAILABLE && (region_type === TAKEN || state.is_instantiating)) {
-        const week_number = Math.floor(start / 7);
-        const week = elements.weeks[week_number];
-        const start_day = start % 7;
-        let end_day = (end-1) % 7;
-
-        let bar = createBar(0, start_day, end_day, getColor(region_type));
-        bar._type = region_type;
-        if (region_type == TAKEN) {
-          const event_indetifier = state.instantiating_event_identifier;
-          if (!event_indetifier) {
-            console.error('unreachable');
+          let bar = createBar(0, start_day, end_day, getColor(region_type));
+          bar._type = region_type;
+          if (region_type == TAKEN) {
+            const event_indetifier = state.instantiating_event_identifier;
+            if (!event_indetifier) {
+              console.error('unreachable');
+            }
+            const event_index = Global.data.events_map.get(event_indetifier);
+            bar.textContent = Global.data.events_name[event_index];
+          } else {
+            bar.textContent = 'Disponible';
           }
-          const event_index = Global.data.events_map.get(event_indetifier);
-          bar.textContent = Global.data.events_name[event_index];
-        } else {
-          bar.textContent = 'Disponible';
+          week.children[start_day].getElementsByClassName('bar-holder')[0].prepend(bar);
         }
-        week.children[start_day].getElementsByClassName('bar-holder')[0].prepend(bar);
-      }
 
-      if (end >= view_day_data.length) {
-        continue;
+        if (end >= view_day_data.length) {
+          continue;
+        }
+        start = end;
+        region_type = view_day_data[end];
       }
-      start = end;
-      region_type = view_day_data[end];
     }
   }
 
   const diff = state.base_day_number - Global.data.base_day_number;
-  const day_start = Math.max(diff, 0);
-  const day_end   = Math.min(diff+DAY_COUNT, Global.data.day_occurrences.length);
+  const day_occurrences_start = Math.max(diff, 0);
+  const day_occurrences_end   = Math.min(diff+DAY_COUNT, Global.data.day_occurrences.length);
 
-  const view_start = Math.max(-diff, 0);
-  const view_end   = Math.max(DAY_COUNT-diff, 0);
+  const day_view_start = Math.max(-diff, 0);
+  const day_view_end   = Math.min(day_view_start+(day_occurrences_end-day_occurrences_start), DAY_COUNT);
 
-  let day_index = day_start;
-  let view_index = view_start;
+  let day_occurrences_index = day_occurrences_start;
+  let day_view_index = day_view_start;
 
   const tracked_events = {
     occurrence_identifiers: new Int32Slice(512),
@@ -585,26 +586,33 @@ function renderBars() {
     free_list: new Int32Slice(32),
   };
 
-  while (day_index < day_end && view_index < view_end) {
-    // @working: we need to generate displayed events
-    const occurrences = Global.data.day_occurrences[day_index]
+  while (day_occurrences_index < day_occurrences_end && day_view_index < day_view_end) {
+    const occurrences = Global.data.day_occurrences[day_occurrences_index];
 
-    // pushing events to UI
-    const tracked_event_index = 0;
-    while (tracked_event_index < tracked_events.length) {
+    for(let tracked_event_index = 0;
+        tracked_event_index < tracked_events.occurrence_identifiers.length;
+        tracked_event_index++)
+    {
       const occurrence_identifier = tracked_events.occurrence_identifiers.view[tracked_event_index];
-      const start_position = tracked_events.start_positions.view[tracked_event_index];
-      if (occurrences.includes(event.occurrence_identifier)) {
+      const start_view_pos = tracked_events.start_positions.view[tracked_event_index];
+      if (occurrences.includes(occurrence_identifier) &&
+         (day_occurrences_index !== day_occurrences_end-1 ||
+           day_view_index !== day_view_end-1)) {
         continue;
       }
+      if (day_occurrences_index === day_occurrences_end-1 ||
+           day_view_index === day_view_end-1) {
+        day_view_index++;
+      }
+      tracked_events.free_list.push(tracked_event_index);
 
-      const week_number = Math.floor(start_position/7);
+      const week_number = Math.floor(start_view_pos/7);
       for (let level = 0; level < 5; level++) {
         let level_is_ok = true;
-        for (let day = week_number*7; day < day_index; day++) {
+        for (let day = week_number*7; day < day_view_index; day++) {
           const day_occrs = elements.days[day].querySelectorAll('.event-occurrence');
           for (const occr of day_occrs) {
-            if (day+occr._width >= start_position) {
+            if (day+occr._width >= start_view_pos) {
               level_is_ok = false;
               break;
             }
@@ -617,8 +625,8 @@ function renderBars() {
           // setting at correct level
           const bar = createBar(
             level,
-            start_position%7,
-            (day_index-1)%7,
+            start_view_pos%7,
+            (day_view_index-1)%7,
             palette.grey,
           );
           const occurrence_index = Global.data.occurrences_map.get(occurrence_identifier);
@@ -627,17 +635,26 @@ function renderBars() {
           const event_name = Global.data.events_name[event_index];
 
           bar.textContent = event_name;
-          elements.days[start_position].getElementsByClassName('bar-holder')[0].append(bar);
+          elements.days[start_view_pos].getElementsByClassName('bar-holder')[0].append(bar);
           break;
         }
-        // @working: we need to push the data we track and delete the data we
-        // are no longer tracking (it is pushed to the free list and then it
-        // is deleted in a single call
       }
     }
 
-    day_index++;
-    view_index++;
+    tracked_events.occurrence_identifiers.shrink(tracked_events.free_list);
+    tracked_events.start_positions.shrink(tracked_events.free_list);
+    tracked_events.free_list.length = 0;
+
+    for (const occurrence of occurrences) {
+      if (tracked_events.occurrence_identifiers.includes(occurrence)) {
+        continue;
+      }
+      tracked_events.occurrence_identifiers.push(occurrence);
+      tracked_events.start_positions.push(day_view_index);
+    }
+
+    day_occurrences_index++;
+    day_view_index++;
   }
 }
 

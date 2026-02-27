@@ -11,7 +11,6 @@ export let elements = {
   side_menu_container: null,
   todayFrame: null,
   dataListContainer: null,
-
   views: [document.getElementsByClassName('view-content')[0], null],
 }
 

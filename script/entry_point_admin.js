@@ -46,6 +46,7 @@ Calendar.init();
           SideMenu.composeVenueList();
           EventInformation.loadTemplate();
           CalendarInformation.loadTemplate();
+          Calendar.renderBars();
         });
     })
     .catch(error => {
