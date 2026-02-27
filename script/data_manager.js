@@ -217,7 +217,7 @@ export class Int32Slice {
   constructor(initialCapacity) {
     this.buffer = new ArrayBuffer(initialCapacity * 4);
     this.view = new Int32Array(this.buffer);
-    this.lenght = 0;
+    this.length = 0;
   }
 
   push(value) {
@@ -225,5 +225,51 @@ export class Int32Slice {
       throw new Error('capacity of a slice is exceded');
     }
     this.view[this.length++] = value;
+  }
+
+  /**
+   * @param {Int32Slice} free_list - Sorted indices to remove
+   */
+  shrink(free_list) {
+    let number_of_items_freed = 0;
+    const total_len = this.length;
+
+    for (; number_of_items_freed < free_list.length; number_of_items_freed++) {
+      let shift_region_limit;
+      const free_index = free_list.view[number_of_items_freed];
+
+      if (free_index >= total_len) {
+        break;
+      }
+
+      const shift_by = number_of_items_freed + 1;
+      let shift_target_index = free_list.view[number_of_items_freed] - number_of_items_freed;
+
+      if (number_of_items_freed === free_list.length - 1) {
+        shift_region_limit = total_len - shift_by;
+      } else {
+        shift_region_limit = Math.min(
+          total_len - shift_by,
+          free_list.view[number_of_items_freed + 1] - shift_by
+        );
+      }
+
+      for (; shift_target_index < shift_region_limit; shift_target_index++) {
+        this.view[shift_target_index] = this.view[shift_target_index + shift_by];
+      }
+    }
+    this.length -= free_list.length;
+  }
+
+  includes(value) {
+    const len = this.length;
+    const v = this.view;
+    
+    for (let i = 0; i < len; i++) {
+      if (v[i] === value) {
+        return true;
+      }
+    }
+    return false;
   }
 }

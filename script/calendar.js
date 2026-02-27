@@ -7,13 +7,23 @@ import { palette } from './color.js';
 
 const Int32Slice = DM.Int32Slice;
 
-let elements = {
-  weeks: Global.elements.calendar_content.querySelectorAll('.week-row'),
-  days:  Global.elements.calendar_content.querySelectorAll('.day-cell'),
+// objects for common use
+const pool = {
+  date: new Date(),
+};
+
+const elements = {
   today_frame: null,
 };
 
-export const WEEK_COUNT = elements.weeks.length;
+let backing_buffer = Global.elements.calendar_content.cloneNode(true);
+let backing_weeks = backing_buffer.querySelectorAll('.week-row');
+let backing_days = backing_buffer.querySelectorAll('.day-cell');
+let current_days = Global.elements.calendar_content.querySelectorAll('.day-cell');
+let current_weeks = Global.elements.calendar_content.querySelectorAll('.week-row');
+let backing_marker_blocks = Global.elements.calendar_content.querySelectorAll('.block-marker');
+
+export const WEEK_COUNT = current_weeks.length;
 const DAY_COUNT = WEEK_COUNT*7;
 const MS_IN_DAY = 86400000;
 
@@ -59,14 +69,61 @@ const state = {
   selected_day_counter: 0,
 };
 
+// NOTE(GP): should work for double buffering
+const monthDisplay = {
+  names: ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet',
+  'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'],
+  month_holder: document.createElement('strong'),
+  month_buffer: document.createElement('strong'),
+  year_holder: document.createTextNode(""),
+  year_buffer: document.createTextNode(""),
+  
+  /**
+   * @param {Date} date 
+   */
+  set(date) {
+    this.month_buffer.textContent = this.names[date.getMonth()];
+    this.year_buffer.nodeValue = " " + date.getFullYear();
+    Global.elements.month_display.replaceChildren(this.month_buffer, this.year_buffer);
+    const month_holder = this.month_holder;
+    this.month_holder = this.month_buffer;
+    this.month_buffer = month_holder;
+    const year_holder = this.year_holder;
+    this.year_holder = this.year_buffer;
+    this.year_buffer = year_holder;
+  }
+};
+
+function refocusMonth(days) {
+  const date = pool.date;
+  monthDisplay.set(state.focused_day_date);
+  date.setTime(state.day_base_number*MS_IN_DAY)
+  const focusMonth = state.focused_day_date.getMonth();
+  days.forEach((day, index) => {
+    if (date.getMonth() === focusMonth) {
+      day.classList.add('focused-month');
+    } else {
+      day.classList.remove('focused-month');
+    }
+    date.setDate(date.getDate() + 1);
+  });
+}
 
 export function init() {
-  setMonthScrollPosition();
+  const calendar_body = Global.elements.calendar_body;
+  const calendar_content = Global.elements.calendar_content;
+  const original_scroll_behavior = calendar_body.style.scrollBehavior;
+  calendar_body.style.scrollBehavior = 'auto';
+  const week = current_weeks[0];
+  calendar_body.scrollTop = week.offsetHeight*7;
+  calendar_body.style.scrollBehavior = original_scroll_behavior;
+
   state.calendar_resize_observer = new ResizeObserver(() => {
+    const week = current_weeks[0];
+    let new_width = week.children[1].getBoundingClientRect().right-
+      week.children[0].getBoundingClientRect().left;
     for (const bar of state.bar_list) {
-      const start = bar.closest('.day-cell')._index;
-      const end = start+bar._width-1;
-      resizeBar(bar, start, end);
+      bar.style.width = new_width*bar._width+'px';
     }
   });
   state.calendar_resize_observer.observe(Global.elements.calendar_content);
@@ -75,7 +132,7 @@ export function init() {
     let entry = entries[0]
     if (entry.isIntersecting) {
       state.focused_day_date.setMonth(state.focused_day_date.getMonth()-1);
-      refocusMonth();
+      refocusMonth(current_days);
       setMonthObserver();
     }
   }, {
@@ -87,7 +144,7 @@ export function init() {
     let entry = entries[0];
     if (entry.isIntersecting) {
       state.focused_day_date.setMonth(state.focused_day_date.getMonth()+1);
-      refocusMonth();
+      refocusMonth(current_days);
       setMonthObserver();
     }
   }, {
@@ -106,35 +163,29 @@ export function init() {
         if (entry.target === Global.elements.marker_blocks[0]) {
           shifting_by = -SHIFTING_BY;
         }
-        const week = elements.weeks[0];
-        Global.elements.calendar_body.classList.replace('scroll-smooth', 'scroll-auto');
-        // @nocheckin: We should scroll by a variable offset determined after
-        // dom content modification.
-          Global.elements.calendar_body.scrollTop -= shifting_by*week.offsetHeight;
-        Global.elements.calendar_body.classList.replace('scroll-auto', 'scroll-smooth');
-        requestAnimationFrame(() => {
-          state.base_day_number += shifting_by*7;
-          let date = new Date();
-          const today = Math.floor(date.getTime()/MS_IN_DAY);
-          const offset = today - state.base_day_number;
+        const week = current_weeks[0];
 
-          date.setTime(state.base_day_number*MS_IN_DAY);
-          const focusMonth = state.focused_day_date.getMonth();
-          iterateOverDays((day) => {
-            day.children[0].textContent = date.getDate();
-            day._day_number = Math.floor(date.getTime() / MS_IN_DAY);
-            if (day._day_number == today) {
-              day.classList.add('today');
-              elements.today_frame = day;
-            }
-            date.setDate(date.getDate() + 1);
-          });
-          refocusMonth();
-          setMonthObserver();
-          setTimeout(() => {
-            state.is_updating = false;
-          }, 100);
+        state.base_day_number += shifting_by*7;
+        let date = new Date();
+        const today = Math.floor(date.getTime()/MS_IN_DAY);
+        const offset = today - state.base_day_number;
+
+        date.setTime(state.base_day_number*MS_IN_DAY);
+        const focusMonth = state.focused_day_date.getMonth();
+        backing_days.forEach((day, index) => {
+          day.children[0].textContent = date.getDate();
+          day._day_number = Math.floor(date.getTime() / MS_IN_DAY);
+          if (day._day_number == today) {
+            day.classList.add('today');
+            elements.today_frame = day;
+          }
+          date.setDate(date.getDate() + 1);
         });
+        refocusMonth(backing_days);
+        renderBars();
+
+        // swapping UI
+        swapBuffers(shifting_by*week.offsetHeight);
       }
     });
   }, {
@@ -152,10 +203,10 @@ export function init() {
   state.base_day_number = today_epoch-today_weekday-7*7;
   date.setTime(state.base_day_number*MS_IN_DAY);
 
-  setMonthDisplay(state.focused_day_date);
+  monthDisplay.set(state.focused_day_date);
   const focusMonth = state.focused_day_date.getMonth();
   
-  const weeks = elements.weeks;
+  const weeks = current_weeks;
   for (let i = 0; i < weeks.length; i++) {
     weeks[i]._index = i;
     const days = weeks[i].querySelectorAll('.day-cell');
@@ -164,7 +215,7 @@ export function init() {
     }
   }
 
-  iterateOverDays((day) => {
+  current_days.forEach((day, index) => {
     day.children[0].textContent = date.getDate();
     day._day_number = Math.floor(date.getTime() / MS_IN_DAY);
     if (date.getMonth() == focusMonth) {
@@ -173,6 +224,62 @@ export function init() {
     date.setDate(date.getDate() + 1);
   });
   setMonthObserver(focus.month);
+}
+
+// @working: update function should update the calendar content with the
+// new information. We had day number generation, now we need to have 
+// a generation of evenents and hints. Plus we need to move all the code
+// related to calendar rendering here and refactor and compress it if
+// possible
+export function update() {
+  monthDisplay.set(state.focused_day_date);
+  let date = new Date();
+  const today = Math.floor(date.getTime()/MS_IN_DAY);
+  const offset = today - state.base_day_number;
+  date.setTime(state.base_day_number*MS_IN_DAY);
+  const focusMonth = state.focused_day_date.getMonth();
+  iterateOverDays((day) => {
+    day.children[0].textContent = date.getDate();
+    day._day_number = Math.floor(date.getTime() / MS_IN_DAY);
+    if (day._day_number == today) {
+      day.classList.add('today');
+      elements.today_frame = day;
+    }
+    date.setDate(date.getDate() + 1);
+  });
+  refocusMonth();
+  setMonthObserver();
+}
+
+export function swapBuffers(shift) {
+  const new_top = Global.elements.calendar_body.scrollTop - shift;
+
+  const backing_calendar = Global.elements.calendar_body;
+  Global.elements.calendar_body.replaceWith(backing_buffer);
+  Global.elements.calendar_body = backing_buffer;
+  backing_buffer = backing_calendar;
+  Global.elements.calendar_body.classList.replace('scroll-smooth', 'scroll-auto');
+  Global.elements.calendar_body.scrollTop = new_top;
+  Global.elements.calendar_body.classList.replace('scroll-auto', 'scroll-smooth');
+
+  // swaping meta data
+  const swap_days = backing_days;
+  backing_days = current_days;
+  current_days = swap_days;
+  const swap_weeks = backing_weeks;
+  backing_weeks = current_weeks;
+  current_weeks = swap_weeks;
+  const backing_blocks = backing_marker_blocks;
+  backing_marker_blocks = Global.elements.marker_blocks;
+  Global.elements.marker_blocks = backing_marker_blocks;
+
+  state.calendar_resize_observer.disconnect();
+  state.calendar_resize_observer.observe(Global.elements.calendar_body);
+  state.calendar_scrolling_observer.disconnect();
+  state.calendar_scrolling_observer.observe(Global.elements.marker_blocks[0]);
+  state.calendar_scrolling_observer.observe(Global.elements.marker_blocks[1]);
+
+  setMonthObserver();
 }
 
 export function startInstantiating(identifier) {
@@ -184,38 +291,16 @@ export function startInstantiating(identifier) {
   document.addEventListener("keydown", saveSelectionsCallback);
 }
 
+// @nocheckin: We should call get bounding Rect only once
 function resizeBar(bar, start, end) {
-  const week = elements.weeks[0];
+  const week = current_weeks[0];
   let new_width = week.children[end].getBoundingClientRect().right-
     week.children[start].getBoundingClientRect().left-1;
   bar.style.width = new_width+'px';
 }
 
-
-// sets year and month from `data` as a header
-function setMonthDisplay(date) {
-  const months = [
-    'Janvier',
-    'Février',
-    'Mars',
-    'Avril',
-    'Mai',
-    'Juin',
-    'Juillet',
-    'Août',
-    'Septembre',
-    'Octobre',
-    'Novembre',
-    'Décembre',
-  ];
-  let monthHolder = document.createElement('strong');
-  monthHolder.textContent = months[date.getMonth()];
-  let year = document.createTextNode(" " + date.getFullYear());
-  Global.elements.month_display.replaceChildren(monthHolder, year);
-}
-
 // runs a callback over all days in the displayed buffer
-function iterateOverDays(dayCallback) {
+function iterateOverDays(dayCallback) { // @nocheckin
   const rows = Global.elements.calendar_content.children;
   for (let i = 0; i < rows.length; i++) {
     let row = rows[i];
@@ -226,22 +311,6 @@ function iterateOverDays(dayCallback) {
       dayCallback(row.children[j]);
     }
   }
-}
-
-
-function refocusMonth() {
-  setMonthDisplay(state.focused_day_date);
-  let date = new Date();
-  date.setTime(Number(Global.elements.calendar_content.children[0].children[0]._day_number)*MS_IN_DAY)
-  const focusMonth = state.focused_day_date.getMonth();
-  iterateOverDays((day) => {
-    if (date.getMonth() == focusMonth) {
-      day.classList.add('focused-month');
-    } else {
-      day.classList.remove('focused-month');
-    }
-    date.setDate(date.getDate() + 1);
-  });
 }
 
 function setMonthObserver() {
@@ -277,48 +346,9 @@ function setMonthObserver() {
   }
 }
 
-// @working: update function should update the calendar content with the
-// new information. We had day number generation, now we need to have 
-// a generation of evenents and hints. Plus we need to move all the code
-// related to calendar rendering here and refactor and compress it if
-// possible
-export function update() {
-  setMonthDisplay(state.focused_day_date);
-  let date = new Date();
-  const today = Math.floor(date.getTime()/MS_IN_DAY);
-  const offset = today - state.base_day_number;
-  date.setTime(state.base_day_number*MS_IN_DAY);
-  const focusMonth = state.focused_day_date.getMonth();
-  iterateOverDays((day) => {
-    day.children[0].textContent = date.getDate();
-    day._day_number = Math.floor(date.getTime() / MS_IN_DAY);
-    if (day._day_number == today) {
-      day.classList.add('today');
-      elements.today_frame = day;
-    }
-    date.setDate(date.getDate() + 1);
-  });
-  refocusMonth();
-  setMonthObserver();
-}
-
 // @nocheckin: We should actually try to rerender the view and swap only
 // when it is done and be at the correct scrollTop offset. Because that
 // generation of dom can take a bit of time.
-
-// [14/01/26:Potoshin] This function is only called in entry_point file once,
-// so it should not exist.
-export function setMonthScrollPosition() {
-  const calendar_body = document.getElementById('calendar-body');
-  const calendar_content = document.getElementById('calendar-content');
-
-  const original_scroll_behavior = calendar_body.style.scrollBehavior;
-  calendar_body.style.scrollBehavior = 'auto';
-
-  const week = elements.weeks[0];
-  calendar_body.scrollTop = week.offsetHeight*7;
-  calendar_body.style.scrollBehavior = original_scroll_behavior;
-}
 
 function getCellNum(pos_x) {
   const week_rect = state.week.getBoundingClientRect(); 
@@ -365,7 +395,6 @@ Global.elements.calendar_body.addEventListener('mousedown', e => {
       state.is_dragging = false;
       return;
     }
-
     state.start_cell_num = clicked_cell_num;
     state.prev_focus_num = state.start_cell_num;
   }
@@ -448,30 +477,30 @@ function saveSelectionsCallback(e) {
     Api.request(writer).then(response => {
       Utilities.throwIfNotOk(response);
       response.arrayBuffer().then(binary => {
-        const reader = new Io.BufferReader(binary);
+        const reader     = new Io.BufferReader(binary);
         const identifier = Io.readInt32(reader);
-        const free_list = Global.data.occurrences_free_list;
-        const map = Global.data.occurrences_map;
-        const index = DM.storageIndex(map, free_list);
+        const free_list  = Global.data.occurrences_free_list;
+        const map        = Global.data.occurrences_map;
+        const index      = DM.storageIndex(map, free_list);
 
         map.set(identifier, index);
-        Global.data.occurrences_venue[index] = -1;
+        Global.data.occurrences_venue[index]             = -1;
         Global.data.occurrences_event_identifiers[index] = event_identifier;
-        Global.data.occurrences_dates[index] = intervals;
-        Global.data.occurrences_participants[index] = [];
+        Global.data.occurrences_dates[index]             = intervals;
+        Global.data.occurrences_participants[index]      = [];
 
         const day_occurrences = Global.data.day_occurrences;
         if (day_occurrences.length === 0) {
           Global.data.base_day_number = intervals[0][0];
         }
-        const base_day = Global.data.base_day_number;
-        const last_idx = intervals.length - 1;
-        const end_day = base_day + day_occurrences.length - 1;
-        const prefix_diff = Math.max(base_day - intervals[0][0], 0);
+        const base_day     = Global.data.base_day_number;
+        const last_idx     = intervals.length - 1;
+        const end_day      = base_day + day_occurrences.length - 1;
+        const prefix_diff  = Math.max(base_day - intervals[0][0], 0);
         const postfix_diff = Math.max(intervals[last_idx][1] - end_day, 0);
-        const old_len = day_occurrences.length;
-        const diff = prefix_diff+postfix_diff;
-        const new_len = old_len+diff;
+        const old_len      = day_occurrences.length;
+        const diff         = prefix_diff+postfix_diff;
+        const new_len      = old_len+diff;
         
         if (prefix_diff > 0) {
           Global.data.base_day_number = intervals[0][0];
@@ -527,57 +556,59 @@ function createBar(position, start_day, end_day, color) {
  * next render call. As this funciton is called only once per modification, we
  * don't really care for now how expensive it may be.
  */
-function renderBars() {
+export function renderBars() {
   for (const bar of state.bar_list) {
     bar.remove();
   }
   state.bar_list.length = 0;
+  
+  if (state.is_instantiating) {
+    const view_day_data = state.view_day_data;
 
-  const view_day_data = state.view_day_data;
+    let start = 0;
+    let end = 1;
+    let region_type = view_day_data[0];
+    for (; end < view_day_data.length; end++) {
+      if (region_type !== view_day_data[end] || end % 7 === 0) {
+        if (region_type !== NOT_AVAILABLE && (region_type === TAKEN || state.is_instantiating)) {
+          const week_number = Math.floor(start / 7);
+          const week = backing_weeks[week_number];
+          const start_day = start % 7;
+          let end_day = (end-1) % 7;
 
-  let start = 0;
-  let end = 1;
-  let region_type = view_day_data[0];
-  for (; end < view_day_data.length; end++) {
-    if (region_type !== view_day_data[end] || end % 7 === 0) {
-      if (region_type !== NOT_AVAILABLE && (region_type === TAKEN || state.is_instantiating)) {
-        const week_number = Math.floor(start / 7);
-        const week = elements.weeks[week_number];
-        const start_day = start % 7;
-        let end_day = (end-1) % 7;
-
-        let bar = createBar(0, start_day, end_day, getColor(region_type));
-        bar._type = region_type;
-        if (region_type == TAKEN) {
-          const event_indetifier = state.instantiating_event_identifier;
-          if (!event_indetifier) {
-            console.error('unreachable');
+          let bar = createBar(0, start_day, end_day, getColor(region_type));
+          bar._type = region_type;
+          if (region_type == TAKEN) {
+            const event_indetifier = state.instantiating_event_identifier;
+            if (!event_indetifier) {
+              console.error('unreachable');
+            }
+            const event_index = Global.data.events_map.get(event_indetifier);
+            bar.textContent = Global.data.events_name[event_index];
+          } else {
+            bar.textContent = 'Disponible';
           }
-          const event_index = Global.data.events_map.get(event_indetifier);
-          bar.textContent = Global.data.events_name[event_index];
-        } else {
-          bar.textContent = 'Disponible';
+          week.children[start_day].getElementsByClassName('bar-holder')[0].prepend(bar);
         }
-        week.children[start_day].getElementsByClassName('bar-holder')[0].prepend(bar);
-      }
 
-      if (end >= view_day_data.length) {
-        continue;
+        if (end >= view_day_data.length) {
+          continue;
+        }
+        start = end;
+        region_type = view_day_data[end];
       }
-      start = end;
-      region_type = view_day_data[end];
     }
   }
 
   const diff = state.base_day_number - Global.data.base_day_number;
-  const day_start = Math.max(diff, 0);
-  const day_end   = Math.min(diff+DAY_COUNT, Global.data.day_occurrences.length);
+  const day_occurrences_start = Math.max(diff, 0);
+  const day_occurrences_end   = Math.min(diff+DAY_COUNT, Global.data.day_occurrences.length);
 
-  const view_start = Math.max(-diff, 0);
-  const view_end   = Math.max(DAY_COUNT-diff, 0);
+  const day_view_start = Math.max(-diff, 0);
+  const day_view_end   = Math.min(day_view_start+(day_occurrences_end-day_occurrences_start), DAY_COUNT);
 
-  let day_index = day_start;
-  let view_index = view_start;
+  let day_occurrences_index = day_occurrences_start;
+  let day_view_index = day_view_start;
 
   const tracked_events = {
     occurrence_identifiers: new Int32Slice(512),
@@ -585,26 +616,33 @@ function renderBars() {
     free_list: new Int32Slice(32),
   };
 
-  while (day_index < day_end && view_index < view_end) {
-    // @working: we need to generate displayed events
-    const occurrences = Global.data.day_occurrences[day_index]
+  while (day_occurrences_index < day_occurrences_end && day_view_index < day_view_end) {
+    const occurrences = Global.data.day_occurrences[day_occurrences_index];
 
-    // pushing events to UI
-    const tracked_event_index = 0;
-    while (tracked_event_index < tracked_events.length) {
+    for(let tracked_event_index = 0;
+        tracked_event_index < tracked_events.occurrence_identifiers.length;
+        tracked_event_index++)
+    {
       const occurrence_identifier = tracked_events.occurrence_identifiers.view[tracked_event_index];
-      const start_position = tracked_events.start_positions.view[tracked_event_index];
-      if (occurrences.includes(event.occurrence_identifier)) {
+      const start_view_pos = tracked_events.start_positions.view[tracked_event_index];
+      if (occurrences.includes(occurrence_identifier) &&
+         (day_occurrences_index !== day_occurrences_end-1 ||
+           day_view_index !== day_view_end-1)) {
         continue;
       }
+      if (day_occurrences_index === day_occurrences_end-1 ||
+           day_view_index === day_view_end-1) {
+        day_view_index++;
+      }
+      tracked_events.free_list.push(tracked_event_index);
 
-      const week_number = Math.floor(start_position/7);
+      const week_number = Math.floor(start_view_pos/7);
       for (let level = 0; level < 5; level++) {
         let level_is_ok = true;
-        for (let day = week_number*7; day < day_index; day++) {
-          const day_occrs = elements.days[day].querySelectorAll('.event-occurrence');
+        for (let day = week_number*7; day < day_view_index; day++) {
+          const day_occrs = backing_days[day].querySelectorAll('.event-occurrence');
           for (const occr of day_occrs) {
-            if (day+occr._width >= start_position) {
+            if (day+occr._width >= start_view_pos) {
               level_is_ok = false;
               break;
             }
@@ -617,8 +655,8 @@ function renderBars() {
           // setting at correct level
           const bar = createBar(
             level,
-            start_position%7,
-            (day_index-1)%7,
+            start_view_pos%7,
+            (day_view_index-1)%7,
             palette.grey,
           );
           const occurrence_index = Global.data.occurrences_map.get(occurrence_identifier);
@@ -627,17 +665,26 @@ function renderBars() {
           const event_name = Global.data.events_name[event_index];
 
           bar.textContent = event_name;
-          elements.days[start_position].getElementsByClassName('bar-holder')[0].append(bar);
+          backing_days[start_view_pos].getElementsByClassName('bar-holder')[0].append(bar);
           break;
         }
-        // @working: we need to push the data we track and delete the data we
-        // are no longer tracking (it is pushed to the free list and then it
-        // is deleted in a single call
       }
     }
 
-    day_index++;
-    view_index++;
+    tracked_events.occurrence_identifiers.shrink(tracked_events.free_list);
+    tracked_events.start_positions.shrink(tracked_events.free_list);
+    tracked_events.free_list.length = 0;
+
+    for (const occurrence of occurrences) {
+      if (tracked_events.occurrence_identifiers.includes(occurrence)) {
+        continue;
+      }
+      tracked_events.occurrence_identifiers.push(occurrence);
+      tracked_events.start_positions.push(day_view_index);
+    }
+
+    day_occurrences_index++;
+    day_view_index++;
   }
 }
 
