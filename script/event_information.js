@@ -242,7 +242,7 @@ function updateClicked(button, list) {
   }
 }
 
-export function update() { // @working
+export function update() {
   // scoped functions
   const zone = Global.zones[Global.zones_identifier.EVENT];
   if (zone.selection == null) { // we need to show general setting
