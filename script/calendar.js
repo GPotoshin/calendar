@@ -251,7 +251,7 @@ export function update() {
   setMonthObserver();
 }
 
-export function swapBuffers(shift) {
+export function swapBuffers(shift = 0) {
   const new_top = Global.elements.calendar_body.scrollTop - shift;
 
   const backing_calendar = Global.elements.calendar_body;
