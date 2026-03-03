@@ -254,10 +254,11 @@ export function update() {
 export function swapBuffers(shift = 0) {
   const new_top = Global.elements.calendar_body.scrollTop - shift;
 
-  const backing_calendar = Global.elements.calendar_body;
-  Global.elements.calendar_body.replaceWith(backing_buffer);
-  Global.elements.calendar_body = backing_buffer;
+  const backing_calendar = Global.elements.calendar_content;
+  Global.elements.calendar_content.replaceWith(backing_buffer);
+  Global.elements.calendar_content = backing_buffer;
   backing_buffer = backing_calendar;
+
   Global.elements.calendar_body.classList.replace('scroll-smooth', 'scroll-auto');
   Global.elements.calendar_body.scrollTop = new_top;
   Global.elements.calendar_body.classList.replace('scroll-auto', 'scroll-smooth');
@@ -269,17 +270,17 @@ export function swapBuffers(shift = 0) {
   const swap_weeks = backing_weeks;
   backing_weeks = current_weeks;
   current_weeks = swap_weeks;
-  const backing_blocks = backing_marker_blocks;
+  const swap_blocks = backing_marker_blocks;
   backing_marker_blocks = Global.elements.marker_blocks;
-  Global.elements.marker_blocks = backing_marker_blocks;
+  Global.elements.marker_blocks = swap_blocks;
 
   state.calendar_resize_observer.disconnect();
-  state.calendar_resize_observer.observe(Global.elements.calendar_body);
+  state.calendar_resize_observer.observe(Global.elements.calendar_content);
   state.calendar_scrolling_observer.disconnect();
   state.calendar_scrolling_observer.observe(Global.elements.marker_blocks[0]);
   state.calendar_scrolling_observer.observe(Global.elements.marker_blocks[1]);
 
-  setMonthObserver();
+  update();
 }
 
 export function startInstantiating(identifier) {
