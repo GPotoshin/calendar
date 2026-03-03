@@ -8,22 +8,43 @@ import { palette } from './color.js';
 const Int32Slice = DM.Int32Slice;
 
 // objects for common use
-const pool = {
-  date: new Date(),
-};
 
-const elements = {
-  today_frame: null,
-};
+const pool_date = new Date();
 
-let backing_buffer = Global.elements.calendar_content.cloneNode(true);
-let backing_weeks = backing_buffer.querySelectorAll('.week-row');
-let backing_days = backing_buffer.querySelectorAll('.day-cell');
-let current_days = Global.elements.calendar_content.querySelectorAll('.day-cell');
-let current_weeks = Global.elements.calendar_content.querySelectorAll('.week-row');
-let backing_marker_blocks = Global.elements.calendar_content.querySelectorAll('.block-marker');
+// globals in calendar
+let gc_today_frame = null;
+let gc_backing_buffer = Global.elements.calendar_content.cloneNode(true);
+let gc_backing_weeks = gc_backing_buffer.querySelectorAll('.week-row');
+let gc_backing_days = gc_backing_buffer.querySelectorAll('.day-cell');
+let gc_current_days = Global.elements.calendar_content.querySelectorAll('.day-cell');
+let gc_current_weeks = Global.elements.calendar_content.querySelectorAll('.week-row');
+let gc_backing_marker_blocks = Global.elements.calendar_content.querySelectorAll('.block-marker');
+let gc_base_day_number = 0;
+let gc_target = null;
+let gc_cells = null;
+let gc_week = null;
+let gc_start_cell_num = 0;
+let gc_prev_focus_num = 0;
+let gc_is_updating = false;
+let gc_is_created = false;
+let gc_is_dragging = false;
+let gc_is_selected = false;
+let gc_is_instantiating = false;
+let gc_start_x = 0;
+let gc_bar_holder = null;
+let gc_bar = null;
+let gc_focused_day_date = null;
+let gc_selection_intervals = [];
+let gc_top_month_week_observer = null;
+let gc_bottom_month_week_observer = null;
+let gc_calendar_scrolling_observer = null;
+let gc_calendar_resize_observer = null;
+let gc_instantiating_event_identifier = undefined;
+let gc_view_day_data = new Uint32Array(gc_current_weeks.length*7);
+let gc_bar_list = []; // contains all bars.
+let gc_selected_day_counter = 0;
 
-export const WEEK_COUNT = current_weeks.length;
+export const WEEK_COUNT = gc_current_weeks.length;
 const DAY_COUNT = WEEK_COUNT*7;
 const MS_IN_DAY = 86400000;
 
@@ -42,32 +63,6 @@ function getColor(type) {
   }
 }
 
-const state = {
-  target: null,
-  cells: null,
-  week: null,
-  start_cell_num: 0,
-  prev_focus_num: 0,
-  is_updating: false,
-  is_created: false,
-  is_dragging: false,
-  is_selected: false,
-  is_instantiating: false,
-  start_x: 0,
-  bar_holder: null,
-  bar: null,
-  focused_day_date: null,
-  selection_intervals: [],
-  top_month_week_observer: null,
-  bottom_month_week_observer: null,
-  calendar_scrolling_observer: null,
-  calendar_resize_observer: null,
-  instantiating_event_identifier: undefined,
-  view_day_data: new Uint32Array(WEEK_COUNT*7),
-  base_day_number: 0,
-  bar_list: [], // contains all bars.
-  selected_day_counter: 0,
-};
 
 // NOTE(GP): should work for double buffering
 const monthDisplay = {
@@ -95,10 +90,10 @@ const monthDisplay = {
 };
 
 function refocusMonth(days) {
-  const date = pool.date;
-  monthDisplay.set(state.focused_day_date);
-  date.setTime(state.day_base_number*MS_IN_DAY)
-  const focusMonth = state.focused_day_date.getMonth();
+  const date = pool_date;
+  monthDisplay.set(gc_focused_day_date);
+  date.setTime(gc_base_day_number*MS_IN_DAY)
+  const focusMonth = gc_focused_day_date.getMonth();
   days.forEach((day, index) => {
     if (date.getMonth() === focusMonth) {
       day.classList.add('focused-month');
@@ -111,40 +106,37 @@ function refocusMonth(days) {
 
 export function init() {
   const calendar_body = Global.elements.calendar_body;
-  const calendar_content = Global.elements.calendar_content;
   const original_scroll_behavior = calendar_body.style.scrollBehavior;
   calendar_body.style.scrollBehavior = 'auto';
-  const week = current_weeks[0];
+  const week = gc_current_weeks[0];
   calendar_body.scrollTop = week.offsetHeight*7;
   calendar_body.style.scrollBehavior = original_scroll_behavior;
 
-  state.calendar_resize_observer = new ResizeObserver(() => {
-    const week = current_weeks[0];
+  gc_calendar_resize_observer = new ResizeObserver(() => {
+    const week = gc_current_weeks[0];
     let new_width = week.children[1].getBoundingClientRect().right-
       week.children[0].getBoundingClientRect().left;
-    for (const bar of state.bar_list) {
+    for (const bar of gc_bar_list) {
       bar.style.width = new_width*bar._width+'px';
     }
   });
-  state.calendar_resize_observer.observe(Global.elements.calendar_content);
-
-  state.top_month_week_observer = new IntersectionObserver((entries) => {
+  gc_top_month_week_observer = new IntersectionObserver((entries) => {
     let entry = entries[0]
     if (entry.isIntersecting) {
-      state.focused_day_date.setMonth(state.focused_day_date.getMonth()-1);
-      refocusMonth(current_days);
+      gc_focused_day_date.setMonth(gc_focused_day_date.getMonth()-1);
+      refocusMonth(gc_current_days);
       setMonthObserver();
     }
   }, {
-    root: Global.elements.calendar_body,
+    root: calendar_body,
     threshold: [1],
     rootMargin: '-66% 0px 0px 0px'
   });
-  state.bottom_month_week_observer = new IntersectionObserver((entries) => {
+  gc_bottom_month_week_observer = new IntersectionObserver((entries) => {
     let entry = entries[0];
     if (entry.isIntersecting) {
-      state.focused_day_date.setMonth(state.focused_day_date.getMonth()+1);
-      refocusMonth(current_days);
+      gc_focused_day_date.setMonth(gc_focused_day_date.getMonth()+1);
+      refocusMonth(gc_current_days);
       setMonthObserver();
     }
   }, {
@@ -152,78 +144,53 @@ export function init() {
     threshold: [1],
     rootMargin: '0px 0px -66% 0px'
   });
-  state.calendar_scrolling_observer = new IntersectionObserver((entries) => {
+  gc_calendar_scrolling_observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
-        if (state.is_updating) return;
-        state.is_updating = true;
-        elements.today_frame.classList.remove('today');
+        if (gc_is_updating) return;
+        gc_is_updating = true;
+        gc_today_frame.classList.remove('today');
         const SHIFTING_BY = 5;
         let shifting_by = SHIFTING_BY;
         if (entry.target === Global.elements.marker_blocks[0]) {
           shifting_by = -SHIFTING_BY;
         }
-        const week = current_weeks[0];
+        const week = gc_current_weeks[0];
 
-        state.base_day_number += shifting_by*7;
+        gc_base_day_number += shifting_by*7;
         let date = new Date();
         const today = Math.floor(date.getTime()/MS_IN_DAY);
-        const offset = today - state.base_day_number;
+        const offset = today - gc_base_day_number;
 
-        date.setTime(state.base_day_number*MS_IN_DAY);
-        const focusMonth = state.focused_day_date.getMonth();
-        backing_days.forEach((day, index) => {
+        date.setTime(gc_base_day_number*MS_IN_DAY);
+        const focusMonth = gc_focused_day_date.getMonth();
+        gc_backing_days.forEach((day, index) => {
           day.children[0].textContent = date.getDate();
           day._day_number = Math.floor(date.getTime() / MS_IN_DAY);
           if (day._day_number == today) {
             day.classList.add('today');
-            elements.today_frame = day;
+            gc_today_frame = day;
           }
           date.setDate(date.getDate() + 1);
         });
-        refocusMonth(backing_days);
+        refocusMonth(gc_backing_days);
         renderBars();
-
-        // swapping UI
         swapBuffers(shifting_by*week.offsetHeight);
       }
     });
   }, {
     root: Global.elements.calendar_body,
   });
-  state.calendar_scrolling_observer.observe(Global.elements.marker_blocks[0]);
-  state.calendar_scrolling_observer.observe(Global.elements.marker_blocks[1]);
-  let date = new Date();
-  state.focused_day_date = new Date();
-  const today_epoch = Math.floor(date.getTime() / MS_IN_DAY);
-  const today_weekday = (date.getDay()+6)%7;
-  elements.today_frame = Global.elements.calendar_content.children[8].children[today_weekday];
-  elements.today_frame.classList.add('today');
+  gc_focused_day_date = new Date();
 
-  state.base_day_number = today_epoch-today_weekday-7*7;
-  date.setTime(state.base_day_number*MS_IN_DAY);
-
-  monthDisplay.set(state.focused_day_date);
-  const focusMonth = state.focused_day_date.getMonth();
-  
-  const weeks = current_weeks;
+  const weeks = gc_current_weeks;
   for (let i = 0; i < weeks.length; i++) {
     weeks[i]._index = i;
-    const days = weeks[i].querySelectorAll('.day-cell');
+    const days = weeks[i].children;
     for (let j = 0; j < days.length; j++) {
       days[j]._index = j; // docs: @set(day-cell._index)
     }
   }
-
-  current_days.forEach((day, index) => {
-    day.children[0].textContent = date.getDate();
-    day._day_number = Math.floor(date.getTime() / MS_IN_DAY);
-    if (date.getMonth() == focusMonth) {
-      day.classList.add('focused-month');
-    }
-    date.setDate(date.getDate() + 1);
-  });
-  setMonthObserver(focus.month);
 }
 
 // @working: update function should update the calendar content with the
@@ -231,70 +198,64 @@ export function init() {
 // a generation of evenents and hints. Plus we need to move all the code
 // related to calendar rendering here and refactor and compress it if
 // possible
-export function update() {
-  monthDisplay.set(state.focused_day_date);
+function update() {
+  monthDisplay.set(gc_focused_day_date);
   let date = new Date();
   const today = Math.floor(date.getTime()/MS_IN_DAY);
-  const offset = today - state.base_day_number;
-  date.setTime(state.base_day_number*MS_IN_DAY);
-  const focusMonth = state.focused_day_date.getMonth();
+  const offset = today - gc_base_day_number;
+  date.setTime(gc_base_day_number*MS_IN_DAY);
+  const focusMonth = gc_focused_day_date.getMonth();
   iterateOverDays((day) => {
     day.children[0].textContent = date.getDate();
     day._day_number = Math.floor(date.getTime() / MS_IN_DAY);
     if (day._day_number == today) {
       day.classList.add('today');
-      elements.today_frame = day;
+      gc_today_frame = day;
     }
     date.setDate(date.getDate() + 1);
   });
-  refocusMonth();
+  refocusMonth(gc_current_days);
   setMonthObserver();
 }
 
 export function swapBuffers(shift = 0) {
   const new_top = Global.elements.calendar_body.scrollTop - shift;
 
-  const backing_calendar = Global.elements.calendar_content;
-  Global.elements.calendar_content.replaceWith(backing_buffer);
-  Global.elements.calendar_content = backing_buffer;
-  backing_buffer = backing_calendar;
+  Global.elements.calendar_content.replaceWith(gc_backing_buffer);
+  [Global.elements.calendar_content, gc_backing_buffer] = 
+   [gc_backing_buffer, Global.elements.calendar_content]; 
 
   Global.elements.calendar_body.classList.replace('scroll-smooth', 'scroll-auto');
   Global.elements.calendar_body.scrollTop = new_top;
   Global.elements.calendar_body.classList.replace('scroll-auto', 'scroll-smooth');
 
   // swaping meta data
-  const swap_days = backing_days;
-  backing_days = current_days;
-  current_days = swap_days;
-  const swap_weeks = backing_weeks;
-  backing_weeks = current_weeks;
-  current_weeks = swap_weeks;
-  const swap_blocks = backing_marker_blocks;
-  backing_marker_blocks = Global.elements.marker_blocks;
-  Global.elements.marker_blocks = swap_blocks;
+  [gc_backing_days,  gc_current_days] = [gc_current_days,  gc_backing_days];
+  [gc_backing_weeks, gc_current_weeks] = [gc_current_weeks, gc_backing_weeks];
+  [gc_backing_marker_blocks, Global.elements.marker_blocks] =
+    [Global.elements.marker_blocks, gc_backing_marker_blocks];
 
-  state.calendar_resize_observer.disconnect();
-  state.calendar_resize_observer.observe(Global.elements.calendar_content);
-  state.calendar_scrolling_observer.disconnect();
-  state.calendar_scrolling_observer.observe(Global.elements.marker_blocks[0]);
-  state.calendar_scrolling_observer.observe(Global.elements.marker_blocks[1]);
+  gc_calendar_resize_observer.disconnect();
+  gc_calendar_resize_observer.observe(Global.elements.calendar_content);
+  gc_calendar_scrolling_observer.disconnect();
+  gc_calendar_scrolling_observer.observe(Global.elements.marker_blocks[0]);
+  gc_calendar_scrolling_observer.observe(Global.elements.marker_blocks[1]);
 
   update();
 }
 
 export function startInstantiating(identifier) {
-  state.is_instantiating = true;
-  state.instantiating_event_identifier = identifier;
-  state.selected_day_counter = 0;
-  state.selection_intervals = [];
+  gc_is_instantiating = true;
+  gc_instantiating_event_identifier = identifier;
+  gc_selected_day_counter = 0;
+  gc_selection_intervals = [];
   renderBars();
   document.addEventListener("keydown", saveSelectionsCallback);
 }
 
 // @nocheckin: We should call get bounding Rect only once
 function resizeBar(bar, start, end) {
-  const week = current_weeks[0];
+  const week = gc_current_weeks[0];
   let new_width = week.children[end].getBoundingClientRect().right-
     week.children[start].getBoundingClientRect().left-1;
   bar.style.width = new_width+'px';
@@ -315,10 +276,10 @@ function iterateOverDays(dayCallback) { // @nocheckin
 }
 
 function setMonthObserver() {
-  state.top_month_week_observer.disconnect();
-  state.bottom_month_week_observer.disconnect();
+  gc_top_month_week_observer.disconnect();
+  gc_bottom_month_week_observer.disconnect();
   const weeks = Global.elements.calendar_content.children;
-  const month = state.focused_day_date.getMonth();
+  const month = gc_focused_day_date.getMonth();
 
   let test_date = new Date(); // what is that?
   for (let i = 0; i < weeks.length; i++) {
@@ -329,7 +290,7 @@ function setMonthObserver() {
     const day = row.children[6];
     test_date.setTime(Number(day._day_number)*MS_IN_DAY);
     if (test_date.getMonth() == month) {
-      state.top_month_week_observer.observe(row);
+      gc_top_month_week_observer.observe(row);
       break;
     }
   }
@@ -341,7 +302,7 @@ function setMonthObserver() {
     const day = row.children[0];
     test_date.setTime(Number(day._day_number)*MS_IN_DAY);
     if (test_date.getMonth() == month) {
-      state.bottom_month_week_observer.observe(row);
+      gc_bottom_month_week_observer.observe(row);
       break;
     }
   }
@@ -352,69 +313,69 @@ function setMonthObserver() {
 // generation of dom can take a bit of time.
 
 function getCellNum(pos_x) {
-  const week_rect = state.week.getBoundingClientRect(); 
+  const week_rect = gc_week.getBoundingClientRect(); 
   const rel_pos_x = pos_x-week_rect.left;
   return Math.floor(rel_pos_x/(week_rect.width/7.0));
 }
 
 Global.elements.calendar_body.addEventListener('mousedown', e => {
-  if (e.button !== 0 || !state.is_instantiating) return;
+  if (e.button !== 0 || !gc_is_instantiating) return;
 
   // handle highlighting
   let new_bar = e.target.closest('.event-occurrence');
-  if (state.is_selected) {
-    let old_bar = state.target.closest('.event-occurrence');
+  if (gc_is_selected) {
+    let old_bar = gc_target.closest('.event-occurrence');
     if (new_bar !== old_bar) {
-      state.target.closest('.event-occurrence').classList.remove('highlight-border');
-      state.is_selected = false;
+      gc_target.closest('.event-occurrence').classList.remove('highlight-border');
+      gc_is_selected = false;
       document.removeEventListener("keydown", deleteSelectedElement);
     }
   }
 
-  state.is_dragging = true;
-  state.start_x = e.clientX;
-  state.target = e.target;
+  gc_is_dragging = true;
+  gc_start_x = e.clientX;
+  gc_target = e.target;
 
-  state.week = e.target.closest('.week-row');
-  state.cells = state.week.getElementsByClassName('day-cell');
+  gc_week = e.target.closest('.week-row');
+  gc_cells = gc_week.getElementsByClassName('day-cell');
 
   const clicked_cell_num = getCellNum(e.clientX);
 
   if (new_bar && new_bar._type === TAKEN) {
     const rect = new_bar.getBoundingClientRect();
-    state.is_created = true;
+    gc_is_created = true;
     if (rect.right - e.clientX < e.clientX - rect.left) { // dragging right end
-      state.start_cell_num = new_bar.closest('.day-cell')._index;
-      state.prev_focus_num = state.start_cell_num + new_bar._width-1;
+      gc_start_cell_num = new_bar.closest('.day-cell')._index;
+      gc_prev_focus_num = gc_start_cell_num + new_bar._width-1;
     } else { // dragging left end
-      state.prev_focus_num = new_bar.closest('.day-cell')._index;
-      state.start_cell_num = state.prev_focus_num + new_bar._width-1;
+      gc_prev_focus_num = new_bar.closest('.day-cell')._index;
+      gc_start_cell_num = gc_prev_focus_num + new_bar._width-1;
     }
   } else {
-    const duration = Global.getEventsDuration(state.instantiating_event_identifier);
-    if (duration <= state.selected_day_counter) {
-      state.is_dragging = false;
+    const duration = Global.getEventsDuration(gc_instantiating_event_identifier);
+    if (duration <= gc_selected_day_counter) {
+      gc_is_dragging = false;
       return;
     }
-    state.start_cell_num = clicked_cell_num;
-    state.prev_focus_num = state.start_cell_num;
+    gc_start_cell_num = clicked_cell_num;
+    gc_prev_focus_num = gc_start_cell_num;
   }
 });
 
 Global.elements.calendar_body.addEventListener('mouseup', e => {
   let bar = null
-  if (!state.is_creating && !state.is_instantiating && (bar = state.target.closest('.event-occurrence')) &&
+  if (!gc_is_creating && !gc_is_instantiating && (bar = gc_target.closest('.event-occurrence')) &&
   bar._type === TAKEN) {
     bar.classList.toggle('highlight-border');
-    if (state.is_selected ^= true) {
+    if (gc_is_selected ^= true) {
       document.addEventListener("keydown", deleteSelectedElement);
     } else {
       document.removeEventListener("keydown", deleteSelectedElement);
     }
   }
 
-  state.is_created = false;
-  state.is_dragging = false;
+  gc_is_created = false;
+  gc_is_dragging = false;
 });
 
 
@@ -444,7 +405,7 @@ function eraseInterval(intervals, start, end) {
 
 function deleteSelectedElement(e) {
   if (e.key === "Backspace") {
-    const bar = state.target.closest('.event-occurrence');
+    const bar = gc_target.closest('.event-occurrence');
     const day = bar.closest('.day-cell');
     const day_number = day._day_number;
     const week = day.closest('.week-row');
@@ -452,10 +413,10 @@ function deleteSelectedElement(e) {
     const start = day._index+week_shift;
     const end = start+bar._width-1;
     for (let i = start; i <= end; i++) {
-      state.view_day_data[i]=AVAILABLE;
+      gc_view_day_data[i]=AVAILABLE;
     }
-    state.selected_day_counter -= bar._width;
-    const intervals = state.selection_intervals;
+    gc_selected_day_counter -= bar._width;
+    const intervals = gc_selection_intervals;
     eraseInterval(intervals, day_number, day_number+bar._width-1);
     renderBars();
   }
@@ -466,11 +427,11 @@ function deleteSelectedElement(e) {
 */
 function saveSelectionsCallback(e) {
   if (e.key === "Enter") {
-    state.is_instantiating = false;
+    gc_is_instantiating = false;
     document.removeEventListener("keydown", saveSelectionsCallback);
     renderBars();
-    const event_identifier = state.instantiating_event_identifier; 
-    const intervals = state.selection_intervals;
+    const event_identifier = gc_instantiating_event_identifier; 
+    const intervals = gc_selection_intervals;
     const writer = Api.createBufferWriter(Api.CREATE, Api.OCCURRENCES_MAP);
     Io.writeInt32(writer, event_identifier);
     Io.writeArrayOfInt32Pairs(writer, intervals);
@@ -521,7 +482,7 @@ function saveSelectionsCallback(e) {
           }
         }
 
-        state.view_day_data.fill(0);
+        gc_view_day_data.fill(0);
         renderBars();
       });
     }).catch(e => {
@@ -546,41 +507,41 @@ function createBar(position, start_day, end_day, color) {
   resizeBar(bar, start_day, end_day);
   bar._width = end_day-start_day+1; // docs: @set(bar._width)
 
-  state.bar_list.push(bar);
+  gc_bar_list.push(bar);
   return bar;
 }
 
 /**
  * renders all bars for the current view of calendar as a function
- * of `state.view_day_data`. All bars are recreated from 0 and
- * their references are stored in `state.bar_list` to be deleted on the
+ * of `gc_view_day_data`. All bars are recreated from 0 and
+ * their references are stored in `gc_bar_list` to be deleted on the
  * next render call. As this funciton is called only once per modification, we
  * don't really care for now how expensive it may be.
  */
 export function renderBars() {
-  for (const bar of state.bar_list) {
+  for (const bar of gc_bar_list) {
     bar.remove();
   }
-  state.bar_list.length = 0;
+  gc_bar_list.length = 0;
   
-  if (state.is_instantiating) {
-    const view_day_data = state.view_day_data;
+  if (gc_is_instantiating) {
+    const view_day_data = gc_view_day_data;
 
     let start = 0;
     let end = 1;
     let region_type = view_day_data[0];
     for (; end < view_day_data.length; end++) {
       if (region_type !== view_day_data[end] || end % 7 === 0) {
-        if (region_type !== NOT_AVAILABLE && (region_type === TAKEN || state.is_instantiating)) {
+        if (region_type !== NOT_AVAILABLE && (region_type === TAKEN || gc_is_instantiating)) {
           const week_number = Math.floor(start / 7);
-          const week = backing_weeks[week_number];
+          const week = gc_backing_weeks[week_number];
           const start_day = start % 7;
           let end_day = (end-1) % 7;
 
           let bar = createBar(0, start_day, end_day, getColor(region_type));
           bar._type = region_type;
           if (region_type == TAKEN) {
-            const event_indetifier = state.instantiating_event_identifier;
+            const event_indetifier = gc_instantiating_event_identifier;
             if (!event_indetifier) {
               console.error('unreachable');
             }
@@ -601,7 +562,7 @@ export function renderBars() {
     }
   }
 
-  const diff = state.base_day_number - Global.data.base_day_number;
+  const diff = gc_base_day_number - Global.data.base_day_number;
   const day_occurrences_start = Math.max(diff, 0);
   const day_occurrences_end   = Math.min(diff+DAY_COUNT, Global.data.day_occurrences.length);
 
@@ -641,7 +602,7 @@ export function renderBars() {
       for (let level = 0; level < 5; level++) {
         let level_is_ok = true;
         for (let day = week_number*7; day < day_view_index; day++) {
-          const day_occrs = backing_days[day].querySelectorAll('.event-occurrence');
+          const day_occrs = gc_backing_days[day].querySelectorAll('.event-occurrence');
           for (const occr of day_occrs) {
             if (day+occr._width >= start_view_pos) {
               level_is_ok = false;
@@ -666,7 +627,7 @@ export function renderBars() {
           const event_name = Global.data.events_name[event_index];
 
           bar.textContent = event_name;
-          backing_days[start_view_pos].getElementsByClassName('bar-holder')[0].append(bar);
+          gc_backing_days[start_view_pos].getElementsByClassName('bar-holder')[0].append(bar);
           break;
         }
       }
@@ -690,7 +651,7 @@ export function renderBars() {
 }
 
 function mergeIntervals() {
-  const intervals = state.selection_intervals;
+  const intervals = gc_selection_intervals;
   intervals.sort((a, b) => a[0] - b[0]);
   let i = 0
   while (i < intervals.length-1) {
@@ -700,40 +661,40 @@ function mergeIntervals() {
     }
     i++;
   }
-  console.log("intervals: ", state.selection_intervals);
+  console.log("intervals: ", gc_selection_intervals);
 }
 
 Global.elements.calendar_body.addEventListener('mousemove', e => {
-  if (!state.is_dragging) return;
+  if (!gc_is_dragging) return;
 
   const d = 50;
-  const week_shift = state.week._index*7; 
-  const view_day_data = state.view_day_data;
-  const intervals = state.selection_intervals;
-  if ((state.start_x-e.clientX>d || state.start_x-e.clientX<-d)
-    && !state.is_created) {
+  const week_shift = gc_week._index*7; 
+  const view_day_data = gc_view_day_data;
+  const intervals = gc_selection_intervals;
+  if ((gc_start_x-e.clientX>d || gc_start_x-e.clientX<-d)
+    && !gc_is_created) {
     
-    const day_number = state.target.closest('.day-cell')._day_number;
-    if (view_day_data[state.start_cell_num+week_shift] === AVAILABLE) {
-      view_day_data[state.start_cell_num+week_shift] = TAKEN;
-      state.selected_day_counter += 1;
+    const day_number = gc_target.closest('.day-cell')._day_number;
+    if (view_day_data[gc_start_cell_num+week_shift] === AVAILABLE) {
+      view_day_data[gc_start_cell_num+week_shift] = TAKEN;
+      gc_selected_day_counter += 1;
       renderBars();
       intervals.push([day_number, day_number]); // correct
       mergeIntervals();
     }
-    state.is_created = true;
+    gc_is_created = true;
 
-  } else if (state.is_created) {
+  } else if (gc_is_created) {
     const num = getCellNum(e.clientX);
     // we don't do anything, if user points to the same position
-    if (num === state.prev_focus_num) {
+    if (num === gc_prev_focus_num) {
       return;
     }
 
-    let delete_start = Math.min(state.prev_focus_num, num)+week_shift;
-    let delete_end = Math.max(state.prev_focus_num, num)+week_shift;
-    let fill_start = Math.min(state.start_cell_num, num)+week_shift;
-    let fill_end = Math.max(state.start_cell_num, num)+week_shift;
+    let delete_start = Math.min(gc_prev_focus_num, num)+week_shift;
+    let delete_end = Math.max(gc_prev_focus_num, num)+week_shift;
+    let fill_start = Math.min(gc_start_cell_num, num)+week_shift;
+    let fill_end = Math.max(gc_start_cell_num, num)+week_shift;
 
     let change_counter = 0;
     const undo_list = [];
@@ -751,8 +712,8 @@ Global.elements.calendar_body.addEventListener('mousemove', e => {
       }
     }
 
-    const duration = Global.getEventsDuration(state.instantiating_event_identifier);
-    if (duration < state.selected_day_counter+change_counter) {
+    const duration = Global.getEventsDuration(gc_instantiating_event_identifier);
+    if (duration < gc_selected_day_counter+change_counter) {
       for (const i of undo_list) {
         view_day_data[i] = TAKEN;
       }
@@ -764,12 +725,12 @@ Global.elements.calendar_body.addEventListener('mousemove', e => {
         view_day_data[i] = TAKEN;
       }
     }
-    state.selected_day_counter += change_counter;
+    gc_selected_day_counter += change_counter;
 
-    const week_start = state.week.querySelector('.day-cell')._day_number;
+    const week_start = gc_week.querySelector('.day-cell')._day_number;
     const week_end = week_start+6;
 
-    const base_day = state.base_day_number;
+    const base_day = gc_base_day_number;
     // deliting all weeks intervals
 
     eraseInterval(intervals, week_start, week_end);
@@ -792,7 +753,7 @@ Global.elements.calendar_body.addEventListener('mousemove', e => {
     }
     mergeIntervals();
 
-    state.prev_focus_num = num;
+    gc_prev_focus_num = num;
     renderBars();
   }
 });
