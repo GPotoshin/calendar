@@ -198,6 +198,7 @@ export function init() {
 // possible
 function update() {
   let date = pool_date;
+  date.setTime(Date.now());
   const today = Math.floor(date.getTime()/MS_IN_DAY);
   const offset = today - gc_base_day_number;
   date.setTime(gc_base_day_number*MS_IN_DAY);
