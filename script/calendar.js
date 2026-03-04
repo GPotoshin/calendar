@@ -136,9 +136,12 @@ export function init() {
 
     if (gc_is_animating) return;
 
-    if (e.deltaY > 0) {
+    const threshold = 15;
+    if (e.deltaY > threshold) {
+      console.log("DOWN");
       animateMonthTransition(DOWN);
-    } else if (e.deltaY < 0) {
+    } else if (e.deltaY < -threshold) {
+      console.log("UP");
       animateMonthTransition(UP);
     }
 }, { passive: false });
@@ -180,23 +183,21 @@ function animateMonthTransition(direction) {
   gc_base_day_number = Math.floor(date.getTime()/MS_IN_DAY);
   update(gc_backing.days);
 
+  const initial_pos = Number(gc_selected.content.style.order);
   if (direction === DOWN) {
+    gc_selected.content.style.order = '1';
+    gc_backing.content.style.order = '2';
+  } else {
     gc_selected.content.style.order = '2';
     gc_backing.content.style.order = '1';
-    gc_track.style.transition = 'none';
-    gc_track.style.transform = 'translateY(50%)';
-    gc_track.offsetHeight;
-    gc_track.style.transition = 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
-    gc_track.style.transform = 'translateY(-50%)'
-  } else {
-    gc_selected.content.style.order = '1';
-    gc_backing.content.style.order =  '2';
-    gc_track.style.transition = 'none';
-    gc_track.style.transform = 'translateY(0%)';
-    gc_track.offsetHeight;
-    gc_track.style.transition = 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
-    gc_track.style.transform = 'translateY(+50%)'
   }
+
+  gc_track.style.transition = 'none';
+  gc_track.style.transform = `translateY(-${gc_selected.content.offsetTop}px)`;
+  gc_track.offsetHeight;
+
+  gc_track.style.transition = 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+  gc_track.style.transform = `translateY(-${gc_backing.content.offsetTop}px)`;
 
   gc_track.addEventListener('transitionend', () => {
     [gc_selected, gc_backing] = [gc_backing, gc_selected];
