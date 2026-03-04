@@ -18,15 +18,19 @@ const gc_weeks_1 = gc_calendar_content_1.querySelectorAll('.week-row');
 const gc_weeks_2 = gc_calendar_content_2.querySelectorAll('.week-row');
 const gc_days_1 = gc_calendar_content_1.querySelectorAll('.day-cell');
 const gc_days_2 = gc_calendar_content_2.querySelectorAll('.day-cell');
-let gc_selected = {
+let gc_current = {
   content: gc_calendar_content_1,
   weeks: gc_weeks_1,
   days: gc_days_1,
+  bars: [],
+  days_data: new Uint32Array(gc_weeks_1.length*7),
 };
 let gc_backing = {
   content: gc_calendar_content_2,
   weeks: gc_weeks_2,
   days: gc_days_2,
+  bars: [],
+  days_data: new Uint32Array(gc_weeks_1.length*7),
 };
 
 let gc_today_frame = gc_days_1[0];
@@ -50,8 +54,6 @@ let gc_top_month_week_observer = null;
 let gc_bottom_month_week_observer = null;
 let gc_calendar_resize_observer = null;
 let gc_instantiating_event_identifier = undefined;
-let gc_view_day_data = new Uint32Array(gc_weeks_1.length*7);
-let gc_bar_list = []; // contains all bars.
 let gc_selected_day_counter = 0;
 let gc_week_height = gc_weeks_1[0].getBoundingClientRect().height;
 
@@ -126,10 +128,7 @@ export function update(days) {
 
 export function init() {
   const calendar_body = Global.elements.calendar_body;
-
-  pool_date.setTime(Date.now());
-  const week_day = (pool_date.getDay()+6)%7;
-  gc_base_day_number = Math.floor(pool_date.getTime()/MS_IN_DAY)-(7*7+week_day);
+  gc_base_day_number = newBaseDate(gc_focused_month, pool_date);
 
   Global.elements.calendar_body.addEventListener('wheel', (e) => {
     e.preventDefault();
@@ -138,25 +137,23 @@ export function init() {
 
     const threshold = 15;
     if (e.deltaY > threshold) {
-      console.log("DOWN");
       animateMonthTransition(DOWN);
     } else if (e.deltaY < -threshold) {
-      console.log("UP");
       animateMonthTransition(UP);
     }
 }, { passive: false });
   gc_calendar_resize_observer = new ResizeObserver(() => {
-    const week = gc_selected.weeks[0];
+    const week = gc_current.weeks[0];
     let new_width = week.children[1].getBoundingClientRect().right-
       week.children[0].getBoundingClientRect().left;
-    for (const bar of gc_bar_list) {
+    for (const bar of gc_current.bars) {
       bar.style.width = new_width*bar._width+'px';
     }
     gc_week_height = week.getBoundingClientRect().height;
   });
   gc_calendar_resize_observer.observe(Global.elements.calendar_body);
 
-  const weeks = gc_selected.weeks;
+  const weeks = gc_current.weeks;
   for (let i = 0; i < weeks.length; i++) {
     weeks[i]._index = i;
     const days = weeks[i].children;
@@ -164,9 +161,14 @@ export function init() {
       days[j]._index = j; // docs: @set(day-cell._index)
     }
   }
-  update(gc_selected.days);
+  update(gc_current.days);
 }
 
+function newBaseDate(focused, pool_date) {
+  pool_date.setTime(focused.getTime());
+  pool_date.setDate(focused.getDate() - (focused.getDay()+6)%7);
+  return Math.floor(pool_date.getTime()/MS_IN_DAY);
+}
 
 function animateMonthTransition(direction) {
   if (gc_is_animating) return;
@@ -177,32 +179,28 @@ function animateMonthTransition(direction) {
   } else {
     gc_focused_month.setMonth(gc_focused_month.getMonth()-1);
   }
-  const date = pool_date;
-  date.setTime(gc_focused_month.getTime());
-  date.setDate(gc_focused_month.getDate() - (gc_focused_month.getDay()+6)%7);
-  gc_base_day_number = Math.floor(date.getTime()/MS_IN_DAY);
+  gc_base_day_number = newBaseDate(gc_focused_month, pool_date);
   update(gc_backing.days);
+  renderBars(gc_backing);
 
-  const initial_pos = Number(gc_selected.content.style.order);
   if (direction === DOWN) {
-    gc_selected.content.style.order = '1';
+    gc_current.content.style.order = '1';
     gc_backing.content.style.order = '2';
   } else {
-    gc_selected.content.style.order = '2';
+    gc_current.content.style.order = '2';
     gc_backing.content.style.order = '1';
   }
 
   gc_track.style.transition = 'none';
-  gc_track.style.transform = `translateY(-${gc_selected.content.offsetTop}px)`;
+  gc_track.style.transform = `translateY(-${gc_current.content.offsetTop}px)`;
   gc_track.offsetHeight;
 
   gc_track.style.transition = 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
   gc_track.style.transform = `translateY(-${gc_backing.content.offsetTop}px)`;
 
   gc_track.addEventListener('transitionend', () => {
-    [gc_selected, gc_backing] = [gc_backing, gc_selected];
-    
-    gc_is_animating = false;
+    [gc_current, gc_backing] = [gc_backing, gc_current];
+    setTimeout(() => { gc_is_animating = false; }, 10);
   }, { once: true });
 }
 
@@ -211,7 +209,7 @@ export function startInstantiating(identifier) {
   gc_instantiating_event_identifier = identifier;
   gc_selected_day_counter = 0;
   gc_selection_intervals = [];
-  renderBars();
+  renderBars(gc_current);
   document.addEventListener("keydown", saveSelectionsCallback);
 }
 
@@ -344,7 +342,7 @@ function deleteSelectedElement(e) {
     gc_selected_day_counter -= bar._width;
     const intervals = gc_selection_intervals;
     eraseInterval(intervals, day_number, day_number+bar._width-1);
-    renderBars();
+    renderBars(gc_current);
   }
 }
 
@@ -355,7 +353,7 @@ function saveSelectionsCallback(e) {
   if (e.key === "Enter") {
     gc_is_instantiating = false;
     document.removeEventListener("keydown", saveSelectionsCallback);
-    renderBars();
+    renderBars(gc_current);
     const event_identifier = gc_instantiating_event_identifier; 
     const intervals = gc_selection_intervals;
     const writer = Api.createBufferWriter(Api.CREATE, Api.OCCURRENCES_MAP);
@@ -409,7 +407,7 @@ function saveSelectionsCallback(e) {
         }
 
         gc_view_day_data.fill(0);
-        renderBars();
+        renderBars(gc_current);
       });
     }).catch(e => {
         console.error("Could not store ", e);
@@ -433,25 +431,24 @@ function createBar(position, start_day, end_day, color) {
   resizeBar(bar, start_day, end_day);
   bar._width = end_day-start_day+1; // docs: @set(bar._width)
 
-  gc_bar_list.push(bar);
   return bar;
 }
 
 /**
  * renders all bars for the current view of calendar as a function
  * of `gc_view_day_data`. All bars are recreated from 0 and
- * their references are stored in `gc_bar_list` to be deleted on the
+ * their references are stored in `.bars` to be deleted on the
  * next render call. As this funciton is called only once per modification, we
  * don't really care for now how expensive it may be.
  */
-export function renderBars() {
-  for (const bar of gc_bar_list) {
+export function renderBars(target = gc_current) {
+  for (const bar of target.bars) {
     bar.remove();
   }
-  gc_bar_list.length = 0;
+  target.bars.length = 0;
   
   if (gc_is_instantiating) {
-    const view_day_data = gc_view_day_data;
+    const view_day_data = target.days_data;
 
     let start = 0;
     let end = 1;
@@ -460,11 +457,12 @@ export function renderBars() {
       if (region_type !== view_day_data[end] || end % 7 === 0) {
         if (region_type !== NOT_AVAILABLE && (region_type === TAKEN || gc_is_instantiating)) {
           const week_number = Math.floor(start / 7);
-          const week = gc_backing_weeks[week_number];
+          const week = target.weeks[week_number];
           const start_day = start % 7;
           let end_day = (end-1) % 7;
 
           let bar = createBar(0, start_day, end_day, getColor(region_type));
+          target.bars.push(bar);
           bar._type = region_type;
           if (region_type == TAKEN) {
             const event_indetifier = gc_instantiating_event_identifier;
@@ -547,6 +545,7 @@ export function renderBars() {
             (day_view_index-1)%7,
             palette.grey,
           );
+          target.bars.push(bar);
           const occurrence_index = Global.data.occurrences_map.get(occurrence_identifier);
           const event_identifier = Global.data.occurrences_event_identifiers[occurrence_index];
           const event_index = Global.data.events_map.get(event_identifier);
@@ -595,7 +594,7 @@ Global.elements.calendar_body.addEventListener('mousemove', e => {
 
   const d = 50;
   const week_shift = gc_week._index*7; 
-  const view_day_data = gc_view_day_data;
+  const view_day_data = gc_current.days_data;
   const intervals = gc_selection_intervals;
   if ((gc_start_x-e.clientX>d || gc_start_x-e.clientX<-d)
     && !gc_is_created) {
@@ -604,7 +603,7 @@ Global.elements.calendar_body.addEventListener('mousemove', e => {
     if (view_day_data[gc_start_cell_num+week_shift] === AVAILABLE) {
       view_day_data[gc_start_cell_num+week_shift] = TAKEN;
       gc_selected_day_counter += 1;
-      renderBars();
+      renderBars(gc_current);
       intervals.push([day_number, day_number]); // correct
       mergeIntervals();
     }
@@ -680,6 +679,6 @@ Global.elements.calendar_body.addEventListener('mousemove', e => {
     mergeIntervals();
 
     gc_prev_focus_num = num;
-    renderBars();
+    renderBars(gc_current);
   }
 });
