@@ -47,7 +47,6 @@ Calendar.init();
           EventInformation.loadTemplate();
           CalendarInformation.loadTemplate();
           Calendar.renderBars();
-          Calendar.swapBuffers();
         });
     })
     .catch(error => {

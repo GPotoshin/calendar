@@ -2,8 +2,6 @@ import * as DM from './data_manager.js';
 
 export let elements = {
   calendar_body: document.getElementById('calendar-body'),
-  calendar_content: document.getElementById('calendar-content'),
-  marker_blocks: document.getElementsByClassName('block-marker'),
   month_display: document.getElementById('month-display'),
   right_click_menu: document.getElementById('right-click-menu'),
   side_menu: document.createElement('div'),
@@ -13,6 +11,7 @@ export let elements = {
   dataListContainer: null,
   views: [document.getElementsByClassName('view-content')[0], null],
 }
+
 
 export let callbacks = {
   handleTyping: {func: null, obj: null},

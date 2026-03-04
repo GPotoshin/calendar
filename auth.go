@@ -240,12 +240,11 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
   type DayData struct {}
   type WeekData struct { Days [7]DayData }
   type BlockData struct { Weeks []WeekData }
-  type MonthData struct { Blocks [3]BlockData }
-  var block_sizes = []int{2, 16, 2}
+  type MonthData struct { Blocks [2]BlockData }
+  var block_sizes = []int{6, 6}
   var data MonthData
   data.Blocks[0] = BlockData{Weeks: make([]WeekData, block_sizes[0])}
   data.Blocks[1] = BlockData{Weeks: make([]WeekData, block_sizes[1])}
-  data.Blocks[2] = BlockData{Weeks: make([]WeekData, block_sizes[2])}
   var buf bytes.Buffer
   err = t.Execute(&buf, data)
 

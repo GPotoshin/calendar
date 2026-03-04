@@ -13,12 +13,13 @@
 </div>
 
 <div id="calendar-body" class="scrollable-box scroll-smooth">
-  <div id="calendar-content" class="v-container">
-    {{template "weeksblock" (index .Blocks 0)}}
-    <div class="block-marker"></div>
-    {{template "weeksblock" (index .Blocks 1)}}
-    <div class="block-marker"></div>
-    {{template "weeksblock" (index .Blocks 2)}}
+  <div id="calendar-track">
+    <div id="calendar-content-1" class="v-container">
+      {{template "weeksblock" (index .Blocks 0)}}
+    </div>
+    <div id="calendar-content-2" class="v-container">
+      {{template "weeksblock" (index .Blocks 1)}}
+    </div>
   </div>
 </div>
 {{ end }}
