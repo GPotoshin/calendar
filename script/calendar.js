@@ -56,7 +56,18 @@ let gc_calendar_resize_observer = null;
 let gc_instantiating_event_identifier = undefined;
 let gc_selected_day_counter = 0;
 let gc_week_height = gc_weeks_1[0].getBoundingClientRect().height;
+let gc_week_coordinates = [];
 
+{
+  const week = gc_weeks_1[0];
+  for (let i = 0; i < 7; i++) {
+    const rect = week.children[i].getBoundingClientRect();
+    gc_week_coordinates[i] = {
+      right: rect.right,
+      left: rect.left,
+    };
+  }
+}
 
 export const WEEK_COUNT = gc_weeks_1.length;
 const DAY_COUNT = WEEK_COUNT*7;
@@ -109,6 +120,7 @@ export function update(days) {
   const focus_month = gc_focused_month.getMonth();
   monthDisplay.set(gc_focused_month);
   date.setTime(gc_base_day_number*MS_IN_DAY);
+  gc_today_frame.classList.remove('today');
   for (let i = 0; i < days.length; i++) {
     const day = days[i];
     day.children[0].textContent = date.getDate();
@@ -141,16 +153,21 @@ export function init() {
     } else if (e.deltaY < -threshold) {
       animateMonthTransition(UP);
     }
-}, { passive: false });
+  }, { passive: false });
+
   gc_calendar_resize_observer = new ResizeObserver(() => {
     const week = gc_current.weeks[0];
-    let new_width = week.children[1].getBoundingClientRect().right-
-      week.children[0].getBoundingClientRect().left;
-    for (const bar of gc_current.bars) {
-      bar.style.width = new_width*bar._width+'px';
+    for (let i = 0; i < 7; i++) {
+      const rect = week.children[i].getBoundingClientRect();
+      gc_week_coordinates[i].right = rect.right;
+      gc_week_coordinates[i].left = rect.left;
     }
     gc_week_height = week.getBoundingClientRect().height;
+    for (const bar of gc_current.bars) {
+      resizeBar(bar, bar._start, bar._start + bar._width - 1);
+    }
   });
+
   gc_calendar_resize_observer.observe(Global.elements.calendar_body);
 
   const weeks = gc_current.weeks;
@@ -215,11 +232,9 @@ export function startInstantiating(identifier) {
   document.addEventListener("keydown", saveSelectionsCallback);
 }
 
-// @nocheckin: We should call get bounding Rect only once
 function resizeBar(bar, start, end) {
-  const week = gc_weeks_1[0];
-  let new_width = week.children[end].getBoundingClientRect().right-
-    week.children[start].getBoundingClientRect().left-1;
+  let new_width = gc_week_coordinates[end].right-
+    gc_week_coordinates[start].left-1;
   bar.style.width = new_width+'px';
 }
 
@@ -289,8 +304,8 @@ Global.elements.calendar_body.addEventListener('mousedown', e => {
 });
 
 Global.elements.calendar_body.addEventListener('mouseup', e => {
-  let bar = null
-  if (!gc_is_creating && !gc_is_instantiating && (bar = gc_target.closest('.event-occurrence')) &&
+  let bar = null; // @note: there may be a bug in gc_is_created check down bellow
+  if (!gc_is_created && !gc_is_instantiating && (bar = gc_target.closest('.event-occurrence')) &&
   bar._type === TAKEN) {
     bar.classList.toggle('highlight-border');
     if (gc_is_selected ^= true) {
@@ -430,9 +445,10 @@ function createBar(position, start_day, end_day, color) {
   bar.classList = 'event-occurrence event-single no-select';
   bar.style.top = (20*position)+'%';
   Utilities.setBackgroundColor(bar, color);
-  resizeBar(bar, start_day, end_day);
   bar._width = end_day-start_day+1; // docs: @set(bar._width)
   bar._level = position;
+  bar._start = start_day;
+  resizeBar(bar, start_day, end_day);
 
   return bar;
 }
