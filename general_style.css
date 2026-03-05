@@ -248,3 +248,7 @@ button {
 .min-height-off {
   min-height: 0;
 }
+
+.deleting {
+  opacity: 0.4;
+}

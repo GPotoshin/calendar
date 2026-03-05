@@ -33,6 +33,7 @@ let gc_backing = {
   days_data: new Uint32Array(gc_weeks_1.length*7),
 };
 
+let gc_selected_occurrence = undefined;
 let gc_today_frame = gc_days_1[0];
 let gc_base_day_number = 0;
 let gc_target = null;
@@ -462,16 +463,35 @@ function getEvents(cell) {
 }
 
 function createBar(position, start_day, end_day, color) {
-  let bar = document.createElement('div');
-  bar.classList = 'event-occurrence no-select';
+  let bar = document.createElement('button');
+  bar.classList = 'event-occurrence no-select deletable';
   bar.style.top = (20*position)+'%';
   Utilities.setBackgroundColor(bar, color);
   bar._width = end_day-start_day+1; // docs: @set(bar._width)
   bar._level = position;
   bar._start = start_day;
   resizeBar(bar, start_day, end_day);
+  bar.addEventListener('click', barClickCallback);
 
   return bar;
+}
+
+function barClickCallback(event) {
+  const target = event.currentTarget;
+  const occurrences_identifier = target._data_identifier;
+  if (gc_selected_occurrence === occurrences_identifier) {
+    grayoutOccurrences();
+    gc_selected_occurrence = undefined;
+  } else {
+    gc_selected_occurrence = occurrences_identifier;
+    for (const bar of gc_current.bars) {
+      if (bar._data_identifier === occurrences_identifier) {
+        Utilities.setBackgroundColor(bar, palette.blue);
+      } else {
+        Utilities.setBackgroundColor(bar, palette.base1);
+      }
+    }
+  }
 }
 
 /**

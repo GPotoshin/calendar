@@ -38,6 +38,7 @@ export function deleteValue(map, free_list, identifier) {
     sortedInsert(free_list, index);
     map.delete(identifier);
   }
+  return index;
 }
 
 export function rebaseMap(map, free_list) {

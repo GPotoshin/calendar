@@ -278,7 +278,7 @@ buttons.delete.addEventListener('click', function() {
     throw new Error('delete-target should have a property `_data_identifier` which infers with which piece of data the element is associated');
   }
   const identifier = Number(state.delete_target._data_identifier);
-  state.delete_target.classList.add('disp-none');
+  state.delete_target.classList.add('deleting');
 
   let writer = new Io.BufferWriter();
   switch (state.delete_target.parentElement._identifier) {
@@ -294,7 +294,7 @@ buttons.delete.addEventListener('click', function() {
           state.delete_target.remove();
         })
         .catch(e => {
-          state.delete_target.classList.remove('disp-none');
+          state.delete_target.classList.remove('deleting');
           console.error("Could not delete ", e);
           return;
         });
@@ -311,7 +311,7 @@ buttons.delete.addEventListener('click', function() {
           state.delete_target.remove();
         })
         .catch(e => {
-          state.delete_target.classList.remove('disp-none');
+          state.delete_target.classList.remove('deleting');
           console.error("Could not delete ", e);
           return;
         });
@@ -327,7 +327,7 @@ buttons.delete.addEventListener('click', function() {
           state.delete_target.remove();
         })
         .catch(e => {
-          state.delete_target.classList.remove('disp-none');
+          state.delete_target.classList.remove('deleting');
           console.error("Could not delete ", e);
           return;
         });
@@ -359,7 +359,7 @@ buttons.delete.addEventListener('click', function() {
           return;
         });
       break;
-    case Global.zones_identifier.PERSONAL_NUMBER_MAP:
+    case Global.zones_identifier.STAFF_NUMBER_MAP:
       Api.writeHeader(writer, Api.DELETE, Api.EVENTS_PERSONAL_NUM_MAP);
       Io.writeInt32(writer, Global.getEventSelectionIdentifier());
       Io.writeInt32(writer, identifier);
@@ -372,7 +372,7 @@ buttons.delete.addEventListener('click', function() {
           EventInformation.update();
         })
         .catch(e => {
-          state.delete_target.classList.remove('disp-none');
+          state.delete_target.classList.remove('deleting');
           console.error("Could not delete ", e);
           return;
         });
@@ -391,14 +391,41 @@ buttons.delete.addEventListener('click', function() {
           EventInformation.update();
         })
         .catch(e => {
-          state.delete_target.classList.remove('disp-none');
+          state.delete_target.classList.remove('deleting');
           console.error("Could not delete ", e);
           return;
         });
       break;
     default:
-      state.delete_target.classList.remove('disp-none');
-      throw new Error('delete_target\'s parent should have `_identifier` property with a value from `Global.zones_identifier`');
+      if (state.delete_target.classList.contains('event-occurrence')) {
+        Api.writeHeader(writer, Api.DELETE, Api.OCCURRENCE_MAP);
+        Io.writeInt32(writer, identifier);
+        Api.request(writer)
+          .then(response => {
+            Utilities.throwIfNotOk(response);
+            // @working
+            const index = deleteValue(Global.data.occurrences_map,
+              Global.data.occurrences_free_list,
+              identifier);
+            const intervals = Global.data.occurrences_dates[index];
+            for (let i = 0; i < intervals.length; i++) {
+              for (let j = intervals[i][0]-Global.data.base_day_number;
+                       j <= intervals[i][1]-Global.data.base_day_number;
+                       j++
+              ) {
+                Global.data.day_occurrences[j].filter(v => v !== identifier);
+              }
+            }
+          })
+          .catch(e => {
+          state.delete_target.classList.remove('deleting');
+          console.error("Could not delete ", e);
+        });
+
+      } else {
+        state.delete_target.classList.remove('deleting');
+        throw new Error('delete_target\'s parent should have `_identifier` property with a value from `Global.zones_identifier`');
+      }
   }
 });
 
