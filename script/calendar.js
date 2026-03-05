@@ -166,8 +166,10 @@ export function init() {
 
 function newBaseDate(focused, pool_date) {
   pool_date.setTime(focused.getTime());
-  pool_date.setDate(focused.getDate() - (focused.getDay()+6)%7);
-  return Math.floor(pool_date.getTime()/MS_IN_DAY);
+  pool_date.setHours(0, 0, 0, 0);
+  pool_date.setDate(pool_date.getDate() - (pool_date.getDay()+6)%7);
+  const timezone_offset_ms = pool_date.getTimezoneOffset() * 60 * 1000;
+  return Math.floor((pool_date.getTime()-timezone_offset_ms)/MS_IN_DAY);
 }
 
 function animateMonthTransition(direction) {
@@ -430,6 +432,7 @@ function createBar(position, start_day, end_day, color) {
   Utilities.setBackgroundColor(bar, color);
   resizeBar(bar, start_day, end_day);
   bar._width = end_day-start_day+1; // docs: @set(bar._width)
+  bar._level = position;
 
   return bar;
 }
@@ -526,9 +529,9 @@ export function renderBars(target = gc_current) {
       for (let level = 0; level < 5; level++) {
         let level_is_ok = true;
         for (let day = week_number*7; day < day_view_index; day++) {
-          const day_occrs = gc_backing.days[day].querySelectorAll('.event-occurrence');
+          const day_occrs = target.days[day].querySelectorAll('.event-occurrence');
           for (const occr of day_occrs) {
-            if (day+occr._width >= start_view_pos) {
+            if (occr._level === level && day+occr._width >= start_view_pos) {
               level_is_ok = false;
               break;
             }
@@ -552,7 +555,7 @@ export function renderBars(target = gc_current) {
           const event_name = Global.data.events_name[event_index];
 
           bar.textContent = event_name;
-          gc_backing.days[start_view_pos].getElementsByClassName('bar-holder')[0].append(bar);
+          target.days[start_view_pos].getElementsByClassName('bar-holder')[0].append(bar);
           break;
         }
       }
