@@ -442,7 +442,7 @@ function getEvents(cell) {
 
 function createBar(position, start_day, end_day, color) {
   let bar = document.createElement('div');
-  bar.classList = 'event-occurrence event-single no-select';
+  bar.classList = 'event-occurrence no-select';
   bar.style.top = (20*position)+'%';
   Utilities.setBackgroundColor(bar, color);
   bar._width = end_day-start_day+1; // docs: @set(bar._width)
@@ -562,7 +562,7 @@ export function renderBars(target = gc_current) {
             level,
             start_view_pos%7,
             (day_view_index-1)%7,
-            palette.grey,
+            palette.base1,
           );
           target.bars.push(bar);
           const occurrence_index = Global.data.occurrences_map.get(occurrence_identifier);
@@ -570,7 +570,14 @@ export function renderBars(target = gc_current) {
           const event_index = Global.data.events_map.get(event_identifier);
           const event_name = Global.data.events_name[event_index];
 
-          bar.textContent = event_name;
+          const span_name = document.createElement('span');
+          const span_id   = document.createElement('span');
+          span_name.classList = "event-title";
+          span_id.classList   = "event-id";
+          span_name.textContent = event_name;
+          span_id.textContent   = "#"+occurrence_identifier;
+
+          bar.replaceChildren(span_name, span_id);
           target.days[start_view_pos].getElementsByClassName('bar-holder')[0].append(bar);
           break;
         }

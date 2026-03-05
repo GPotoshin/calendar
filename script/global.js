@@ -55,6 +55,11 @@ export function getEventSelectionIdentifier() {
   return undefined;
 }
 
+export function viewIsInformation() {
+ return zones[Global.zones_identifier.VIEW_TYPE].selection._data_identifier
+    === view_identifier.INFORMATION;
+}
+
 export function getEventsDuration(identifier) {
   const event_index = data.events_map.get(identifier);    
   if (event_index) {

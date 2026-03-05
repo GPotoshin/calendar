@@ -191,21 +191,33 @@
 }
 
 .event-occurrence {
+  position: absolute;
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
   height: 19%;
   min-height: 20px;
   max-height: 30px;
-  position: absolute;
-  color: #000000;
   z-index: 1;
-}
-
-.event-occurrence.event-single {
   border-radius: 9999px;
   margin-left: 0;
   margin-right: 0;
+}
+
+.event-title {
+  flex-grow: 1;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 90%;
+  color: black;
+}
+
+.event-id {
+  position: absolute;
+  right: 10px;
+  pointer-events: none;
 }
 
 .bar-holder {

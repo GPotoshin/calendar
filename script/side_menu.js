@@ -99,7 +99,7 @@ export function buttonClickCallback(event) {
   if (previous_button === current_button) {
     Utilities.setBackgroundColor(current_button, 'transparent');
     zone.selection = null;
-    if (Global.zones[Global.zones_identifier.VIEW_TYPE].selection._data_identifier === Global.view_identifier.INFORMATION) {
+    if (Global.viewIsInformation()) {
       Global.elements.views[Global.view_identifier.INFORMATION].replaceChildren(CalendarInformation.dom);
     } else {
     }
@@ -111,7 +111,7 @@ export function buttonClickCallback(event) {
     }
     Utilities.setBackgroundColor(current_button, palette.blue);
     zone.selection = current_button;
-    if (Global.zones[Global.zones_identifier.VIEW_TYPE].selection._data_identifier === Global.view_identifier.INFORMATION) {
+    if (Global.viewIsInformation()) {
       EventInformation.update();
       Global.elements.views[Global.view_identifier.INFORMATION].replaceChildren(EventInformation.dom);
     } else {
