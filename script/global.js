@@ -56,14 +56,22 @@ export function getEventSelectionIdentifier() {
 }
 
 export function viewIsInformation() {
- return zones[Global.zones_identifier.VIEW_TYPE].selection._data_identifier
+ return zones[zones_identifier.VIEW_TYPE].selection._data_identifier
     === view_identifier.INFORMATION;
 }
 
 export function getEventsDuration(identifier) {
   const event_index = data.events_map.get(identifier);    
-  if (event_index) {
+  if (event_index !== undefined) {
     return data.events_duration[event_index];
+  }
+  return undefined;
+}
+
+export function getOccurrencesEvent(identifier) {
+  const occurrence_index = data.occurrences_map.get(identifier);
+  if (occurrence_index !== undefined) {
+    return data.occurrences_event_identifiers[occurrence_index];
   }
   return undefined;
 }

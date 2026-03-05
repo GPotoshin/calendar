@@ -249,6 +249,23 @@ function iterateOverDays(dayCallback) { // @nocheckin
   }
 }
 
+export function highlightEvent(event_id) {
+  for (const bar of gc_current.bars) {
+    const event_identifier = Global.getOccurrencesEvent(bar._data_identifier);
+    if (event_identifier === event_id) {
+      Utilities.setBackgroundColor(bar, palette.blue);
+    } else {
+      Utilities.setBackgroundColor(bar, palette.base1);
+    }
+  }
+}
+
+export function grayoutOccurrences() {
+  for (const bar of gc_current.bars) {
+    Utilities.setBackgroundColor(bar, palette.base1);
+  }
+}
+
 // @nocheckin: We should actually try to rerender the view and swap only
 // when it is done and be at the correct scrollTop offset. Because that
 // generation of dom can take a bit of time.
@@ -305,8 +322,12 @@ Global.elements.calendar_body.addEventListener('mousedown', e => {
 
 Global.elements.calendar_body.addEventListener('mouseup', e => {
   let bar = null; // @note: there may be a bug in gc_is_created check down bellow
-  if (!gc_is_created && !gc_is_instantiating && (bar = gc_target.closest('.event-occurrence')) &&
-  bar._type === TAKEN) {
+  if (!gc_is_created &&
+    !gc_is_instantiating &&
+    gc_target &&
+    (bar = gc_target.closest('.event-occurrence')) &&
+    bar._type === TAKEN
+  ) {
     bar.classList.toggle('highlight-border');
     if (gc_is_selected ^= true) {
       document.addEventListener("keydown", deleteSelectedElement);
@@ -354,7 +375,7 @@ function deleteSelectedElement(e) {
     const start = day._index+week_shift;
     const end = start+bar._width-1;
     for (let i = start; i <= end; i++) {
-      gc_view_day_data[i]=AVAILABLE;
+      gc_current.days_date[i]=AVAILABLE;
     }
     gc_selected_day_counter -= bar._width;
     const intervals = gc_selection_intervals;
@@ -423,7 +444,7 @@ function saveSelectionsCallback(e) {
           }
         }
 
-        gc_view_day_data.fill(0);
+        gc_current.days_data.fill(0);
         renderBars(gc_current);
       });
     }).catch(e => {
@@ -455,7 +476,7 @@ function createBar(position, start_day, end_day, color) {
 
 /**
  * renders all bars for the current view of calendar as a function
- * of `gc_view_day_data`. All bars are recreated from 0 and
+ * of `.days_data`. All bars are recreated from 0 and
  * their references are stored in `.bars` to be deleted on the
  * next render call. As this funciton is called only once per modification, we
  * don't really care for now how expensive it may be.
@@ -547,7 +568,7 @@ export function renderBars(target = gc_current) {
         for (let day = week_number*7; day < day_view_index; day++) {
           const day_occrs = target.days[day].querySelectorAll('.event-occurrence');
           for (const occr of day_occrs) {
-            if (occr._level === level && day+occr._width >= start_view_pos) {
+            if (occr._level === level && day+occr._width > start_view_pos) {
               level_is_ok = false;
               break;
             }
@@ -578,6 +599,7 @@ export function renderBars(target = gc_current) {
           span_id.textContent   = "#"+occurrence_identifier;
 
           bar.replaceChildren(span_name, span_id);
+          bar._data_identifier = occurrence_identifier;
           target.days[start_view_pos].getElementsByClassName('bar-holder')[0].append(bar);
           break;
         }
@@ -612,7 +634,6 @@ function mergeIntervals() {
     }
     i++;
   }
-  console.log("intervals: ", gc_selection_intervals);
 }
 
 Global.elements.calendar_body.addEventListener('mousemove', e => {

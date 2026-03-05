@@ -10,7 +10,7 @@ export function loadTemplate() {
     <div class="js-select row-selection">
     Nombre maximal d'employés impliqués par jour:
       <button class="editable hover std-min no-padding txt-center tiny-button">
-      ${Global.data.employees_limit}
+      ${Number(Global.data.employees_limit)}
       </button>
     <div>
     </div>

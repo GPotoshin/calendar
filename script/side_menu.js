@@ -5,6 +5,7 @@ import * as EventInformation from './event_information.js';
 import * as CalendarInformation from './calendar_information.js';
 import * as Utilities from './utilities.js';
 import * as SearchDisplay from './search_display.js';
+import * as Calendar from './calendar.js';
 import * as Io from './io.js';
 
 function handleClickOnViewButton(button, view_zone_identifier) {
@@ -102,6 +103,7 @@ export function buttonClickCallback(event) {
     if (Global.viewIsInformation()) {
       Global.elements.views[Global.view_identifier.INFORMATION].replaceChildren(CalendarInformation.dom);
     } else {
+      Calendar.grayoutOccurrences();
     }
     return;
   } else {
@@ -115,6 +117,7 @@ export function buttonClickCallback(event) {
       EventInformation.update();
       Global.elements.views[Global.view_identifier.INFORMATION].replaceChildren(EventInformation.dom);
     } else {
+      Calendar.highlightEvent(Number(current_button._data_identifier));
     }
   }
 }
