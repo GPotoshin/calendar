@@ -252,7 +252,14 @@ buttons.edit.addEventListener('click', function() {
       swapNumberButtonToInputAndSetLatterToOldValue(target_button, old_limit);
       break;
     }
-  button}
+    default: {
+      if (state.edit_target.classList.contains('event-occurrence')) {
+        console.log('let\' modify occurrence');
+      } else {
+        throw new Error('edit_target\'s parent should have `_identifier` property with a value from `Global.zones_identifier` or be an event-occurrence');
+      }
+    }
+  }
 });
 
 function swapNumberButtonToInputAndSetLatterToOldValue(button, old_value) {

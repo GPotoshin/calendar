@@ -50,11 +50,15 @@ let gc_is_updating_focus = false;
 let gc_is_animating = false;
 let gc_start_x = 0;
 let gc_focused_month = new Date(pool_date.getFullYear(), pool_date.getMonth());
+
+/**
+ * `gc_selection_intervals` is used during instantiating phase. Contains
+ * inclusive intervals of currently instantiating occurence.
+ */
 let gc_selection_intervals = [];
-let gc_top_month_week_observer = null;
-let gc_bottom_month_week_observer = null;
 let gc_calendar_resize_observer = null;
 let gc_instantiating_event_identifier = undefined;
+let gc_instantiating_occurrence_identifier = undefined;
 let gc_selected_day_counter = 0;
 let gc_week_height = gc_weeks_1[0].getBoundingClientRect().height;
 let gc_week_coordinates = [];
@@ -144,9 +148,7 @@ export function init() {
 
   Global.elements.calendar_body.addEventListener('wheel', (e) => {
     e.preventDefault();
-
     if (gc_is_animating) return;
-
     const threshold = 15;
     if (e.deltaY > threshold) {
       animateMonthTransition(DOWN);
@@ -223,13 +225,32 @@ function animateMonthTransition(direction) {
   }, { once: true });
 }
 
-export function startInstantiating(identifier) {
+export function startInstantiating(event_identifier, occurrence_identifier = undefined) {
   gc_is_instantiating = true;
-  gc_instantiating_event_identifier = identifier;
-  gc_selected_day_counter = 0;
-  gc_selection_intervals = [];
+  if (occurrence_identifier !== undefined) {
+    const occurrence_index = data.occurrences_map.get(occurrence_identifier);
+    const event_identifier = Global.data.occurrences_event_identifiers[occurrence_index];
+    gc_instantinating_event_identifier = event_identifier;
+    gc_selection_intervals = structuredClone(data.occurrences_dates[occurrence_index]);
+    gc_selected_day_counter = 0;
+    gc_current.days_data.fill(0);
+    for (const interval of gc_selection_intervals) {
+      gc_selected_day_counter += interval[1]-interval[0]+1;
+      const start = Math.max(interval[0]-gc_base_day_number, 0);
+      const end   = Math.min(interval[1]-gc_base_day_number, gc_current.days_data.lenght-1);
+      for (let i = start; i <= end; i++) {
+        gc_current.days_data[i] = TAKEN;
+      }
+    }
+    document.addEventListener("keydown", saveModificationCallback);
+  } else {
+    gc_instantiating_event_identifier = event_identifier;
+    gc_selected_day_counter = 0;
+    gc_selection_intervals = [];
+    document.addEventListener("keydown", saveCreationCallback);
+  }
+
   renderBars(gc_current);
-  document.addEventListener("keydown", saveSelectionsCallback);
 }
 
 function resizeBar(bar, start, end) {
@@ -248,10 +269,6 @@ function iterateOverDays(dayCallback) { // @nocheckin
     }
   }
 }
-
-// @nocheckin: We should actually try to rerender the view and swap only
-// when it is done and be at the correct scrollTop offset. Because that
-// generation of dom can take a bit of time.
 
 function getCellNum(pos_x) {
   const week_rect = gc_week.getBoundingClientRect(); 
@@ -367,13 +384,72 @@ function deleteSelectedElement(e) {
   }
 }
 
+function saveModificationCallback(e) {
+  if (e.key === "Enter") {
+    gc_is_instantiating = false;
+    document.removeEventListener("keydown", saveModificationCallback);
+    renderBars(gc_current);
+    const intervals = gc_selection_intervals;
+    const writer = Api.createBufferWriter(Api.UPDATE, Api.OCCURRENCES_MAP);
+    Io.writeInt32(writer, gc_instatiating_occurrence_identifier);
+    Io.writeArrayOfInt32Pairs(writer, intervals);
+
+    Api.request(writer).then(response => {
+      Utilities.throwIfNotOk(response);
+      const identifier = gc_instatiating_occurrence_identifier;
+      const index      = Global.data.occurrences_map.get(identifier);
+
+      // @working: we got to rethink how that's working and faactor out common
+      // bits.
+      const day_occurrences = Global.data.day_occurrences;
+      if (day_occurrences.length === 0) {
+        Global.data.base_day_number = intervals[0][0];
+      }
+      const base_day     = Global.data.base_day_number;
+      const last_idx     = intervals.length - 1;
+      const end_day      = base_day + day_occurrences.length - 1;
+      const prefix_diff  = Math.max(base_day - intervals[0][0], 0);
+      const postfix_diff = Math.max(intervals[last_idx][1] - end_day, 0);
+      const old_len      = day_occurrences.length;
+      const diff         = prefix_diff+postfix_diff;
+      const new_len      = old_len+diff;
+
+      if (prefix_diff > 0) {
+        Global.data.base_day_number = intervals[0][0];
+        for (let i = old_len-1; i >= 0; i--) {
+          day_occurrences[i + prefix_diff] = day_occurrences[i] || [];
+        }
+      }
+
+      // we need to erase previous entrences and then override them
+      for (const interval of intervals) {
+        const start = interval[0]-Global.data.base_day_number;
+        const end   = interval[1]-Global.data.base_day_number;
+        for (let i = start; i <= end; i++) {
+          if (!day_occurrences[i]) {
+            day_occurrences[i] = [];
+          }
+          day_occurrences[i].push(identifier);
+        }
+      }
+      Global.data.occurrences_dates[index] = intervals;
+
+      gc_current.days_data.fill(0);
+      gc_instatiating_occurrence_identifier = undefined;
+      renderBars(gc_current);
+    }).catch(e => {
+        console.error("Could not store ", e);
+    });
+  }
+}
+
 /**
  @param {Event} e
 */
-function saveSelectionsCallback(e) {
+function saveCreationCallback(e) {
   if (e.key === "Enter") {
     gc_is_instantiating = false;
-    document.removeEventListener("keydown", saveSelectionsCallback);
+    document.removeEventListener("keydown", saveCreationCallback);
     renderBars(gc_current);
     const event_identifier = gc_instantiating_event_identifier; 
     const intervals = gc_selection_intervals;
@@ -446,7 +522,7 @@ function getEvents(cell) {
 
 function createBar(position, start_day, end_day, color) {
   let bar = document.createElement('button');
-  bar.classList = 'event-occurrence no-select deletable';
+  bar.classList = 'event-occurrence no-select deletable editable';
   bar.style.top = (20*position)+'%';
   Utilities.setBackgroundColor(bar, color);
   bar._width = end_day-start_day+1; // docs: @set(bar._width)
@@ -480,6 +556,9 @@ export function repaintBars() {
 
 function getBarColor(event_identifier, occurrence_identifier) {
   let color = palette.base1;
+  if (gc_is_instantiating) {
+    return color;
+  }
   if (gc_selected_occurrence !== undefined) {
     if (gc_selected_occurrence === occurrence_identifier) {
       color = palette.blue;
