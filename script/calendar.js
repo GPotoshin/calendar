@@ -18,7 +18,7 @@ const gc_weeks_1 = gc_calendar_content_1.querySelectorAll('.week-row');
 const gc_weeks_2 = gc_calendar_content_2.querySelectorAll('.week-row');
 const gc_days_1 = gc_calendar_content_1.querySelectorAll('.day-cell');
 const gc_days_2 = gc_calendar_content_2.querySelectorAll('.day-cell');
-let gc_current = {
+export let gc_current = {
   content: gc_calendar_content_1,
   weeks: gc_weeks_1,
   days: gc_days_1,
@@ -562,8 +562,8 @@ export function renderBars(target = gc_current) {
     free_list: new Int32Slice(32),
   };
 
-  while (day_occurrences_index < day_occurrences_end && day_view_index < day_view_end) {
-    const occurrences = Global.data.day_occurrences[day_occurrences_index];
+  while (day_occurrences_index <= day_occurrences_end && day_view_index <= day_view_end) {
+    const occurrences = Global.data.day_occurrences[day_occurrences_index] || [];
 
     for(let tracked_event_index = 0;
         tracked_event_index < tracked_events.occurrence_identifiers.length;
@@ -571,14 +571,8 @@ export function renderBars(target = gc_current) {
     {
       const occurrence_identifier = tracked_events.occurrence_identifiers.view[tracked_event_index];
       const start_view_pos = tracked_events.start_positions.view[tracked_event_index];
-      if (occurrences.includes(occurrence_identifier) &&
-         (day_occurrences_index !== day_occurrences_end-1 ||
-           day_view_index !== day_view_end-1)) {
+      if (occurrences.includes(occurrence_identifier)) {
         continue;
-      }
-      if (day_occurrences_index === day_occurrences_end-1 ||
-           day_view_index === day_view_end-1) {
-        day_view_index++;
       }
       tracked_events.free_list.push(tracked_event_index);
 

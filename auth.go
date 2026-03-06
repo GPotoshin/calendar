@@ -175,7 +175,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
   state.mutex.Lock()
-  user_index, user_exists := state.UsersId[userId]
+  user_index, user_exists := state.UsersMap[userId]
   if (!user_exists) { 
     state.mutex.Unlock()
     http.Error(w, "Incorrect Login or Password", http.StatusBadRequest)

@@ -278,7 +278,15 @@ buttons.delete.addEventListener('click', function() {
     throw new Error('delete-target should have a property `_data_identifier` which infers with which piece of data the element is associated');
   }
   const identifier = Number(state.delete_target._data_identifier);
-  state.delete_target.classList.add('deleting');
+  if (state.delete_target.classList.contains('event-occurrence')) {
+    for (const bar of Calendar.gc_current.bars) {
+      if (Number(bar._data_indentifier) === identifier) {
+        bar.classList.add('deleting');
+      }
+    }
+  } else {
+    state.delete_target.classList.add('deleting');
+  }
 
   let writer = new Io.BufferWriter();
   switch (state.delete_target.parentElement._identifier) {
@@ -354,7 +362,7 @@ buttons.delete.addEventListener('click', function() {
           EventInformation.update();
         })
         .catch(e => {
-          state.delete_target.classList.remove('disp-none');
+          state.delete_target.classList.remove('deleting');
           console.error("Could not delete ", e);
           return;
         });
@@ -398,7 +406,7 @@ buttons.delete.addEventListener('click', function() {
       break;
     default:
       if (state.delete_target.classList.contains('event-occurrence')) {
-        Api.writeHeader(writer, Api.DELETE, Api.OCCURRENCE_MAP);
+        Api.writeHeader(writer, Api.DELETE, Api.OCCURRENCES_MAP);
         Io.writeInt32(writer, identifier);
         Api.request(writer)
           .then(response => {
@@ -418,10 +426,13 @@ buttons.delete.addEventListener('click', function() {
             }
           })
           .catch(e => {
-          state.delete_target.classList.remove('deleting');
-          console.error("Could not delete ", e);
+            for (const bar of Calendar.gc_current.bars) {
+              if (Number(bar._data_indentifier) === identifier) {
+                bar.classList.remove('deleting');
+              }
+            }
+            console.error("Could not delete ", e);
         });
-
       } else {
         state.delete_target.classList.remove('deleting');
         throw new Error('delete_target\'s parent should have `_identifier` property with a value from `Global.zones_identifier`');
