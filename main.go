@@ -191,6 +191,9 @@ func rebaseState() {
   shrinkArray(&state.OccurrencesParticipant, state.OccurrencesFreeList)
   shrinkArray(&state.OccurrencesParticipantsRole, state.OccurrencesFreeList)
   state.OccurrencesFreeList = state.OccurrencesFreeList[:0]
+
+  shrinked_prefix_size := shrinkDays(&state.DayOccurrences)
+  state.BaseDayNumber += shrinked_prefix_size
 }
 
 func readState(r io.Reader) (State, error) {
@@ -610,6 +613,74 @@ func handleSimpleUpdate(
   }
   storeValue(names, storage_index, new_name)
   return true
+}
+
+func checkOrderedArrayOfInt32Pairs(w http.ResponseWriter, intervals [][2]int32) bool {
+  if len(intervals) == 0 {
+    fmt.Println("[checkOrderedArrayOfInt32Pairs] there should be at least 1 pair")
+    http.Error(w, "incorrect api", http.StatusBadRequest)
+    return false
+  }
+
+  is_ordered := true
+  if intervals[0][0] > intervals[0][1] {
+    is_ordered = false
+  }
+  for i := 1; i < len(intervals) && is_ordered; i++ {
+    if intervals[i-1][1] > intervals[i][0] || intervals[i][0] > intervals[i][1] {
+      is_ordered = false
+    }
+  }
+  if !is_ordered {
+    fmt.Println("[checkOrderedArrayOfInt32Pairs] pairs must be ordered")
+    http.Error(w, "incorrect api", http.StatusBadRequest)
+  }
+  return is_ordered
+}
+
+func assurePrefix(intervals [][2]int32) {
+  last_idx := len(intervals)-1
+  end_day := int(state.BaseDayNumber) + len(state.DayOccurrences)-1
+  prefix_diff := int(max(state.BaseDayNumber-intervals[0][0], 0))
+  postfix_diff := int(max(int(intervals[last_idx][1])-end_day, 0))
+  old_len := len(state.DayOccurrences)
+  diff := prefix_diff+postfix_diff
+  new_len := old_len + diff
+
+  state.DayOccurrences = slices.Grow(state.DayOccurrences, diff)
+  state.DayOccurrences = state.DayOccurrences[:new_len]
+  for i := old_len; i < new_len; i++ {
+    state.DayOccurrences[i] = nil
+  }
+
+  if prefix_diff > 0 {
+    state.BaseDayNumber = intervals[0][0]
+    copy(state.DayOccurrences[prefix_diff:], state.DayOccurrences[:old_len])
+
+    for i := 0; i < prefix_diff; i++ {
+      state.DayOccurrences[i] = nil
+    }
+  }
+}
+
+func pushIdentifierToDayOccurrences(intervals [][2]int32, id int32) {
+  for _, interval := range intervals {
+    start := interval[0]-state.BaseDayNumber
+    end   := interval[1]-state.BaseDayNumber
+    for i := start; i <= end; i++ {
+      state.DayOccurrences[i] = append(state.DayOccurrences[i], id)
+    }
+  }
+}
+
+func removeIdentifierFromDayOccurrences(intervals [][2]int32, id int32) {
+  for _, interval := range intervals {
+    start := interval[0]-state.BaseDayNumber
+    end   := interval[1]-state.BaseDayNumber
+    for i := start; i <= end; i++ {
+      filterVal(&state.DayOccurrences[i], id)
+    }
+  }
 }
 
 func readNameAndSurname(w http.ResponseWriter, r *http.Request) (string, string, bool) {
@@ -1037,24 +1108,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         http.Error(w, "incorrect api", http.StatusBadRequest)
         return
       }
-
-      is_ordered := true
-
-      if intervals[0][0] > intervals[0][1] {
-        is_ordered = false
-      }
-
-      for i := 1; i < len(intervals) && is_ordered; i++ {
-        if intervals[i-1][1] > intervals[i][0] || intervals[i][0] > intervals[i][1] {
-          is_ordered = false
-        }
-      }
-
-      if !is_ordered {
-        fmt.Println("[OCCURRENCES_MAP:CREATE] intervals must be ordered")
-        http.Error(w, "incorrect api", http.StatusBadRequest)
-        return
-      }
+      if !checkOrderedArrayOfInt32Pairs(w, intervals) { return }
 
       // storing
       id, index := newEntry(
@@ -1072,37 +1126,9 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         state.BaseDayNumber = intervals[0][0]
       }
 
-      last_idx := len(intervals)-1
-      end_day := int(state.BaseDayNumber) + len(state.DayOccurrences)-1
-      prefix_diff := int(max(state.BaseDayNumber-intervals[0][0], 0))
-      postfix_diff := int(max(int(intervals[last_idx][1])-end_day, 0))
-      old_len := len(state.DayOccurrences)
-      diff := prefix_diff+postfix_diff
-      new_len := old_len + diff
-
-      state.DayOccurrences = slices.Grow(state.DayOccurrences, diff)
-      state.DayOccurrences = state.DayOccurrences[:new_len]
-      for i := old_len; i < new_len; i++ {
-        state.DayOccurrences[i] = nil
-      }
-
-      if prefix_diff > 0 {
-        state.BaseDayNumber = intervals[0][0]
-        copy(state.DayOccurrences[prefix_diff:], state.DayOccurrences[:old_len])
-
-        for i := 0; i < prefix_diff; i++ {
-          state.DayOccurrences[i] = nil
-        }
-      }
-
-      for _, interval := range intervals {
-        start := interval[0]-state.BaseDayNumber
-        end   := interval[1]-state.BaseDayNumber
-        for i := start; i <= end; i++ {
-          state.DayOccurrences[i] = append(state.DayOccurrences[i], id)
-        }
-      }
-      
+      // @work: we need to factor out that in a function
+      assurePrefix(intervals)
+      pushIdentifierToDayOccurrences(intervals, id)
       writeInt32(w, id)
     
     case DELETE:
@@ -1116,13 +1142,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         &state.OccurrencesFreeList,
         occurrence_identifier)
       intervals := state.OccurrencesDates[occurrence_index]
-      for i := 0; i < len(intervals); i++ {
-        for j := intervals[i][0]-state.BaseDayNumber;
-            j <= intervals[i][1]-state.BaseDayNumber;
-            j++ {
-          filterVal(&state.DayOccurrences[j], occurrence_identifier)
-        }
-      }
+      removeIdentifierFromDayOccurrences(intervals, occurrence_identifier)
     
     default:
       noSupport(w, "OCCURRENCES_MAP:default")
@@ -1130,7 +1150,25 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
   case OCCURRENCES_VENUE:
     noSupport(w, "OCCURRENCES_VENUE")
   case OCCURRENCES_DATES:
-    noSupport(w, "OCCURRENCES_DATES")
+    slog.Info("OCCURRENCES_DATES");
+    if !isAdmin(w, privilege_level) { return }
+    switch mode {
+    case UPDATE:
+      identifier, err := readInt32(r.Body)
+      if readError(w, "OCCURRENCES_DATES:UPDATE", "occurrence_identifier", err) { return }
+      intervals, err := readInt32PairArrayWithLimits(r.Body, []int32{64})
+      if readError(w, "OCCURRENCES_DATES:UPDATE", "intervals", err) { return }
+      index, exists := state.OccurrencesMap[identifier]
+      if doesNotExistError(w, "OCCURRENCES_DATES:UPDATE", "index", exists) { return }
+      if !checkOrderedArrayOfInt32Pairs(w, intervals) { return }
+
+      assurePrefix(intervals)
+      removeIdentifierFromDayOccurrences(intervals, identifier)
+      pushIdentifierToDayOccurrences(intervals, identifier)
+      storeValue(&state.OccurrencesDates, index, intervals)
+    default:
+      noSupport(w, "OCCURRENCES_DATES:default")
+    }
   case OCCURRENCES_PARTICIPANT:
     noSupport(w, "OCCURRENCES_PARTICIPANT")
   case OCCURRENCES_PARTICIPANTS_ROLE:

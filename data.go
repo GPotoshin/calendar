@@ -123,6 +123,23 @@ func shrinkArray[T any](array_p *[]T, free_list []int) {
   *array_p = (*array_p)[:len(*array_p)-number_of_items_freed]
 }
 
+func shrinkDays(array_p *[][]int32) int32 {
+  start := 0
+  for start < len(*array_p) && len((*array_p)[start]) == 0 { start++ }
+
+  length := len(*array_p)
+  if start > 0 {
+    copy(*array_p, (*array_p)[start:])
+  }
+  
+  end := length-start-1
+  for end > 0 && len((*array_p)[end]) == 0 { end-- }
+
+  *array_p = (*array_p)[:end+1]
+  return int32(start)
+}
+
+
 func getById[K, T comparable](id K, m map[K]int, a []T) (T, bool) {
   var retval T
   index, exists := m[id]

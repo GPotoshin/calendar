@@ -225,12 +225,13 @@ function animateMonthTransition(direction) {
   }, { once: true });
 }
 
+// @working: we need to have occurence modifiction done
 export function startInstantiating(event_identifier, occurrence_identifier = undefined) {
   gc_is_instantiating = true;
   if (occurrence_identifier !== undefined) {
     const occurrence_index = data.occurrences_map.get(occurrence_identifier);
     const event_identifier = Global.data.occurrences_event_identifiers[occurrence_index];
-    gc_instantinating_event_identifier = event_identifier;
+    gc_instantiating_event_identifier = event_identifier;
     gc_selection_intervals = structuredClone(data.occurrences_dates[occurrence_index]);
     gc_selected_day_counter = 0;
     gc_current.days_data.fill(0);
@@ -384,13 +385,45 @@ function deleteSelectedElement(e) {
   }
 }
 
+function assurePrefix(first_occurrence) {
+  const day_occurrences = Global.data.day_occurrences;
+  if (day_occurrences.length === 0) {
+    Global.data.base_day_number = first_occurrence;
+  }
+  const base_day     = Global.data.base_day_number;
+  const prefix_diff  = Math.max(base_day - first_occurrence, 0);
+  const old_len      = day_occurrences.length;
+
+  if (prefix_diff > 0) {
+    Global.data.base_day_number = first_occurrence;
+    for (let i = old_len-1; i >= 0; i--) {
+      day_occurrences[i + prefix_diff] = day_occurrences[i] || [];
+    }
+  }
+}
+
+function pushIdentifier(intervals, identifier) {
+  const day_occurrences = Global.data.day_occurrences;
+  const base_day_number = Global.data.base_day_number;
+  for (const interval of intervals) {
+    const start = interval[0]-base_day_number;
+    const end   = interval[1]-base_day_number;
+    for (let i = start; i <= end; i++) {
+      if (!day_occurrences[i]) {
+        day_occurrences[i] = [];
+      }
+      day_occurrences[i].push(identifier);
+    }
+  }
+}
+
 function saveModificationCallback(e) {
   if (e.key === "Enter") {
     gc_is_instantiating = false;
     document.removeEventListener("keydown", saveModificationCallback);
     renderBars(gc_current);
     const intervals = gc_selection_intervals;
-    const writer = Api.createBufferWriter(Api.UPDATE, Api.OCCURRENCES_MAP);
+    const writer = Api.createBufferWriter(Api.UPDATE, Api.OCCURRENCES_DATES);
     Io.writeInt32(writer, gc_instatiating_occurrence_identifier);
     Io.writeArrayOfInt32Pairs(writer, intervals);
 
@@ -399,39 +432,20 @@ function saveModificationCallback(e) {
       const identifier = gc_instatiating_occurrence_identifier;
       const index      = Global.data.occurrences_map.get(identifier);
 
-      // @working: we got to rethink how that's working and faactor out common
-      // bits.
-      const day_occurrences = Global.data.day_occurrences;
-      if (day_occurrences.length === 0) {
-        Global.data.base_day_number = intervals[0][0];
-      }
-      const base_day     = Global.data.base_day_number;
-      const last_idx     = intervals.length - 1;
-      const end_day      = base_day + day_occurrences.length - 1;
-      const prefix_diff  = Math.max(base_day - intervals[0][0], 0);
-      const postfix_diff = Math.max(intervals[last_idx][1] - end_day, 0);
-      const old_len      = day_occurrences.length;
-      const diff         = prefix_diff+postfix_diff;
-      const new_len      = old_len+diff;
+      assurePrefix(intervals[0][0]);
 
-      if (prefix_diff > 0) {
-        Global.data.base_day_number = intervals[0][0];
-        for (let i = old_len-1; i >= 0; i--) {
-          day_occurrences[i + prefix_diff] = day_occurrences[i] || [];
-        }
-      }
-
-      // we need to erase previous entrences and then override them
-      for (const interval of intervals) {
+      for (const interval of Global.data.occurrences_dates[index]) {
         const start = interval[0]-Global.data.base_day_number;
         const end   = interval[1]-Global.data.base_day_number;
         for (let i = start; i <= end; i++) {
           if (!day_occurrences[i]) {
             day_occurrences[i] = [];
           }
-          day_occurrences[i].push(identifier);
+          day_occurrences[i].filter(v => v !== identifier);
         }
       }
+
+      pushIdentifier(intervals, identifier);
       Global.data.occurrences_dates[index] = intervals;
 
       gc_current.days_data.fill(0);
@@ -472,37 +486,8 @@ function saveCreationCallback(e) {
         Global.data.occurrences_dates[index]             = intervals;
         Global.data.occurrences_participants[index]      = [];
 
-        const day_occurrences = Global.data.day_occurrences;
-        if (day_occurrences.length === 0) {
-          Global.data.base_day_number = intervals[0][0];
-        }
-        const base_day     = Global.data.base_day_number;
-        const last_idx     = intervals.length - 1;
-        const end_day      = base_day + day_occurrences.length - 1;
-        const prefix_diff  = Math.max(base_day - intervals[0][0], 0);
-        const postfix_diff = Math.max(intervals[last_idx][1] - end_day, 0);
-        const old_len      = day_occurrences.length;
-        const diff         = prefix_diff+postfix_diff;
-        const new_len      = old_len+diff;
-        
-        if (prefix_diff > 0) {
-          Global.data.base_day_number = intervals[0][0];
-          for (let i = old_len-1; i >= 0; i--) {
-            day_occurrences[i + prefix_diff] = day_occurrences[i] || [];
-          }
-        }
-
-        for (const interval of intervals) {
-          const start = interval[0]-Global.data.base_day_number;
-          const end   = interval[1]-Global.data.base_day_number;
-          for (let i = start; i <= end; i++) {
-            if (!day_occurrences[i]) {
-              day_occurrences[i] = [];
-            }
-            day_occurrences[i].push(identifier);
-          }
-        }
-
+        assurePrefix(intervals[0][0]);
+        pushIdentifier(intervals, identifier);
         gc_current.days_data.fill(0);
         renderBars(gc_current);
       });

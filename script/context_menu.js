@@ -254,7 +254,7 @@ buttons.edit.addEventListener('click', function() {
     }
     default: {
       if (state.edit_target.classList.contains('event-occurrence')) {
-        console.log('let\' modify occurrence');
+        Calendar.startInstantiating(null, state.edit_target._data_identifier)
       } else {
         throw new Error('edit_target\'s parent should have `_identifier` property with a value from `Global.zones_identifier` or be an event-occurrence');
       }
