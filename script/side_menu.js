@@ -103,7 +103,7 @@ export function buttonClickCallback(event) {
     if (Global.viewIsInformation()) {
       Global.elements.views[Global.view_identifier.INFORMATION].replaceChildren(CalendarInformation.dom);
     } else {
-      Calendar.grayoutOccurrences();
+      Calendar.repaintBars();
     }
     return;
   } else {
@@ -117,7 +117,7 @@ export function buttonClickCallback(event) {
       EventInformation.update();
       Global.elements.views[Global.view_identifier.INFORMATION].replaceChildren(EventInformation.dom);
     } else {
-      Calendar.highlightEvent(Number(current_button._data_identifier));
+      Calendar.repaintBars();
     }
   }
 }

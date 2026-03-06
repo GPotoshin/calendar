@@ -81,7 +81,7 @@ const AVAILABLE = 0;
 const NOT_AVAILABLE = -1;
 const TAKEN = 1;
 
-function getColor(type) {
+function getInstantiatingColor(type) {
   switch (type) {
     case AVAILABLE:
       return palette.green;
@@ -91,7 +91,6 @@ function getColor(type) {
       return palette.red;
   }
 }
-
 
 const monthDisplay = {
   names: ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet',
@@ -247,23 +246,6 @@ function iterateOverDays(dayCallback) { // @nocheckin
     for (let j = 0; j < row.children.length; j++) {
       dayCallback(row.children[j]);
     }
-  }
-}
-
-export function highlightEvent(event_id) {
-  for (const bar of gc_current.bars) {
-    const event_identifier = Global.getOccurrencesEvent(bar._data_identifier);
-    if (event_identifier === event_id) {
-      Utilities.setBackgroundColor(bar, palette.blue);
-    } else {
-      Utilities.setBackgroundColor(bar, palette.base1);
-    }
-  }
-}
-
-export function grayoutOccurrences() {
-  for (const bar of gc_current.bars) {
-    Utilities.setBackgroundColor(bar, palette.base1);
   }
 }
 
@@ -478,20 +460,37 @@ function createBar(position, start_day, end_day, color) {
 
 function barClickCallback(event) {
   const target = event.currentTarget;
-  const occurrences_identifier = target._data_identifier;
-  if (gc_selected_occurrence === occurrences_identifier) {
-    grayoutOccurrences();
+  const target_identifier = target._data_identifier;
+  if (gc_selected_occurrence === target_identifier) {
     gc_selected_occurrence = undefined;
   } else {
-    gc_selected_occurrence = occurrences_identifier;
-    for (const bar of gc_current.bars) {
-      if (bar._data_identifier === occurrences_identifier) {
-        Utilities.setBackgroundColor(bar, palette.blue);
-      } else {
-        Utilities.setBackgroundColor(bar, palette.base1);
-      }
+    gc_selected_occurrence = target_identifier;
+  }
+  repaintBars();
+}
+
+export function repaintBars() {
+  for (const bar of gc_current.bars) {
+    const occurrence_identifier = bar._data_identifier;
+    const event_identifier = Global.getOccurrencesEvent(occurrence_identifier);
+    const color = getBarColor(event_identifier, occurrence_identifier);
+    Utilities.setBackgroundColor(bar, color);
+  }
+}
+
+function getBarColor(event_identifier, occurrence_identifier) {
+  let color = palette.base1;
+  if (gc_selected_occurrence !== undefined) {
+    if (gc_selected_occurrence === occurrence_identifier) {
+      color = palette.blue;
+    }
+  } else {
+    let event_selection = Global.getEventSelectionIdentifier();
+    if (event_selection === event_identifier) {
+      color = palette.blue;
     }
   }
+  return color;
 }
 
 /**
@@ -513,15 +512,15 @@ export function renderBars(target = gc_current) {
     let start = 0;
     let end = 1;
     let region_type = view_day_data[0];
-    for (; end < view_day_data.length; end++) {
-      if (region_type !== view_day_data[end] || end % 7 === 0) {
+    for (; end <= view_day_data.length; end++) {
+      if (end % 7 === 0 || region_type !== view_day_data[end]) {
         if (region_type !== NOT_AVAILABLE && (region_type === TAKEN || gc_is_instantiating)) {
           const week_number = Math.floor(start / 7);
           const week = target.weeks[week_number];
           const start_day = start % 7;
           let end_day = (end-1) % 7;
 
-          let bar = createBar(0, start_day, end_day, getColor(region_type));
+          let bar = createBar(0, start_day, end_day, getInstantiatingColor(region_type));
           target.bars.push(bar);
           bar._type = region_type;
           if (region_type == TAKEN) {
@@ -592,18 +591,17 @@ export function renderBars(target = gc_current) {
           }
         }
         if (level_is_ok) {
-          // setting at correct level
+          const event_identifier = Global.getOccurrencesEvent(occurrence_identifier);
+          const event_index = Global.data.events_map.get(event_identifier);
+          const event_name = Global.data.events_name[event_index];
+
           const bar = createBar(
             level,
             start_view_pos%7,
             (day_view_index-1)%7,
-            palette.base1,
+            getBarColor(event_identifier, occurrence_identifier),
           );
           target.bars.push(bar);
-          const occurrence_index = Global.data.occurrences_map.get(occurrence_identifier);
-          const event_identifier = Global.data.occurrences_event_identifiers[occurrence_index];
-          const event_index = Global.data.events_map.get(event_identifier);
-          const event_name = Global.data.events_name[event_index];
 
           const span_name = document.createElement('span');
           const span_id   = document.createElement('span');
