@@ -226,32 +226,35 @@ function animateMonthTransition(direction) {
 }
 
 // @working: we need to have occurence modifiction done
+// @bug: when entering modification occurrences should move to new line
+// @bug: @This|427| Can't find variable: gc_instatiating_occurrence_identifier 
 export function startInstantiating(event_identifier, occurrence_identifier = undefined) {
   gc_is_instantiating = true;
   if (occurrence_identifier !== undefined) {
-    const occurrence_index = data.occurrences_map.get(occurrence_identifier);
+    const occurrence_index = Global.data.occurrences_map.get(occurrence_identifier);
     const event_identifier = Global.data.occurrences_event_identifiers[occurrence_index];
+    gc_instantiating_occurrence_identifier = occurrence_identifier;
     gc_instantiating_event_identifier = event_identifier;
-    gc_selection_intervals = structuredClone(data.occurrences_dates[occurrence_index]);
+    gc_selection_intervals = structuredClone(Global.data.occurrences_dates[occurrence_index]);
     gc_selected_day_counter = 0;
     gc_current.days_data.fill(0);
     for (const interval of gc_selection_intervals) {
       gc_selected_day_counter += interval[1]-interval[0]+1;
       const start = Math.max(interval[0]-gc_base_day_number, 0);
-      const end   = Math.min(interval[1]-gc_base_day_number, gc_current.days_data.lenght-1);
+      const end   = Math.min(interval[1]-gc_base_day_number, gc_current.days_data.length-1);
       for (let i = start; i <= end; i++) {
         gc_current.days_data[i] = TAKEN;
       }
     }
     document.addEventListener("keydown", saveModificationCallback);
+    renderBars(gc_current, [occurrence_identifier]);
   } else {
     gc_instantiating_event_identifier = event_identifier;
     gc_selected_day_counter = 0;
     gc_selection_intervals = [];
     document.addEventListener("keydown", saveCreationCallback);
+    renderBars(gc_current);
   }
-
-  renderBars(gc_current);
 }
 
 function resizeBar(bar, start, end) {
@@ -424,24 +427,25 @@ function saveModificationCallback(e) {
     renderBars(gc_current);
     const intervals = gc_selection_intervals;
     const writer = Api.createBufferWriter(Api.UPDATE, Api.OCCURRENCES_DATES);
-    Io.writeInt32(writer, gc_instatiating_occurrence_identifier);
+    Io.writeInt32(writer, gc_instantiating_occurrence_identifier);
     Io.writeArrayOfInt32Pairs(writer, intervals);
 
     Api.request(writer).then(response => {
       Utilities.throwIfNotOk(response);
-      const identifier = gc_instatiating_occurrence_identifier;
+      const identifier = gc_instantiating_occurrence_identifier;
       const index      = Global.data.occurrences_map.get(identifier);
 
       assurePrefix(intervals[0][0]);
 
+      const day_occurrences = Global.data.day_occurrences;
       for (const interval of Global.data.occurrences_dates[index]) {
         const start = interval[0]-Global.data.base_day_number;
         const end   = interval[1]-Global.data.base_day_number;
         for (let i = start; i <= end; i++) {
           if (!day_occurrences[i]) {
-            day_occurrences[i] = [];
+            continue;
           }
-          day_occurrences[i].filter(v => v !== identifier);
+          day_occurrences[i] = day_occurrences[i].filter(v => v !== identifier);
         }
       }
 
@@ -449,7 +453,7 @@ function saveModificationCallback(e) {
       Global.data.occurrences_dates[index] = intervals;
 
       gc_current.days_data.fill(0);
-      gc_instatiating_occurrence_identifier = undefined;
+      gc_instantiating_occurrence_identifier = undefined;
       renderBars(gc_current);
     }).catch(e => {
         console.error("Could not store ", e);
@@ -589,7 +593,7 @@ export function renderBars(target = gc_current) {
           bar._type = region_type;
           if (region_type == TAKEN) {
             const event_indetifier = gc_instantiating_event_identifier;
-            if (!event_indetifier) {
+            if (event_indetifier === undefined) {
               console.error('unreachable');
             }
             const event_index = Global.data.events_map.get(event_indetifier);
@@ -687,7 +691,8 @@ export function renderBars(target = gc_current) {
     tracked_events.free_list.length = 0;
 
     for (const occurrence of occurrences) {
-      if (tracked_events.occurrence_identifiers.includes(occurrence)) {
+      if (tracked_events.occurrence_identifiers.includes(occurrence) ||
+          gc_instantiating_occurrence_identifier === occurrence) {
         continue;
       }
       tracked_events.occurrence_identifiers.push(occurrence);

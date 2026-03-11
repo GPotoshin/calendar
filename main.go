@@ -1154,6 +1154,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     if !isAdmin(w, privilege_level) { return }
     switch mode {
     case UPDATE:
+      slog.Info("UPDATE")
       identifier, err := readInt32(r.Body)
       if readError(w, "OCCURRENCES_DATES:UPDATE", "occurrence_identifier", err) { return }
       intervals, err := readInt32PairArrayWithLimits(r.Body, []int32{64})
@@ -1163,7 +1164,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       if !checkOrderedArrayOfInt32Pairs(w, intervals) { return }
 
       assurePrefix(intervals)
-      removeIdentifierFromDayOccurrences(intervals, identifier)
+      removeIdentifierFromDayOccurrences(state.OccurrencesDates[index], identifier)
       pushIdentifierToDayOccurrences(intervals, identifier)
       storeValue(&state.OccurrencesDates, index, intervals)
     default:
