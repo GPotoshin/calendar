@@ -18,20 +18,6 @@ import (
   // "crypto/sha256"
 )
 
-type HeaderPair struct {
-  Key string
-  Value string
-}
-
-func serveFile(fileName string, headers []HeaderPair) http.HandlerFunc {
-  return func(w http.ResponseWriter, r *http.Request) {
-    for _, pair := range headers {
-      w.Header().Set(pair.Key, pair.Value);
-    }
-    http.ServeFile(w, r, fileName);
-  }
-}
-
 const (
 	USERS_MAP int32 = iota
 	USERS_NAME
@@ -99,8 +85,8 @@ type State struct {
   EventsMap map[int32]int
   EventsName []string
   EventsVenues [][]int32
-  EventsRole [][]int32
-  EventsRolesRequirements [][][]int32
+  EventsRole [][]int32                // roles for event
+  EventsRolesRequirements [][][]int32 // roles requirements
   EventsPersonalNumMap [][][]int32
   EventsDuration []int32
   EventsFreeId []int32
@@ -126,7 +112,7 @@ type State struct {
   OccurrencesVenue []int32
   OccurrencesDates [][][2]int32 // idea is that every event can happen in intervals and we store the borders of those intervals
   OccurrencesParticipant [][]int32
-  OccurrencesParticipantsRole [][]int32
+  OccurrencesParticipantsRole [][]int32 // role of each participant
   OccurrencesFreeId []int32
   OccurrencesFreeList []int
 
@@ -198,7 +184,7 @@ func rebaseState() {
 
 func readState(r io.Reader) (State, error) {
   var state State
-  version := "bin_state.v0.0.9"
+  version := "bin_data.v0.0.9"
   format, err := readString(r)
   if err != nil { return state, fmt.Errorf("Can't verify file format: %w", err) }
   if format != version { return state, fmt.Errorf("The file format `%s` is outdated. the current format is `%s`. State is zero. If you don't want to have state beeing overwritten, please kill the process or save a copy of db", format, version) }
@@ -250,23 +236,36 @@ func readState(r io.Reader) (State, error) {
   return state, nil
 }
 
+// That's important that constants are in that order, ie
+// USER < CHEF < ADMIN < DISK
+// higher the level, more data one gets. ADMIN gets all the data, except for
+// metadata ment for algorithm acceleration (only free_id_list for now)
+// USER gets all the data except one about other participants
+// CHEF gets only the data about people under his commandment
 const (
-  DEST_DISK int32 = iota
+  DEST_USER int32 = iota
+  DEST_CHEF
   DEST_ADMIN
+  DEST_DISK
 )
 func writeState(w io.Writer, state State, dest int32) error {
   var version string
   switch dest {
   case DEST_DISK:
-    version = "bin_state.v0.0.9"
+    version = "bin_data.v0.0.9"
   case DEST_ADMIN:
-    version = "admin_data.v0.0.6"
+    version = "adm_data.v0.0.6"
+  case DEST_USER:
+    version = "usr_data.v0.0.1"
+  case DEST_CHEF:
+    version = "chf_data.v0.0.1"
   default:
     return fmt.Errorf("Unsupported destination\n")
   }
 
   if err := writeString(w, version); err != nil { return fmt.Errorf("Failed to store data [file format]: %v\n", err) }
 
+  // @nocheckin
   // index := storageIndex(state.UsersMap, &state.UsersFreeList)
   // state.UsersMap[2] = index
   // storeValue(&state.UsersPassword, index, sha256.Sum256([]byte("chef")))
@@ -278,17 +277,21 @@ func writeState(w io.Writer, state State, dest int32) error {
   // storeValue(&state.UsersDutyStation, index, 0)
   // storeValue(&state.UsersPrivilegeLevel, index, 0)
 
-  if err := writeMapInt32Int(w, state.UsersMap); err != nil { return fmt.Errorf("failed to write UsersMap: %w", err) }
+  if dest >= DEST_ADMIN {
+    if err := writeMapInt32Int(w, state.UsersMap); err != nil { return fmt.Errorf("failed to write UsersMap: %w", err) }
+  }
   if dest == DEST_DISK {
     if err := writeHashArray(w, state.UsersPassword); err != nil { return fmt.Errorf("failed to write UsersPassword: %w", err) }
   }
-  if err := writeStringArray(w, state.UsersName); err != nil { return fmt.Errorf("failed to write UsersName: %w", err) }
-  if err := writeStringArray(w, state.UsersSurname); err != nil { return fmt.Errorf("failed to write UsersSurname: %w", err) }
-  if err := writeStringArray(w, state.UsersMail); err != nil { return fmt.Errorf("failed to write UsersMail: %w", err) }
-  if err := writeInt32Array(w, state.UsersPhone); err != nil { return fmt.Errorf("failed to write UsersPhone: %w", err) }
-  if err := writeArrayOfInt32Arrays(w, state.UsersCompetences); err != nil { return fmt.Errorf("failed to write UsersCompetences: %w", err) }
-  if err := writeInt32Array(w, state.UsersDutyStation); err != nil { return fmt.Errorf("failed to write UsersDutyStation: %w", err) }
-  if err := writeInt32Array(w, state.UsersPrivilegeLevel); err != nil { return fmt.Errorf("failed to write UsersPrivilegeLevel: %w", err) }
+  if dest >= DEST_ADMIN {
+    if err := writeStringArray(w, state.UsersName); err != nil { return fmt.Errorf("failed to write UsersName: %w", err) }
+    if err := writeStringArray(w, state.UsersSurname); err != nil { return fmt.Errorf("failed to write UsersSurname: %w", err) }
+    if err := writeStringArray(w, state.UsersMail); err != nil { return fmt.Errorf("failed to write UsersMail: %w", err) }
+    if err := writeInt32Array(w, state.UsersPhone); err != nil { return fmt.Errorf("failed to write UsersPhone: %w", err) }
+    if err := writeArrayOfInt32Arrays(w, state.UsersCompetences); err != nil { return fmt.Errorf("failed to write UsersCompetences: %w", err) }
+    if err := writeInt32Array(w, state.UsersDutyStation); err != nil { return fmt.Errorf("failed to write UsersDutyStation: %w", err) }
+    if err := writeInt32Array(w, state.UsersPrivilegeLevel); err != nil { return fmt.Errorf("failed to write UsersPrivilegeLevel: %w", err) }
+  }
 
   if err := writeMapInt32Int(w, state.EventsMap); err != nil { return fmt.Errorf("failed to write EventsMap: %w", err) }
   if err := writeStringArray(w, state.EventsName); err != nil { return fmt.Errorf("failed to write EventsName: %w", err) }
@@ -323,7 +326,9 @@ func writeState(w io.Writer, state State, dest int32) error {
   if err := writeInt32Array(w, state.OccurrencesEventId); err != nil { return fmt.Errorf("failed to write OccurrencesEventId: %w", err) }
   if err := writeInt32Array(w, state.OccurrencesVenue); err != nil { return fmt.Errorf("failed to write OccurrencesVenue: %w", err) }
   if err := writeArrayOfInt32PairArrays(w, state.OccurrencesDates); err != nil { return fmt.Errorf("failed to write OccurrencesDate: %w", err) }
-  if err := writeArrayOfInt32Arrays(w, state.OccurrencesParticipant); err != nil { return fmt.Errorf("failed to write OccurrencesParticipant: %w", err) }
+  if dest == DEST_ADMIN || dest == DEST_DISK {
+    if err := writeArrayOfInt32Arrays(w, state.OccurrencesParticipant); err != nil { return fmt.Errorf("failed to write OccurrencesParticipant: %w", err) }
+  }
   if err := writeArrayOfInt32Arrays(w, state.OccurrencesParticipantsRole); err != nil { return fmt.Errorf("failed to write OccurrencesParticipantsRole: %w", err) }
   if dest == DEST_DISK {
     if err := writeInt32Array(w, state.OccurrencesFreeId); err != nil { return fmt.Errorf("failed to write OccurrencesFreeId: %w", err) }
@@ -332,7 +337,9 @@ func writeState(w io.Writer, state State, dest int32) error {
   if err := writeInt32(w, state.BaseDayNumber); err != nil { return fmt.Errorf("failed to write BaseDayNumber: %w", err) }
   if err := writeArrayOfInt32Arrays(w, state.DayOccurrences); err != nil { return fmt.Errorf("failed to write DayOccurrences: %w", err) }
 
-  if err := writeInt32(w, state.EmployeesLimit); err != nil { return fmt.Errorf("failed to write EmployeesLimit: %w", err) }
+  if dest >= DEST_ADMIN {
+    if err := writeInt32(w, state.EmployeesLimit); err != nil { return fmt.Errorf("failed to write EmployeesLimit: %w", err) }
+  }
 
   return nil
 }
@@ -375,6 +382,20 @@ func createMaps() {
   if state.CompetencesMap  == nil { state.CompetencesMap  = make(map[int32]int) }
   if state.RolesMap        == nil { state.RolesMap        = make(map[int32]int) }
   if state.OccurrencesMap  == nil { state.OccurrencesMap  = make(map[int32]int) }
+}
+
+type HeaderPair struct {
+  Key string
+  Value string
+}
+
+func serveFile(fileName string, headers []HeaderPair) http.HandlerFunc {
+  return func(w http.ResponseWriter, r *http.Request) {
+    for _, pair := range headers {
+      w.Header().Set(pair.Key, pair.Value);
+    }
+    http.ServeFile(w, r, fileName);
+  }
 }
 
 func main() {
@@ -429,25 +450,37 @@ func main() {
 
   http.HandleFunc("/regular.ttf", serveFile("fonts/SourceSansPro-Regular.ttf", []HeaderPair{{Key: "Content-Type", Value: "font/ttf"}}))
 
+  const (
+    JS_ALL int32 = iota
+    JS_USR
+    JS_CHF
+    JS_ADM
+  )
+
+  type jsFile struct {
+    name: string, 
+    priv: int32,
+  }
+
   jsFiles := []string{
-    "login.js",
-    "color.js",
-    "utilities.js",
-    "io.js",
-    "numeric_input.js",
-    "data_manager.js",
-    "search_display.js",
-    "calendar.js",
-    "context_menu.js",
-    "global.js",
-    "api.js",
-    "side_menu.js",
-    "event_information.js",
-    "entry_point_admin.js",
-    "entry_point_user.js",
-    "entry_point_chef.js",
-    "calendar_information.js",
-    "staff_information.js",
+    jsFile{"login.js", JS_ALL},
+    jsFile{"utilities.js", JS_ALL},
+    jsFile{"io.js", JS_ALL},
+    jsFile{"color.js", JS_USR},
+    jsFile{"numeric_input.js", JS_USR},
+    jsFile{"data_manager.js", JS_USR},
+    jsFile{"search_display.js", JS_USR},
+    jsFile{"calendar.js", JS_USR},
+    jsFile{"context_menu.js", JS_USR},
+    jsFile{"global.js", JS_ADM},
+    jsFile{"api.js", JS_USR},
+    jsFile{"side_menu.js", JS_USR},
+    jsFile{"event_information.js", JS_ADM},
+    jsFile{"admin_entry_point.js", JS_ADM},
+    jsFile{"user_entry_point.js", JS_USR},
+    jsFile{"chef_entry_point.js", JS_CHF},
+    jsFile{"calendar_information.js", JS_ADM},
+    jsFile{"staff_information.js", JS_ADM},
   }
   jsHeaders := []HeaderPair{{Key: "Content-Type", Value: "text/javascript"}}
   for _, file := range jsFiles {

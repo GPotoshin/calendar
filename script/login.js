@@ -11,6 +11,19 @@ matricule_input.addEventListener('input', () => {
 let public_key = null;
 export let token = null;
 
+self.addEventListener('fetch', (event) => {
+  if (event.request.url.includes('.js')) {
+    const base64Token = btoa(String.fromCharCode(...token));
+    const newRequest = new Request(event.request, {
+      mode: 'cors',
+      headers: {
+          'X-Module-Token': base64Token,
+      }
+    });
+    event.respondWith(fetch(newRequest));
+  }
+});
+
 (async function initializeAuth() {
   try {
     const response = await fetch('/api/public-key');
@@ -101,11 +114,11 @@ connect_button.addEventListener('click', async () => {
 
     let entrypoint = '';
     if (privilege == -2) {
-      entrypoint = './entry_point_admin.js';
+      entrypoint = './admin_entry_point.js';
     } else if (privilege == -1) {
-      entrypoint = './entry_point_user.js';
+      entrypoint = './user_entry_point.js';
     } else if (privilege >= 0) {
-      entrypoint = './entry_point_chef.js';
+      entrypoint = './chef_entry_point.js';
     }
 
     let html = Io.readStringWithLimit(reader, 1<<16);
