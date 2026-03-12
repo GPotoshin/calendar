@@ -1,4 +1,4 @@
-import * as DM from './data_manager.js';
+import * as AD from './admin_data.js';
 
 export let elements = {
   calendar_body: document.getElementById('calendar-body'),
@@ -91,5 +91,5 @@ export function getOccurrencesEvent(identifier) {
   return undefined;
 }
 
-export const data = new DM.DataManager();
+export const data = new AD.AdminData();
 window.data = data; // @nocheckin: only in dev

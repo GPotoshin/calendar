@@ -7,7 +7,7 @@ run `go build && ./calendar` and open `https://localhost`
 ## Bugs
 
 ## Working On
-+ We are finally writing UI for lower privilege level users,/
++ We are finally writing UI for lower privilege level users
 
 ## TODO
 + we should have a custom error window (#1)
@@ -26,6 +26,11 @@ run `go build && ./calendar` and open `https://localhost`
 + Think about gc and memory managemenet (#1)
 + Minimise object creation and try to reuse them (#2)
 
+## FEATURES
++ Scrollable Calendar, Immidiate Search Menus
++ {Information, Calendar} View x {Venues, Events, Staff} Lists
++ Auth Token Access to data, api and javascript
+
 ## Architechture
 + Client side should fail if it sends a wrong data to server. Because in the
 correctly written state it sends only correct data. And if it does not the bug
@@ -33,8 +38,8 @@ should be fixed and we do not need a backrout.
 + We are sending changes over a custom bytecode API.
 + On creation we have a bulky function that sets all callbacks
 
-
 ## Test targets
 + all operations with updates of data and etc
 
 ## Crash
++ no crashes for now

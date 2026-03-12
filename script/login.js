@@ -105,7 +105,7 @@ connect_button.addEventListener('click', async () => {
     if (navigator.serviceWorker.controller) {
       navigator.serviceWorker.controller.postMessage({
         type: 'SET_TOKEN',
-        token: token
+        token: token,
       });
     }
     const privilege = Io.readInt32(reader);  

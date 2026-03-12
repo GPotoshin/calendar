@@ -537,6 +537,7 @@ func main() {
     jsFile{"global.js",               JS_ADM},
     jsFile{"event_information.js",    JS_ADM},
     jsFile{"admin_entry_point.js",    JS_ADM},
+    jsFile{"admin_data.js",           JS_ADM},
     jsFile{"calendar_information.js", JS_ADM},
     jsFile{"staff_information.js",    JS_ADM},
   }
