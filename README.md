@@ -7,7 +7,7 @@ run `go build && ./calendar` and open `https://localhost`
 ## Bugs
 
 ## Working On
-+ We are finally writing UI for lower privilage level users,/
++ We are finally writing UI for lower privilege level users,/
 
 ## TODO
 + we should have a custom error window (#1)

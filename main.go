@@ -447,6 +447,7 @@ func main() {
     "entry_point_user.js",
     "entry_point_chef.js",
     "calendar_information.js",
+    "staff_information.js",
   }
   jsHeaders := []HeaderPair{{Key: "Content-Type", Value: "text/javascript"}}
   for _, file := range jsFiles {
@@ -517,8 +518,8 @@ func handleData(w http.ResponseWriter, r *http.Request) {
       return
     }
   } else {
-    slog.Error("incorrect privilage level to send data")
-    http.Error(w, "incorrect privilage level", http.StatusBadRequest)
+    slog.Error("incorrect privilege level to send data")
+    http.Error(w, "incorrect privilege level", http.StatusBadRequest)
   }
 
   w.Header().Set("Content-Type", "application/octet-stream")
@@ -815,7 +816,23 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
   case USERS_DUTY_STATION:
     noSupport(w, "USERS_DUTY_STATION")
   case USERS_PRIVILEGE_LEVEL:
-    noSupport(w, "USERS_PRIVILEGE_LEVEL")
+    slog.Info("USERS_PRIVILEGE_LEVEL")
+    if !isAdmin(w, privilege_level) { return }
+
+    switch mode {
+    case UPDATE:
+      slog.Info("UPDATE")
+      user_identifier, err := readInt32(r.Body)
+      if readError(w, "USERS_PRIVILEGE_LEVEL:UPDATE", "user_identifier", err) { return }
+      new_p_level, err := readInt32(r.Body)
+      if readError(w, "USERS_PRIVILEGE_LEVEL:UPDATE", "new_privilege_identifier", err) { return }
+      index, user_exists := state.UsersMap[user_identifier]
+      if doesNotExistError(w, "USERS_PRIVILEGE_LEVEL:UPDATE", "user", user_exists) { return }
+      storeValue(&state.UsersPrivilegeLevel, index, new_p_level)
+
+    default:
+      noSupport(w, "USERS_PRIVILEGE_LEVEL:default")
+    }
 
   case EVENTS_MAP:
     slog.Info("EVENT_MAP")

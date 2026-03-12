@@ -43,6 +43,9 @@ export const EMPLOYEES_LIMIT = 26;
 export const STATE_FIELD_COUNT = 27;
 
 export function writeHeader(writer, operation_identifier, field_identifier) {
+  if (writer == null || operation_identifier == null || field_identifier == null) {
+    throw new Error("api variable is null");
+  }
   Io.writeString(writer, "bin_api.v0.0.0");
   Io.writeHash(writer, token);
   Io.writeInt32(writer, operation_identifier);
@@ -50,6 +53,9 @@ export function writeHeader(writer, operation_identifier, field_identifier) {
 }
 
 export function createBufferWriter(operation_identifier, field_identifier) {
+  if (operation_identifier == null || field_identifier == null) {
+    throw new Error("api variable is null");
+  }
   let writer = new Io.BufferWriter();
   writeHeader(writer, operation_identifier, field_identifier);
   return writer;

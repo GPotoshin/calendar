@@ -4,7 +4,6 @@ import * as Utilities from './utilities.js';
 import { numeric_input } from './numeric_input.js';
 import * as Io from './io.js';
 import * as Api from './api.js';
-import * as EventInformation from './event_information.js';
 
 export let dom = document.createElement('div');
 
@@ -78,7 +77,7 @@ function createFooterOptions() {
 }
 
 export function loadTemplate() {
-  EventInformation.dom.innerHTML = `
+  dom.innerHTML = `
     <div class="v-container">
     </div>
   `;
@@ -90,7 +89,7 @@ export function loadTemplate() {
   );
   state.event_role_button_list = search_display._container._button_list;
 
-  EventInformation.dom.children[0].append(
+  dom.children[0].append(
     search_display,
     createStaffTable(),
     createCompetencesTable(),
@@ -356,7 +355,7 @@ export function update() {
     duration = -1;
   }
 
-  const event_duration_button = EventInformation.dom.querySelector('#event-duration');
+  const event_duration_button = dom.querySelector('#event-duration');
   function localCallback() {
     event_duration_button.replaceWith(numeric_input.element);
     numeric_input.element.focus();

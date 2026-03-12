@@ -7,24 +7,24 @@ import * as Utilities from './utilities.js';
 import * as SearchDisplay from './search_display.js';
 import * as EventInformation from './event_information.js';
 import * as Calendar from './calendar.js';
+import * as StaffInformation from './staff_information.js';
 import { numeric_input } from './numeric_input.js';
 import { palette } from './color.js';
 
-let buttons = {
-  delete: document.getElementById('delete-button'),
-  edit: document.getElementById('edit-button'),
-  toggle: document.getElementById('toggle-button'),
-  create: document.getElementById('create-button'),
-  instantiate: document.getElementById('instantiate-button'),
-};
+const gcm_delete_button      = document.getElementById('delete-button');
+const gcm_edit_button        = document.getElementById('edit-button');
+const gcm_toggle_button      = document.getElementById('toggle-button');
+const gcm_create_button      = document.getElementById('create-button');
+const gcm_instantiate_button = document.getElementById('instantiate-button');
 
-let state = {
-  delete_target: null,
-  extend_target: null,
-  edit_target: null,
-  toggle_target: null,
-  instantiate_target: null,
-};
+let gcm_delete_target      = null;
+let gcm_extend_target      = null;
+let gcm_edit_target        = null;
+let gcm_toggle_target      = null;
+let gcm_instantiate_target = null;
+
+let gcm_context_menu_x = 0;
+let gcm_context_menu_y = 0;
 
 function createUserDataInputs() {
   const inputs = {
@@ -139,8 +139,8 @@ function escOrUpdateOnEnter(event, button, inputs, old) {
   }
 }
 
-buttons.edit.addEventListener('click', function() {
-  const target_button = state.edit_target;
+gcm_edit_button.addEventListener('click', function() {
+  const target_button = gcm_edit_target;
   const identifier = Number(target_button._data_identifier);
   if (identifier == undefined) {
     throw new Error('delete-target should have a property `_data_identifier` which infers to which piece of data the element is associated with');
@@ -158,7 +158,7 @@ buttons.edit.addEventListener('click', function() {
       const old = {
         name: Global.data.users_name[index],
         surname: Global.data.users_surname[index],
-        matricule: id,
+        matricule: identifier,
       };
 
       let inputs = createUserDataInputs();
@@ -252,9 +252,13 @@ buttons.edit.addEventListener('click', function() {
       swapNumberButtonToInputAndSetLatterToOldValue(target_button, old_limit);
       break;
     }
+    case Global.zones_identifier.PRIVILEGE_LEVEL: {
+      StaffInformation.openOptions(gcm_context_menu_x, gcm_context_menu_y);
+      break;
+    }
     default: {
-      if (state.edit_target.classList.contains('event-occurrence')) {
-        Calendar.startInstantiating(null, state.edit_target._data_identifier)
+      if (gcm_edit_target.classList.contains('event-occurrence')) {
+        Calendar.startInstantiating(null, gcm_edit_target._data_identifier)
       } else {
         throw new Error('edit_target\'s parent should have `_identifier` property with a value from `Global.zones_identifier` or be an event-occurrence');
       }
@@ -280,23 +284,23 @@ function swapBackNumberButtonAndReturnNewValue(button) {
   return Number(numeric_input.element.value);
 }
 
-buttons.delete.addEventListener('click', function() {
-  if (state.delete_target._data_identifier == undefined) {
+gcm_delete_button.addEventListener('click', function() {
+  if (gcm_delete_target._data_identifier == undefined) {
     throw new Error('delete-target should have a property `_data_identifier` which infers with which piece of data the element is associated');
   }
-  const identifier = Number(state.delete_target._data_identifier);
-  if (state.delete_target.classList.contains('event-occurrence')) {
+  const identifier = Number(gcm_delete_target._data_identifier);
+  if (gcm_delete_target.classList.contains('event-occurrence')) {
     for (const bar of Calendar.gc_current.bars) {
       if (Number(bar._data_indentifier) === identifier) {
         bar.classList.add('deleting');
       }
     }
   } else {
-    state.delete_target.classList.add('deleting');
+    gcm_delete_target.classList.add('deleting');
   }
 
   let writer = new Io.BufferWriter();
-  switch (state.delete_target.parentElement._identifier) {
+  switch (gcm_delete_target.parentElement._identifier) {
     case Global.zones_identifier.STAFF:
       Api.writeHeader(writer, Api.DELETE, Api.USERS_MAP);
       Io.writeInt32(writer, identifier);
@@ -305,11 +309,11 @@ buttons.delete.addEventListener('click', function() {
           Utilities.throwIfNotOk(response);
           deleteValue(Global.data.users_map, Global.data.users_free_list, identifier);
           deleteOccurrences(Global.data.occurrences_participants, identifier);
-          state.delete_target.parentElement._button_list.filter(b => b !== state.delete_target);
-          state.delete_target.remove();
+          gcm_delete_target.parentElement._button_list.filter(b => b !== gcm_delete_target);
+          gcm_delete_target.remove();
         })
         .catch(e => {
-          state.delete_target.classList.remove('deleting');
+          gcm_delete_target.classList.remove('deleting');
           console.error("Could not delete ", e);
           return;
         });
@@ -322,11 +326,11 @@ buttons.delete.addEventListener('click', function() {
           Utilities.throwIfNotOk(response);
           deleteValue(Global.data.venues_map, Global.data.venues_free_list, identifier);
           deleteOccurrences(Global.data.events_venues, identifier);
-          state.delete_target.parentElement._button_list.filter(b => b !== state.delete_target);
-          state.delete_target.remove();
+          gcm_delete_target.parentElement._button_list.filter(b => b !== gcm_delete_target);
+          gcm_delete_target.remove();
         })
         .catch(e => {
-          state.delete_target.classList.remove('deleting');
+          gcm_delete_target.classList.remove('deleting');
           console.error("Could not delete ", e);
           return;
         });
@@ -338,11 +342,11 @@ buttons.delete.addEventListener('click', function() {
         .then(response => {
           Utilities.throwIfNotOk(response);
           deleteValue(Global.data.events_map, Global.data.events_free_list, identifier);
-          state.delete_target.parentElement._button_list.filter(b => b !== state.delete_target);
-          state.delete_target.remove();
+          gcm_delete_target.parentElement._button_list.filter(b => b !== gcm_delete_target);
+          gcm_delete_target.remove();
         })
         .catch(e => {
-          state.delete_target.classList.remove('deleting');
+          gcm_delete_target.classList.remove('deleting');
           console.error("Could not delete ", e);
           return;
         });
@@ -353,8 +357,8 @@ buttons.delete.addEventListener('click', function() {
       Api.request(writer)
         .then(response => {
           Utilities.throwIfNotOk(response);
-          state.extend_target._button_list =
-            state.extend_target._button_list.filter(b => b !== state.delete_target);
+          gcm_extend_target._button_list =
+            gcm_extend_target._button_list.filter(b => b !== gcm_delete_target);
           deleteValue(Global.data.roles_map, Global.data.roles_free_list, identifier);
           deleteOccurrences(Global.data.events_roles, identifier);
           for (let i = 0; i < Global.data.events_roles.length; i++) {
@@ -369,7 +373,7 @@ buttons.delete.addEventListener('click', function() {
           EventInformation.update();
         })
         .catch(e => {
-          state.delete_target.classList.remove('deleting');
+          gcm_delete_target.classList.remove('deleting');
           console.error("Could not delete ", e);
           return;
         });
@@ -387,7 +391,7 @@ buttons.delete.addEventListener('click', function() {
           EventInformation.update();
         })
         .catch(e => {
-          state.delete_target.classList.remove('deleting');
+          gcm_delete_target.classList.remove('deleting');
           console.error("Could not delete ", e);
           return;
         });
@@ -398,7 +402,7 @@ buttons.delete.addEventListener('click', function() {
       Api.request(writer)
         .then(response => {
           Utilities.throwIfNotOk(response);
-          EventInformation.state.participant_competences_button_list.push(button);
+          EventInformation.gcm_participant_competences_button_list.push(button);
           deleteValue(Global.data.competences_map, Global.data.competences_free_list, identifier);
           for (const [event_identifier, event_index] in Global.data.events_map) {
             deleteOccurrences(Global.data.events_competences[event_index], identifier);
@@ -406,19 +410,18 @@ buttons.delete.addEventListener('click', function() {
           EventInformation.update();
         })
         .catch(e => {
-          state.delete_target.classList.remove('deleting');
+          gcm_delete_target.classList.remove('deleting');
           console.error("Could not delete ", e);
           return;
         });
       break;
     default:
-      if (state.delete_target.classList.contains('event-occurrence')) {
+      if (gcm_delete_target.classList.contains('event-occurrence')) {
         Api.writeHeader(writer, Api.DELETE, Api.OCCURRENCES_MAP);
         Io.writeInt32(writer, identifier);
         Api.request(writer)
           .then(response => {
             Utilities.throwIfNotOk(response);
-            // @working
             const index = deleteValue(Global.data.occurrences_map,
               Global.data.occurrences_free_list,
               identifier);
@@ -441,7 +444,7 @@ buttons.delete.addEventListener('click', function() {
             console.error("Could not delete ", e);
         });
       } else {
-        state.delete_target.classList.remove('deleting');
+        gcm_delete_target.classList.remove('deleting');
         throw new Error('delete_target\'s parent should have `_identifier` property with a value from `Global.zones_identifier`');
       }
   }
@@ -506,7 +509,7 @@ function createEventOrVenue(parent, placeholder, api, meta_data) {
 }
 
 function updateEventOrVenue(button, placeholder, api, meta_data) {
-  const identifier = Number(state.edit_target._data_identifier);
+  const identifier = Number(gcm_edit_target._data_identifier);
   const index = meta_data.map.get(identifier);
   if (index === undefined) { throw new Error('[updateEventOrVenue]: id does not exist'); }
   const old_name = meta_data.array[index];
@@ -555,8 +558,8 @@ function updateEventOrVenue(button, placeholder, api, meta_data) {
   input.focus();
 }
 
-buttons.create.addEventListener('click', () => {
-  switch (state.extend_target._identifier) {
+gcm_create_button.addEventListener('click', () => {
+  switch (gcm_extend_target._identifier) {
     case Global.zones_identifier.STAFF: {
       const target = Global.zones[Global.zones_identifier.STAFF].element_list;
       let button = SideMenu.createTemplateButton(); 
@@ -600,7 +603,7 @@ buttons.create.addEventListener('click', () => {
       let button = SearchDisplay.createButton();
       const input = Utilities.createTextInput('Nouveau Rôle');
       button.appendChild(input);
-      state.extend_target.appendChild(button);
+      gcm_extend_target.appendChild(button);
       input.focus();
 
       setCreateInput(
@@ -608,7 +611,7 @@ buttons.create.addEventListener('click', () => {
         input,
         Api.ROLES_MAP,
         Global.data.bundleRolesNames(),
-        (button) => { EventInformation.state.event_role_button_list.push(button); },
+        (button) => { EventInformation.gcm_event_role_button_list.push(button); },
       );
       break;
     }
@@ -616,7 +619,7 @@ buttons.create.addEventListener('click', () => {
       let button = SearchDisplay.createButton();
       const input = Utilities.createTextInput('Nouvelle Compétence');
       button.appendChild(input);
-      state.extend_target.appendChild(button);
+      gcm_extend_target.appendChild(button);
       input.focus();
 
       setCreateInput(
@@ -625,7 +628,7 @@ buttons.create.addEventListener('click', () => {
         Api.COMPETENCES_MAP,
         Global.data.bundleCompetencesNames(),
         (button) => {
-          EventInformation.state.participant_competences_button_list.push(button);
+          EventInformation.gcm_participant_competences_button_list.push(button);
           EventInformation.update();
         }
       );
@@ -645,8 +648,8 @@ function createConditionalApiWriter(turning_on, api) {
   return writer;
 }
 
-buttons.toggle.addEventListener('click', () => {
-  const target = state.toggle_target;
+gcm_toggle_button.addEventListener('click', () => {
+  const target = gcm_toggle_target;
   const target_identifier = target._data_identifier;
   const turning_on = target.classList.toggle('clicked');
   const event_identifier = Global.getEventSelectionIdentifier(); 
@@ -690,7 +693,6 @@ buttons.toggle.addEventListener('click', () => {
       break;
     }
     case Global.zones_identifier.COMPETENCES: {
-      // @working
       const role_ordinal = target.parentElement._data_identifier; 
       const competence_index = Global.data.competences_map.get(target_identifier);
       if (competence_index === undefined || role_ordinal === undefined) {
@@ -723,8 +725,8 @@ buttons.toggle.addEventListener('click', () => {
   }
 });
 
-buttons.instantiate.addEventListener('click', () => {
-  const target = state.instantiate_target;
+gcm_instantiate_button.addEventListener('click', () => {
+  const target = gcm_instantiate_target;
   const target_identifier = target._data_identifier;
   switch (target.parentElement._identifier) {
     case Global.zones_identifier.EVENT: {
@@ -757,20 +759,20 @@ document.addEventListener('contextmenu', event => {
   const menu = Global.elements.right_click_menu;
   const target = event.target;
 
-  if (state.delete_target = target.closest('.deletable')) {
-    display(local_state, buttons.delete);
+  if (gcm_delete_target = target.closest('.deletable')) {
+    display(local_state, gcm_delete_button);
   }
-  if (state.edit_target = target.closest('.editable')) {
-    display(local_state, buttons.edit);
+  if (gcm_edit_target = target.closest('.editable')) {
+    display(local_state, gcm_edit_button);
   }
-  if (state.toggle_target = target.closest('.togglable')) {
-    display(local_state, buttons.toggle);
+  if (gcm_toggle_target = target.closest('.togglable')) {
+    display(local_state, gcm_toggle_button);
   }
-  if (state.extend_target = target.closest('.extendable')) {
-    display(local_state, buttons.create);
+  if (gcm_extend_target = target.closest('.extendable')) {
+    display(local_state, gcm_create_button);
   }
-  if (state.instantiate_target = target.closest('.instantiatable')) {
-    display(local_state, buttons.instantiate);
+  if (gcm_instantiate_target = target.closest('.instantiatable')) {
+    display(local_state, gcm_instantiate_button);
   }
 
   if (local_state.show) {
@@ -778,6 +780,8 @@ document.addEventListener('contextmenu', event => {
     menu.classList.replace('disp-none', 'disp-flex');
     menu.style.setProperty('--menu-left', event.clientX + 'px');
     menu.style.setProperty('--menu-top', event.clientY + 'px');
+    gcm_context_menu_x = event.clientX;
+    gcm_context_menu_y = event.clientY;
     document.addEventListener('click', handleClickForContextMenu);
   }
 });

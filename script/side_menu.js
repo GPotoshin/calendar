@@ -114,8 +114,19 @@ export function buttonClickCallback(event) {
     Utilities.setBackgroundColor(current_button, palette.blue);
     zone.selection = current_button;
     if (Global.viewIsInformation()) {
-      EventInformation.update();
-      Global.elements.views[Global.view_identifier.INFORMATION].replaceChildren(EventInformation.dom);
+      const data_selection = Global.zones[Global.zones_identifier.DATA_TYPE].selection._data_identifier;
+      switch (data_selection) { // @working
+        case Global.zones_identifier.EVENT: {
+          EventInformation.update();
+          Global.elements.views[Global.view_identifier.INFORMATION].replaceChildren(EventInformation.dom);
+          break;
+        }
+        case Global.zones_identifier.EVENT: {
+          StaffInformatino.update();
+          Global.elements.views[Global.view_identifier.INFORMATION].replaceChildren(StaffInformation.dom);
+          break;
+        }
+      }
     } else {
       Calendar.repaintBars();
     }

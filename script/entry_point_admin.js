@@ -1,6 +1,5 @@
 import * as Calendar from './calendar.js';
 import * as Api from './api.js';
-import * as EventInformation from './event_information.js';
 import * as Utilities from './utilities.js';
 import { palette } from './color.js';
 import * as Io from './io.js';
@@ -10,7 +9,9 @@ import {} from './context_menu.js'; // we need it
 import * as Global from './global.js';
 import { token } from './login.js';
 import * as SideMenu from './side_menu.js';
-import * as CalendarInformation from './calendar_information.js'
+import * as CalendarInformation from './calendar_information.js';
+import * as StaffInformation from './staff_information.js';
+import * as EventInformation from './event_information.js';
 
 let state = {
   scroll_pos_save: 0,
@@ -46,6 +47,7 @@ Calendar.init();
           SideMenu.composeVenueList();
           EventInformation.loadTemplate();
           CalendarInformation.loadTemplate();
+          StaffInformation.loadTemplate();
           Calendar.renderBars();
         });
     })
@@ -78,13 +80,16 @@ Calendar.init();
       Global.elements.body_container.replaceChild(Global.elements.views[Global.view_identifier.INFORMATION], Global.elements.body_container.children[1]);
       Global.zones[Global.zones_identifier.VIEW_TYPE].selection = information_button;
     }
-    const data_selection = Global.zones[Global.zones_identifier.DATA_TYPE].selection._data_identifier; if (Global.zones[data_selection].selection === null) {
+    const data_selection = Global.zones[Global.zones_identifier.DATA_TYPE].selection._data_identifier;
+    if (Global.zones[data_selection].selection === null) {
       Global.elements.views[Global.view_identifier.INFORMATION].replaceChildren(CalendarInformation.dom);
     } else if (data_selection === Global.zones_identifier.EVENT) {
       EventInformation.update();
       Global.elements.views[Global.view_identifier.INFORMATION].replaceChildren(EventInformation.dom);
+    } else if (data_selection === Global.zones_identifier.STAFF) {
+      StaffInformation.update();
+      Global.elements.views[Global.view_identifier.INFORMATION].replaceChildren(StaffInformation.dom);
     }
-    
   });
   view_type.append(calendar_button, information_button);
   Global.zones[Global.zones_identifier.VIEW_TYPE].selection = calendar_button;

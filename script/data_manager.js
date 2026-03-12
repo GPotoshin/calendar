@@ -98,7 +98,7 @@ export class DataManager {
     this.users_phone = [];
     this.users_competences = [];
     this.users_duty_station = [];
-    this.users_privilage_level = [];
+    this.users_privilege_level = [];
     this.users_free_list = [];
 
     this.events_map = new Map();
@@ -152,7 +152,7 @@ export class DataManager {
     this.users_phone = Io.readInt32Array(r);
     this.users_competences = Io.readArrayOfInt32Arrays(r);
     this.users_duty_station = Io.readInt32Array(r);
-    this.users_privilage_level = Io.readInt32Array(r);
+    this.users_privilege_level = Io.readInt32Array(r);
 
     this.events_map = Io.readMapInt32Int(r);
     this.events_name = Io.readStringArray(r);

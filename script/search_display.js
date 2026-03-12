@@ -59,9 +59,13 @@ export function updateList(input, container, getText) {
   }
 }
 
-export function createButton(name = '') {
+export function createButton(interactable = true) {
   let button = document.createElement('button');
-  button.className = 'hover search-list-button togglable deletable';
+  if (interactable) {
+    button.className = 'hover search-list-button togglable deletable';
+  } else {
+    button.className = 'hover';
+  }
   button.textContent = name;
   return button;
 }
@@ -95,12 +99,12 @@ export function createTemplate(name, identifier) {
   return menu;
 }
 
-export function create(name, identifier, meta_data) {
+export function create(name, identifier, meta_data, interactable=true) {
   let menu = createTemplate(name, identifier);
 
   for (const [identifier, index] of meta_data.map) {
     const name = meta_data.array[index];
-    const button = createButton(); 
+    const button = createButton(interactable); 
     button._data_idenetifier = identifier;
     Utilities.setNameAndIdentifier(button, name, identifier);
     menu._container.appendChild(button);

@@ -4,6 +4,7 @@ export let elements = {
   calendar_body: document.getElementById('calendar-body'),
   month_display: document.getElementById('month-display'),
   right_click_menu: document.getElementById('right-click-menu'),
+  option_menu: document.getElementById('option-menu'),
   side_menu: document.createElement('div'),
   body_container: document.getElementById('body-container'),
   side_menu_container: null,
@@ -11,7 +12,6 @@ export let elements = {
   dataListContainer: null,
   views: [document.getElementsByClassName('view-content')[0], null],
 }
-
 
 export let callbacks = {
   handleTyping: {func: null, obj: null},
@@ -36,6 +36,7 @@ export const zones_identifier = {
   STAFF_NUMBER_MAP_FIELD: 9,
   DURATION: 10,
   EMPLOYEES_LIMIT: 11,
+  PRIVILEGE_LEVEL: 12,
 };
 
 // eList is the list of buttons, that way we have a direct access to it
@@ -46,6 +47,20 @@ export let zones = [
   { selection: null, element_list: null, content: document.createElement('div') },
   { selection: null, element_list: null, content: document.createElement('div') },
 ];
+
+
+export function getZoneUserIdentifier() {
+  const zone = zones[zones_identifier.STAFF];
+  if (zone.selection == null) {
+    return undefined;
+  }
+  return zone.selection._data_identifier;
+}
+
+export function getZoneUserIndex() {
+  const user_identifier = getZoneUserIdentifier();
+  return data.users_map.get(user_identifier);
+}
 
 export function getEventSelectionIdentifier() {
   const selection = zones[zones_identifier.EVENT].selection;

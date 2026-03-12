@@ -225,9 +225,6 @@ function animateMonthTransition(direction) {
   }, { once: true });
 }
 
-// @working: we need to have occurence modifiction done
-// @bug: when entering modification occurrences should move to new line
-// @bug: @This|427| Can't find variable: gc_instatiating_occurrence_identifier 
 export function startInstantiating(event_identifier, occurrence_identifier = undefined) {
   gc_is_instantiating = true;
   if (occurrence_identifier !== undefined) {
