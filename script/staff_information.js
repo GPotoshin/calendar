@@ -31,9 +31,8 @@ function handlePrivilegeLevel(privilege_level) {
     update();
   })
   .catch(e => {
-      console.error("Could not update privilege level ", e);
+    console.error("Could not update privilege level ", e);
   });
-  
 }
 
 gsi_admin_button.addEventListener('click', () => {
@@ -54,8 +53,6 @@ function handleCenterButtonClick(e) {
 }
 
 gsi_chef_button.addEventListener('click', () => {
-  // @plan:
-  // 1. we need a little search menu to find the venue
   gsi_click_for_options_is_disabled = true;
   const loc_search_display = SearchDisplay.create(
     "Centres",
@@ -75,7 +72,7 @@ function createPrivilegeLevel() {
   pl_div.className = 'h-container';
   pl_div.innerHTML = `
     <div class="row-selection">
-    Privilege level: <button id="privilege-level" class="hover std-min no-padding txt-center tiny-button editable">\u00A0</button>
+    Niveau de privilège: <button id="privilege-level" class="hover std-min no-padding txt-center tiny-button editable">\u00A0</button>
     </div>
     `;
   pl_div.children[0]._identifier = Global.zones_identifier.PRIVILEGE_LEVEL;
@@ -129,8 +126,6 @@ export function update() {
   }
 
   const button = dom.querySelector('#privilege-level');
-  // @idea: we should have on a right click menu no chose from User, Admin, Chef.
-  // And then a search menu for a agence the chef is a chef of...
   if (user_privilege_level === PRIVILEGE_LEVEL_USER) {
     button.textContent = 'Utilisateur';
   } else if (user_privilege_level == PRIVILEGE_LEVEL_ADMIN)  {

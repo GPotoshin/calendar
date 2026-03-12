@@ -3,6 +3,7 @@ import { palette } from './color.js';
 import * as DM from './data_manager.js';
 import * as EventInformation from './event_information.js';
 import * as CalendarInformation from './calendar_information.js';
+import * as StaffInformation from './staff_information.js';
 import * as Utilities from './utilities.js';
 import * as SearchDisplay from './search_display.js';
 import * as Calendar from './calendar.js';
@@ -121,8 +122,8 @@ export function buttonClickCallback(event) {
           Global.elements.views[Global.view_identifier.INFORMATION].replaceChildren(EventInformation.dom);
           break;
         }
-        case Global.zones_identifier.EVENT: {
-          StaffInformatino.update();
+        case Global.zones_identifier.STAFF: {
+          StaffInformation.update();
           Global.elements.views[Global.view_identifier.INFORMATION].replaceChildren(StaffInformation.dom);
           break;
         }

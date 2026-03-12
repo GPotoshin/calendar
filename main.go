@@ -1003,7 +1003,6 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     }
     state.EventsDuration[event_index] = duration;
 
-
   case VENUES_MAP:
     slog.Info("VENUES_MAP")
     if !isAdmin(w, privilege_level) { return }
