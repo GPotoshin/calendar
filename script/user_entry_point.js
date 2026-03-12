@@ -19,7 +19,7 @@ let state = {
 
 Calendar.init();
 
-{
+{ // ok
   Global.elements.views[Global.view_identifier.INFORMATION] = document.createElement('div');
   Global.elements.views[Global.view_identifier.INFORMATION].classList =
     'view-content v-container align-items-center';
