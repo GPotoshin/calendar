@@ -11,18 +11,9 @@ matricule_input.addEventListener('input', () => {
 let public_key = null;
 export let token = null;
 
-self.addEventListener('fetch', (event) => {
-  if (event.request.url.includes('.js')) {
-    const base64Token = btoa(String.fromCharCode(...token));
-    const newRequest = new Request(event.request, {
-      mode: 'cors',
-      headers: {
-          'X-Module-Token': base64Token,
-      }
-    });
-    event.respondWith(fetch(newRequest));
-  }
-});
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js');
+}
 
 (async function initializeAuth() {
   try {
@@ -110,6 +101,13 @@ connect_button.addEventListener('click', async () => {
     const reader = new Io.BufferReader(binary);
 
     token = Io.readHash(reader);
+
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'SET_TOKEN',
+        token: token
+      });
+    }
     const privilege = Io.readInt32(reader);  
 
     let entrypoint = '';
@@ -127,9 +125,11 @@ connect_button.addEventListener('click', async () => {
     document.body.className = "";
     Utilities.appendMeasure();
 
-    import(entrypoint)
-    .catch(error => {
-      console.error("Failed to load entrypoint:", error);
+    setTimeout(() => {
+      import(entrypoint)
+        .catch(error => {
+          console.error("Failed to load entrypoint:", error);
+        });
     });
   } catch (error) {
     alert('Login failed: ' + error.message);

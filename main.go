@@ -1,20 +1,21 @@
 package main
 
 import (
-  "slices"
-  "crypto/rsa"
-  "sync"
-  "context"
-  "fmt"
-  "net/http"
-  "log/slog"
-  "time"
   "os"
   "os/signal"
-  "syscall"
+  "time"
   "io"
   "bufio"
+  "crypto/rsa"
+  "encoding/base64"
+  "syscall"
+  "sync"
+  "context"
+  "net/http"
+  "slices"
   "strings"
+  "fmt"
+  "log/slog"
   // "crypto/sha256"
 )
 
@@ -392,9 +393,77 @@ type HeaderPair struct {
 func serveFile(fileName string, headers []HeaderPair) http.HandlerFunc {
   return func(w http.ResponseWriter, r *http.Request) {
     for _, pair := range headers {
-      w.Header().Set(pair.Key, pair.Value);
+      w.Header().Set(pair.Key, pair.Value)
     }
-    http.ServeFile(w, r, fileName);
+    http.ServeFile(w, r, fileName)
+  }
+}
+
+const (
+  JS_ALL int32 = iota
+  JS_USR
+  JS_CHF
+  JS_ADM
+)
+
+type jsFile struct {
+  name string 
+  priv int32
+}
+
+func serveJsFile(file jsFile) http.HandlerFunc {
+  return func(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Content-Type", "text/javascript")
+    if file.priv == JS_ALL {
+      http.ServeFile(w, r, "script/"+file.name)
+      return
+    }
+    str_token := r.Header.Get("X-Module-Token")
+    if str_token == "" {
+      http.Error(w, "incorrect request", http.StatusBadRequest)
+      slog.Error("unauthorised request; no token provided")
+      return
+    }
+
+    slice_token, err := base64.StdEncoding.DecodeString(str_token)
+    if err != nil || len(slice_token) != 32 {
+      http.Error(w, "incorrect request", http.StatusBadRequest)
+      slog.Error("unreadable token")
+      return
+    }
+
+    token := [32]byte(slice_token)
+    connection_index, token_exists := state.ConnectionsToken[token]
+    if !token_exists {
+      http.Error(w, "incorrect request", http.StatusBadRequest)
+      slog.Error("not existing token")
+      return
+    }
+    user_identifier := state.ConnectionsUser[connection_index]
+    user_index, user_exists := state.UsersMap[user_identifier]
+    if !user_exists {
+      http.Error(w, "incorrect request", http.StatusBadRequest)
+      slog.Error("not existing user")
+      return
+    }
+
+    p_level := state.UsersPrivilegeLevel[user_index]
+
+    is_serving := false
+    if p_level == PRIVILEGE_LEVEL_ADMIN {
+      is_serving = true
+    } else if p_level >= 0 {
+      is_serving = file.priv <= JS_CHF
+    } else if p_level == PRIVILEGE_LEVEL_USER {
+      is_serving = file.priv <= JS_USR
+    } else {
+      http.Error(w, "incorrect request", http.StatusBadRequest)
+      slog.Error("unknown privilege level")
+      return
+    }
+    if is_serving {
+      http.ServeFile(w, r, "script/"+file.name)
+    }
   }
 }
 
@@ -450,41 +519,29 @@ func main() {
 
   http.HandleFunc("/regular.ttf", serveFile("fonts/SourceSansPro-Regular.ttf", []HeaderPair{{Key: "Content-Type", Value: "font/ttf"}}))
 
-  const (
-    JS_ALL int32 = iota
-    JS_USR
-    JS_CHF
-    JS_ADM
-  )
-
-  type jsFile struct {
-    name: string, 
-    priv: int32,
-  }
-
-  jsFiles := []string{
-    jsFile{"login.js", JS_ALL},
+  jsFiles := []jsFile{
+    jsFile{"login.js",     JS_ALL},
     jsFile{"utilities.js", JS_ALL},
-    jsFile{"io.js", JS_ALL},
-    jsFile{"color.js", JS_USR},
-    jsFile{"numeric_input.js", JS_USR},
-    jsFile{"data_manager.js", JS_USR},
-    jsFile{"search_display.js", JS_USR},
-    jsFile{"calendar.js", JS_USR},
-    jsFile{"context_menu.js", JS_USR},
-    jsFile{"global.js", JS_ADM},
-    jsFile{"api.js", JS_USR},
-    jsFile{"side_menu.js", JS_USR},
-    jsFile{"event_information.js", JS_ADM},
-    jsFile{"admin_entry_point.js", JS_ADM},
+    jsFile{"io.js",        JS_ALL},
+    jsFile{"sw.js",        JS_ALL},
+    jsFile{"color.js",            JS_USR},
+    jsFile{"numeric_input.js",    JS_USR},
+    jsFile{"data_manager.js",     JS_USR},
+    jsFile{"search_display.js",   JS_USR},
+    jsFile{"calendar.js",         JS_USR},
+    jsFile{"context_menu.js",     JS_USR},
+    jsFile{"side_menu.js",        JS_USR},
     jsFile{"user_entry_point.js", JS_USR},
-    jsFile{"chef_entry_point.js", JS_CHF},
+    jsFile{"api.js",              JS_USR},
+    jsFile{"chef_entry_point.js",   JS_CHF},
+    jsFile{"global.js",               JS_ADM},
+    jsFile{"event_information.js",    JS_ADM},
+    jsFile{"admin_entry_point.js",    JS_ADM},
     jsFile{"calendar_information.js", JS_ADM},
-    jsFile{"staff_information.js", JS_ADM},
+    jsFile{"staff_information.js",    JS_ADM},
   }
-  jsHeaders := []HeaderPair{{Key: "Content-Type", Value: "text/javascript"}}
   for _, file := range jsFiles {
-    http.HandleFunc("/"+file, serveFile("script/"+file, jsHeaders))
+    http.HandleFunc("/"+file.name, serveJsFile(file))
   }
 
   http.HandleFunc("/general_style.css", serveFile("general_style.css", []HeaderPair{{Key: "Content-Type", Value: "text/css"}}))
