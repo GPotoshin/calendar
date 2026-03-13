@@ -6,6 +6,11 @@ import(
   "fmt"
 )
 
+type IntPair struct {
+  id int32
+  idx int
+}
+
 func writeInt32(w io.Writer, val int32) error {
   return binary.Write(w, binary.LittleEndian, val)
 }
@@ -74,6 +79,21 @@ func writeArray[T any](w io.Writer, arr []T, writeT func(io.Writer, T) error) er
   return nil
 }
 
+func writeArrayByPairs[T any](w io.Writer, arr []T, writeT func(io.Writer, T) error, selected []IntPair) error {
+  n := int32(len(selected))
+  if err := binary.Write(w, binary.LittleEndian, n); err != nil {
+    return fmt.Errorf("failed to write array length: %w", err)
+  }
+
+  for i := 0; i < len(selected); i += 1 {
+    idx := selected[i].idx
+    if err := writeT(w, arr[idx]); err != nil {
+      return fmt.Errorf("failed to write element %d: %w", i, err)
+    }
+  }
+  return nil
+}
+
 func writeBytesArray(w io.Writer, arr [][]byte) error {
   return writeArray(w, arr, writeBytes)
 }
@@ -82,8 +102,16 @@ func writeStringArray(w io.Writer, arr []string) error {
   return writeArray(w, arr, writeString)
 }
 
+func writeStringArrayByPairs(w io.Writer, arr []string, selected []IntPair) error {
+  return writeArrayByPairs(w, arr, writeString, selected)
+}
+
 func writeInt32Array(w io.Writer, arr []int32) error {
   return writeArray(w, arr, writeInt32)
+}
+
+func writeInt32ArrayByPairs(w io.Writer, arr []int32, selected []IntPair) error {
+  return writeArrayByPairs(w, arr, writeInt32, selected)
 }
 
 func writeHashArray(w io.Writer, arr [][32]byte) error {
@@ -92,6 +120,10 @@ func writeHashArray(w io.Writer, arr [][32]byte) error {
 
 func writeArrayOfInt32Arrays(w io.Writer, arr [][]int32) error {
   return writeArray(w, arr, writeInt32Array)
+}
+
+func writeArrayOfInt32ArraysByPairs(w io.Writer, arr [][]int32, selected []IntPair) error {
+  return writeArrayByPairs(w, arr, writeInt32Array, selected)
 }
 
 func writeArrayOfArrayOfInt32Arrays(w io.Writer, arr [][][]int32) error {

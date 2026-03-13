@@ -249,7 +249,7 @@ const (
   DEST_ADMIN
   DEST_DISK
 )
-func writeState(w io.Writer, state State, dest int32) error {
+func writeState(w io.Writer, state State, dest int32, duty_station int32) error {
   var version string
   switch dest {
   case DEST_DISK:
@@ -281,8 +281,23 @@ func writeState(w io.Writer, state State, dest int32) error {
   if dest >= DEST_ADMIN {
     if err := writeMapInt32Int(w, state.UsersMap); err != nil { return fmt.Errorf("failed to write UsersMap: %w", err) }
   }
-  if dest == CHEF { // @working, @nocheckin
-    if err := writeMapInt32Int(w, state.UsersMap); err != nil { return fmt.Errorf("failed to write UsersMap: %w", err) }
+  var selected []IntPair
+  if dest == DEST_CHEF {
+    selected = make([]IntPair, 0, 60)
+    for id, idx := range state.UsersMap {
+      if state.UsersDutyStation[idx] == duty_station {
+        selected = append(selected, IntPair{id, idx})
+      }
+    }
+    slices.SortFunc(selected, func(a, b IntPair) int {
+      return a.idx - b.idx
+    })
+    if err := writeInt32(w, int32(len(selected))); err != nil { return fmt.Errorf("failed to write UserMap length for chef: %w", err) }
+    for i := 0; i<len(selected); i += 1 {
+      pair := selected[i]
+      if err := writeInt32(w, pair.id); err != nil { return fmt.Errorf("failed to write UserMap id for chef: %w", err) }
+      if err := writeInt32(w, int32(i)); err != nil { return fmt.Errorf("failed to write UserMap idx for chef: %w", err) }
+    }
   }
   if dest == DEST_DISK {
     if err := writeHashArray(w, state.UsersPassword); err != nil { return fmt.Errorf("failed to write UsersPassword: %w", err) }
@@ -296,14 +311,12 @@ func writeState(w io.Writer, state State, dest int32) error {
     if err := writeInt32Array(w, state.UsersDutyStation); err != nil { return fmt.Errorf("failed to write UsersDutyStation: %w", err) }
     if err := writeInt32Array(w, state.UsersPrivilegeLevel); err != nil { return fmt.Errorf("failed to write UsersPrivilegeLevel: %w", err) }
   }
-  if dest == DEST_CHEF { // @working, @nocheckin
-    if err := writeStringArray(w, state.UsersName); err != nil { return fmt.Errorf("failed to write UsersName: %w", err) }
-    if err := writeStringArray(w, state.UsersSurname); err != nil { return fmt.Errorf("failed to write UsersSurname: %w", err) }
-    if err := writeStringArray(w, state.UsersMail); err != nil { return fmt.Errorf("failed to write UsersMail: %w", err) }
-    if err := writeInt32Array(w, state.UsersPhone); err != nil { return fmt.Errorf("failed to write UsersPhone: %w", err) }
-    if err := writeArrayOfInt32Arrays(w, state.UsersCompetences); err != nil { return fmt.Errorf("failed to write UsersCompetences: %w", err) }
-    if err := writeInt32Array(w, state.UsersDutyStation); err != nil { return fmt.Errorf("failed to write UsersDutyStation: %w", err) }
-    if err := writeInt32Array(w, state.UsersPrivilegeLevel); err != nil { return fmt.Errorf("failed to write UsersPrivilegeLevel: %w", err) }
+  if dest == DEST_CHEF {
+    if err := writeStringArrayByPairs(w, state.UsersName, selected); err != nil { return fmt.Errorf("failed to write UsersName: %w", err) }
+    if err := writeStringArrayByPairs(w, state.UsersSurname, selected); err != nil { return fmt.Errorf("failed to write UsersSurname: %w", err) }
+    if err := writeStringArrayByPairs(w, state.UsersMail, selected); err != nil { return fmt.Errorf("failed to write UsersMail: %w", err) }
+    if err := writeInt32ArrayByPairs(w, state.UsersPhone, selected); err != nil { return fmt.Errorf("failed to write UsersPhone: %w", err) }
+    if err := writeArrayOfInt32ArraysByPairs(w, state.UsersCompetences, selected); err != nil { return fmt.Errorf("failed to write UsersCompetences: %w", err) }
   }
 
   if err := writeMapInt32Int(w, state.EventsMap); err != nil { return fmt.Errorf("failed to write EventsMap: %w", err) }
@@ -512,7 +525,7 @@ func main() {
     }
     rebaseState()
     writer := bufio.NewWriter(file)
-    if err = writeState(writer, state, DEST_DISK); err != nil {
+    if err = writeState(writer, state, DEST_DISK, -1); err != nil {
       slog.Error("Failed to store data [binary]", "cause", err)
     }
     if err = writer.Flush(); err != nil {
@@ -613,7 +626,7 @@ func handleData(w http.ResponseWriter, r *http.Request) {
   }
 
   p_level := state.UsersPrivilegeLevel[index]
-  var dest uint32
+  var dest int32
   if p_level == PRIVILEGE_LEVEL_ADMIN {
     slog.Info("Writing admin data")
     dest = DEST_ADMIN
@@ -625,11 +638,11 @@ func handleData(w http.ResponseWriter, r *http.Request) {
     dest = DEST_CHEF
   } else {
     slog.Error("incorrect privilege level to send data")
-    http.Error(w, "incorrect privilege level", http.StatusIntervalServerError)
+    http.Error(w, "incorrect privilege level", http.StatusInternalServerError)
     return
   }
   rebaseState()
-  if err = writeState(w, state, dest); err != nil {
+  if err = writeState(w, state, dest, p_level); err != nil {
     slog.Error("Couldn't write admin data", "cause", err)
     http.Error(w, "Error writing application state", http.StatusInternalServerError)
     return
