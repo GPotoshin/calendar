@@ -180,6 +180,8 @@ export function composeEventList() {
   }
 }
 
+// @nocheckin: we should handle only a portion off all users (like 100) and the
+// rest is foundable via search
 export function composeUsersList() {
   for (const [matricule, index] of Global.data.users_map) {
     const name = Global.data.users_name[index];

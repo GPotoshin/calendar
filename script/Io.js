@@ -212,3 +212,26 @@ export function writeArrayOfInt32Arrays(writer, arrays) {
 export function writeArrayOfInt32Pairs(writer, array) {
   writeArray(writer, array, writeInt32Pair)
 }
+
+export async function hashText(text) {
+  const encoder = new TextEncoder();
+  const encoded_text = encoder.encode(text);
+  const hashBuffer = await window.crypto.subtle.digest('SHA-256', encoded_text);
+  return new Uint8Array(hashBuffer);
+}
+
+export async function encryptAndPackage(buffer, public_key) {
+  const encrypted_buffer = await crypto.subtle.encrypt(
+    {
+      name: 'RSA-OAEP'
+    },
+    public_key,
+    buffer,
+  );
+  const encrypted_buffer_writer = new BufferWriter();
+  writeUint8Array(
+    encrypted_buffer_writer,
+    new Uint8Array(encrypted_buffer),
+  );
+  return encrypted_buffer_writer;
+}

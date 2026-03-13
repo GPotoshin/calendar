@@ -1,4 +1,4 @@
-import * as AD from './admin_data.js';
+import { privilege } from './login.js';
 
 export let elements = {
   calendar_body: document.getElementById('calendar-body'),
@@ -21,6 +21,9 @@ export const view_identifier = {
   CALENDER: 0,
   INFORMATION: 1,
 };
+
+export const PRIVILEGE_LEVEL_ADMIN = -2;
+export const PRIVILEGE_LEVEL_USER  = -1
 
 export const zones_identifier = {
   NONE: -1,
@@ -91,5 +94,19 @@ export function getOccurrencesEvent(identifier) {
   return undefined;
 }
 
-export const data = new AD.AdminData();
+let _data = null;
+
+if (privilege == -2) {
+  const { AdminData } = await import('./admin_data.js');
+  _data = new AdminData();
+} else if (privilege == -1) {
+  const { UserData } = await import('./user_data.js');
+  _data = new UserData();
+} else if (privilege >= 0) {
+  const { ChefData } = await import('./chef_data.js');
+  _data = new ChefData();
+}
+
+export const data = _data;
+
 window.data = data; // @nocheckin: only in dev

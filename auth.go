@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
   "html/template"
-	"io"
 	"log/slog"
 	"net/http"
 	"time"
@@ -133,34 +132,12 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	encryptedSize, err := readInt32(r.Body)
-	if err != nil {
-		slog.Error("Failed to read encrypted data size", "cause", err)
-		http.Error(w, "Bad request", http.StatusBadRequest)
-		return
-	}
-
-	if encryptedSize < 0 || encryptedSize > 1024*1024 {
-		slog.Error("Invalid encrypted data size", "size", encryptedSize)
-		http.Error(w, "Bad request", http.StatusBadRequest)
-		return
-	}
-
-	encryptedData := make([]byte, encryptedSize)
-	if _, err := io.ReadFull(r.Body, encryptedData); err != nil {
-		slog.Error("Failed to read encrypted data: %v\n", "cause", err)
-		http.Error(w, "Bad request", http.StatusBadRequest)
-		return
-	}
-
-	decryptedData, err := state.decrypt(encryptedData)
+  reader, err := readEncryptedData(r.Body)
 	if err != nil {
 		slog.Error("Failed to decrypt data", "cause", err)
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
-
-  reader := bytes.NewReader(decryptedData)
 
 	userId, err := readInt32(reader)
 	if err != nil {

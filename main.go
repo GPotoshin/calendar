@@ -21,6 +21,7 @@ import (
 
 const (
 	USERS_MAP int32 = iota
+  USERS_PASSWORD
 	USERS_NAME
 	USERS_SURNAME
 	USERS_MAIL
@@ -871,63 +872,79 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     }
     index, exists := state.UsersMap[mat]
     switch mode {
-      case CREATE:
-        slog.Info("CREATE")
-        name, surname, success := readNameAndSurname(w, r)
-        if !success { return }
+    case CREATE:
+      slog.Info("CREATE")
+      name, surname, success := readNameAndSurname(w, r)
+      if !success { return }
 
-        if exists {
-          slog.Error("collision in matricule storage")
-          http.Error(w, "bad request", http.StatusBadRequest)
-          return
-        }
-        index = storageIndex(state.UsersMap, &state.UsersFreeList)
-        state.UsersMap[mat] = index
-        storeValue(&state.UsersName, index, name)
-        storeValue(&state.UsersSurname, index, surname)
-        slog.Info("DATA", "name", name, "surname", surname, "mat", mat, "index", index)
-      case UPDATE:
-        slog.Info("UPDATE")
-        if !exists {
-          slog.Error("editing an inexisting user")
-          http.Error(w, "bad request", http.StatusBadRequest)
-          return
-        }
-        new_identifier, err := readInt32(r.Body)
-        if readError(w, "USERS_MAP:UPDATE", "new_identifier", err) { return }
-        name, surname, success := readNameAndSurname(w, r)
-        if !success { return }
-        if new_identifier != mat {
-          delete(state.UsersMap, mat)
-          state.UsersMap[new_identifier] = index
-        }
-        state.UsersName[index] = name
-        state.UsersSurname[index] = surname
-        slog.Info("DATA",
+      if exists {
+        slog.Error("collision in matricule storage")
+        http.Error(w, "bad request", http.StatusBadRequest)
+        return
+      }
+      index = storageIndex(state.UsersMap, &state.UsersFreeList)
+      state.UsersMap[mat] = index
+      storeValue(&state.UsersPassword, index, [32]byte{})
+      storeValue(&state.UsersName, index, name)
+      storeValue(&state.UsersSurname, index, surname)
+      storeValue(&state.UsersMail, index, "")
+      storeValue(&state.UsersPhone, index, 0)
+      storeValue(&state.UsersCompetences, index, []int32{})
+      storeValue(&state.UsersDutyStation, index, -1)
+      storeValue(&state.UsersPrivilegeLevel, index, PRIVILEGE_LEVEL_USER)
+
+      slog.Info("DATA", "name", name, "surname", surname, "mat", mat, "index", index)
+    case UPDATE:
+      slog.Info("UPDATE")
+      if !exists {
+        slog.Error("editing an inexisting user")
+        http.Error(w, "bad request", http.StatusBadRequest)
+        return
+      }
+      new_identifier, err := readInt32(r.Body)
+      if readError(w, "USERS_MAP:UPDATE", "new_identifier", err) { return }
+      name, surname, success := readNameAndSurname(w, r)
+      if !success { return }
+      if new_identifier != mat {
+        delete(state.UsersMap, mat)
+        state.UsersMap[new_identifier] = index
+      }
+      state.UsersName[index] = name
+      state.UsersSurname[index] = surname
+      slog.Info("DATA",
         "name", name,
         "surname", surname,
         "old_mat", mat,
         "new_mat", new_identifier,
         "index", index)
-      case DELETE:
-        slog.Info("DELETE")
-        if !exists {
-          slog.Error("matricule already does not exist")
-          return
-        }
+    case DELETE:
+      slog.Info("DELETE")
+      if !exists {
+        slog.Error("matricule already does not exist")
+        return
+      }
 
-        deleteValue(state.UsersMap, nil, &state.UsersFreeList, mat)
-        deleteOccurrences(state.OccurrencesParticipant, mat)
-        for token, index := range state.ConnectionsToken {
-          if state.ConnectionsUser[index] == mat {
-            deleteToken(state.ConnectionsToken, &state.ConnectionsFreeList, token)
-          }
+      deleteValue(state.UsersMap, nil, &state.UsersFreeList, mat)
+      deleteOccurrences(state.OccurrencesParticipant, mat)
+      for token, index := range state.ConnectionsToken {
+        if state.ConnectionsUser[index] == mat {
+          deleteToken(state.ConnectionsToken, &state.ConnectionsFreeList, token)
         }
-        slog.Info("DATA", "mat", mat)
+      }
+      slog.Info("DATA", "mat", mat)
 
-      default:
-        noSupport(w, "USERS:default")
+    default:
+      noSupport(w, "USERS:default")
     }
+  case USERS_PASSWORD:
+    slog.Info("USER_PASSWORD")
+    if !isAdmin(w, privilege_level) { return }
+    switch mode {
+    case UPDATE:
+    default:
+      noSupport(w, "USER_PASSWORD:default")
+    }
+    
 
   case USERS_NAME:
     noSupport(w, "USERS_NAME")
@@ -974,7 +991,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         &state.EventsName,
         &state.EventsFreeId,
         &state.EventsFreeList,
-      )
+        )
       if index < 0 { return }
 
       storeValue(&state.EventsVenues, index, []int32{})
@@ -997,7 +1014,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         w,
         state.EventsMap,
         &state.EventsName,
-      )
+        )
 
     default:
       noSupport(w, "EVENTS:default")
@@ -1023,29 +1040,29 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
 
     num_map := state.EventsPersonalNumMap[index]
     switch mode {
-      case CREATE:
-        slog.Info("CREATE")
-        if len(state.EventsRole) <= index {
-          state.EventsRole = slices.Grow(state.EventsRole, index+1-len(state.EventsRole));
-          state.EventsRole = state.EventsRole[:index+1];
-        }
-        state.EventsRole[index] = append(state.EventsRole[index], role_identifier)
-        for i := 0; i < len(num_map); i++ {
-          num_map[i] = append(num_map[i], -1)
-        }
-        state.EventsRolesRequirements[index] = append(state.EventsRolesRequirements[index], []int32{})
+    case CREATE:
+      slog.Info("CREATE")
+      if len(state.EventsRole) <= index {
+        state.EventsRole = slices.Grow(state.EventsRole, index+1-len(state.EventsRole));
+        state.EventsRole = state.EventsRole[:index+1];
+      }
+      state.EventsRole[index] = append(state.EventsRole[index], role_identifier)
+      for i := 0; i < len(num_map); i++ {
+        num_map[i] = append(num_map[i], -1)
+      }
+      state.EventsRolesRequirements[index] = append(state.EventsRolesRequirements[index], []int32{})
       slog.Info("DATA", "event_identifier", event_identifier, "role_identifier", role_identifier)
-      case DELETE:
-        slog.Info("DELETE")
-        pos := slices.Index(state.EventsRole[index], role_identifier)
-        filterIdx(&state.EventsRole[index], pos)
-        for i := 0; i < len(num_map); i++ {
-          filterIdx(&num_map[i], pos+2)
-        }
-        filterIdx(&state.EventsRolesRequirements[index], pos+1) // we have an additional data for participants
-        slog.Info("DATA", "event_identifier", event_identifier, "role_identifier", role_identifier, "column", pos)
-      default:
-        noSupport(w, "EVENTS_ROLES:default")
+    case DELETE:
+      slog.Info("DELETE")
+      pos := slices.Index(state.EventsRole[index], role_identifier)
+      filterIdx(&state.EventsRole[index], pos)
+      for i := 0; i < len(num_map); i++ {
+        filterIdx(&num_map[i], pos+2)
+      }
+      filterIdx(&state.EventsRolesRequirements[index], pos+1) // we have an additional data for participants
+      slog.Info("DATA", "event_identifier", event_identifier, "role_identifier", role_identifier, "column", pos)
+    default:
+      noSupport(w, "EVENTS_ROLES:default")
     }
   case EVENTS_ROLES_REQUIREMENT:
     slog.Info("EVENTS_ROLES_REQUIREMENT")
@@ -1060,12 +1077,12 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     if readError(w, "EVENTS_ROLE", "competence_identifier", err) { return }
     requirements := &state.EventsRolesRequirements[event_index][role_ordinal]
     switch mode {
-      case CREATE:
-        *requirements = append(*requirements, competence_identifier)
-      case DELETE:
-        filterVal(requirements, competence_identifier)
-      default:
-        noSupport(w, "EVENTS_ROLES_REQUIREMENT:default")
+    case CREATE:
+      *requirements = append(*requirements, competence_identifier)
+    case DELETE:
+      filterVal(requirements, competence_identifier)
+    default:
+      noSupport(w, "EVENTS_ROLES_REQUIREMENT:default")
     }
   case EVENTS_PERSONAL_NUM_MAP:
     slog.Info("EVENTS_PERSONAL_NUM_MAP")
@@ -1142,7 +1159,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         &state.VenuesName,
         &state.VenuesFreeId,
         &state.VenuesFreeList,
-      )
+        )
 
     case DELETE:
       slog.Info("DELETE")
@@ -1161,7 +1178,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         w,
         state.VenuesMap,
         &state.VenuesName,
-      )
+        )
 
     default:
       noSupport(w, "VENUES:default")
@@ -1182,7 +1199,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         &state.CompetencesName,
         &state.CompetencesFreeId,
         &state.CompetencesFreeList,
-      )
+        )
     case DELETE:
       slog.Info("DELETE")
       identifier_to_delete, err := readInt32(r.Body)
@@ -1194,7 +1211,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         &state.CompetencesFreeId,
         &state.CompetencesFreeList,
         identifier_to_delete,
-      )
+        )
       for _, _index := range state.CompetencesMap {
         deleteOccurrences(state.EventsRolesRequirements[_index], identifier_to_delete)
       }
@@ -1218,7 +1235,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         &state.RolesName,
         &state.RolesFreeId,
         &state.RolesFreeList,
-      )
+        )
     case DELETE:
       slog.Info("DELETE")
       id, err := readInt32(r.Body)
@@ -1257,7 +1274,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         state.OccurrencesMap,
         &state.OccurrencesFreeList,
         &state.OccurrencesFreeId,
-      )
+        )
       storeValue(&state.OccurrencesVenue, index, -1)
       storeValue(&state.OccurrencesDates, index, intervals)
       storeValue(&state.OccurrencesParticipant, index, []int32{})
@@ -1272,7 +1289,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       assurePrefix(intervals)
       pushIdentifierToDayOccurrences(intervals, id)
       writeInt32(w, id)
-    
+
     case DELETE:
       slog.Info("DELETE")
       occurrence_identifier, err := readInt32(r.Body)
@@ -1285,7 +1302,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         occurrence_identifier)
       intervals := state.OccurrencesDates[occurrence_index]
       removeIdentifierFromDayOccurrences(intervals, occurrence_identifier)
-    
+
     default:
       noSupport(w, "OCCURRENCES_MAP:default")
     }

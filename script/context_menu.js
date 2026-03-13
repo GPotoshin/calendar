@@ -83,6 +83,11 @@ function escOrCreateOnEnter(event, button, inputs, next = null) {
         Global.data.users_map.set(matricule, index);
         storeValue(Global.data.users_name, index, name);
         storeValue(Global.data.users_surname, index, surname);
+
+        storeValue(Global.data.users_phone, index, 0);
+        storeValue(Global.data.users_competences, index, []);
+        storeValue(Global.data.users_duty_station, index, -1);
+        storeValue(Global.data.users_privilege_level, index, Global.PRIVILEGE_LEVEL_USER);
         button._data_identifier = matricule;
       })
       .catch(error => {

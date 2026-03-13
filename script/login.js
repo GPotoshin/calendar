@@ -1,5 +1,8 @@
 import * as Io from './io.js';
 import * as Utilities from './utilities.js';
+
+export let public_key = null;
+
 const matricule_input = document.getElementById('id');
 const password_input = document.getElementById('password');
 const connect_button = document.getElementById('connect');
@@ -8,8 +11,8 @@ matricule_input.addEventListener('input', () => {
   matricule_input.value = Utilities.digitise(matricule_input.value);
 });
 
-let public_key = null;
 export let token = null;
+export let privilege = undefined;
 
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js');
@@ -60,40 +63,21 @@ connect_button.addEventListener('click', async () => {
 
   try {
     const buffer_writer = new Io.BufferWriter();
-    Io.writeInt32(buffer_writer, Number(username))
-
-    const encoder = new TextEncoder();
-    const passwordData = encoder.encode(password);
-    const hashBuffer = await window.crypto.subtle.digest('SHA-256', passwordData);
-    const hashBytes = new Uint8Array(hashBuffer);
-
+    Io.writeString(buffer_writer, "magic");
+    Io.writeInt32(buffer_writer, Number(username));
+    const hashBytes = await Io.hashText(password);
     Io.writeHash(buffer_writer, hashBytes);
-
     const timestamp = Math.floor(Date.now() / 1000);
     Io.writeInt32(buffer_writer, timestamp);
 
-    const encrypted_buffer = await crypto.subtle.encrypt(
-      {
-        name: 'RSA-OAEP'
-      },
-      public_key,
-      buffer_writer.getBuffer(),
-    );
-
-    // we need it to write a prefixed size. but maybe we don't need
-    // prefixed size
-    const encrypted_buffer_writer = new Io.BufferWriter();
-    Io.writeUint8Array(
-      encrypted_buffer_writer,
-      new Uint8Array(encrypted_buffer),
-    );
+    const w = await Io.encryptAndPackage(buffer_writer.getBuffer(), public_key);
 
     const response = await fetch('/api/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/octet-stream',
       },
-      body: encrypted_buffer_writer.getBuffer(),
+      body: w.getBuffer(),
     });
 
     Utilities.throwIfNotOk(response);
@@ -108,7 +92,7 @@ connect_button.addEventListener('click', async () => {
         token: token,
       });
     }
-    const privilege = Io.readInt32(reader);  
+    privilege = Io.readInt32(reader);  
 
     let entrypoint = '';
     if (privilege == -2) {

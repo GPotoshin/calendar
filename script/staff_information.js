@@ -4,9 +4,10 @@ import * as Global from './global.js';
 import * as SearchDisplay from './search_display.js';
 import * as Utilities from './utilities.js';
 import { numeric_input } from './numeric_input.js';
+import { public_key } from './login.js';
 
-const PRIVILEGE_LEVEL_ADMIN = -2;
-const PRIVILEGE_LEVEL_USER  = -1
+const PRIVILEGE_LEVEL_ADMIN = Global.PRIVILEGE_LEVEL_ADMIN;
+const PRIVILEGE_LEVEL_USER  = Global.PRIVILEGE_LEVEL_USER;
 
 export let dom = document.createElement('div');
 
@@ -79,6 +80,48 @@ function createPrivilegeLevel() {
   return pl_div;
 }
 
+function handleClickForPasswordChange(e) {
+  const button = e.target;
+  const [div, input] = Utilities.createBorderedTextInput('Nouveau Mot de Passe');
+  input.type = 'password';
+  input.addEventListener('click', event => {
+    if (event.key === 'Enter') {
+      const value = input.value;
+      const user_identifier = Global.getZoneUserIdentifier();
+      let writer = Api.createBufferWriter(Api.UPDATE, Api.USERS_PASSWORD);
+
+      hashed = io.hashText(value);
+      Io.writeString(writer, 'magic');
+      Io.writeInt32(writer, user_identifier);
+      Io.writeHash(writer, hashed);
+
+      const w = Io.encryptAndPackage(writer.getBuffer(), public_key);
+      Api.request(w)
+      .then(response => {
+        Utilities.throwIfNotOk(response);
+      })
+      .catch(e => {
+        console.error("failed to update password");
+      });
+
+    } else if (event.key === 'Escape') {
+      div.replaceWith(button);
+      input = null;
+      div = null;
+    }
+  });
+  button.replaceWith(div);
+  input.focus();
+}
+
+function createPasswordButton() {
+  let button = document.createElement('button');
+  button.classList = "hover disp-flex align-items-center justify-content-center with-border";
+  button.textContent = "Changer le Mot de Passe";
+  button.addEventListener('click', handleClickForPasswordChange);
+  return button;
+}
+
 function handleClickForOptions() {
   if (!gsi_click_for_options_is_disabled) {
     Global.elements.option_menu.classList.replace('disp-flex', 'disp-none');
@@ -112,6 +155,7 @@ export function loadTemplate() {
 
   dom.children[0].append(
     createPrivilegeLevel(),
+    createPasswordButton(),
   );
 }
 

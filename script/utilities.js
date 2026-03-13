@@ -41,6 +41,15 @@ export function createTextInput(placeholder) {
   return input;
 }
 
+export function createBorderedTextInput(placeholder) {
+  const div = document.createElement('div');
+  div.classList = 'searching-field h-container disp-flex grow';
+  div.innerHTML = '<div class="arrow">></div><input class="grow" type="text"></input>';
+  const input = div.querySelector('input');
+  input.placeholder = placeholder;
+  return [div, input];
+}
+
 export function setNameAndIdentifier(button, name, identifier) {
   button._data_identifier = identifier;
   let span = document.createElement('span');
@@ -51,6 +60,7 @@ export function setNameAndIdentifier(button, name, identifier) {
   span.textContent = '#'+identifier;
   button.appendChild(span);
 }
+
 export function throwIfNotOk(response) {
   if (!response.ok) { throw new Error(`HTTP error! status: ${response.status}`); }
 }

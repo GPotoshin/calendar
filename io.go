@@ -4,6 +4,7 @@ import(
   "io"
   "encoding/binary"
   "fmt"
+  "bytes"
 )
 
 type IntPair struct {
@@ -249,6 +250,39 @@ func readMap[K comparable, V any](r io.Reader, readK func(io.Reader) (K, error),
 
 func readMapInt32Int(r io.Reader) (map[int32]int, error) {
   return readMap(r, readInt32, readInt)
+}
+
+func readEncryptedData(r io.Reader) (io.Reader, error) {
+	encryptedSize, err := readInt32(r)
+	if err != nil {
+    return nil, fmt.Errorf("Failed to read encrypted data size: %w", err)
+	}
+
+	if encryptedSize < 0 || encryptedSize > 1024*1024 {
+    return nil, fmt.Errorf("Invalid encrypted data size: %d", encryptedSize)
+	}
+
+	encryptedData := make([]byte, encryptedSize)
+	if _, err := io.ReadFull(r, encryptedData); err != nil {
+		return nil, fmt.Errorf("Failed to read encrypted data: %v\n", "cause", err)
+	}
+
+	decryptedData, err := state.decrypt(encryptedData)
+	if err != nil {
+    return nil, fmt.Errorf("Failed to decrypt data: %w", err)
+	}
+
+  reader := bytes.NewReader(decryptedData)
+  str, err := readStringWithLimits(reader, []int32{5})
+	if err != nil {
+    return nil, fmt.Errorf("Can't read magic string: %w", err)
+	}
+
+  if str != "magic" {
+    return nil, fmt.Errorf("Incorrect magic string. Probably incorrect Public Key")
+  }
+
+  return reader, nil
 }
 
 // We should make 2 functions. One reads arrays of fixed length types just
