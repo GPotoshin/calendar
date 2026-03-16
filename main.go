@@ -550,17 +550,19 @@ func main() {
     jsFile{"utilities.js", JS_ALL},
     jsFile{"io.js",        JS_ALL},
     jsFile{"sw.js",        JS_ALL},
-    jsFile{"color.js",            JS_USR},
+    jsFile{"color.js",     JS_ALL},
+    jsFile{"user_entry_point.js", JS_USR},
+    jsFile{"user_data.js",        JS_USR},
     jsFile{"numeric_input.js",    JS_USR},
     jsFile{"data_manager.js",     JS_USR},
     jsFile{"search_display.js",   JS_USR},
     jsFile{"calendar.js",         JS_USR},
     jsFile{"context_menu.js",     JS_USR},
     jsFile{"side_menu.js",        JS_USR},
-    jsFile{"user_entry_point.js", JS_USR},
     jsFile{"api.js",              JS_USR},
+    jsFile{"global.js",           JS_USR},
     jsFile{"chef_entry_point.js",   JS_CHF},
-    jsFile{"global.js",               JS_ADM},
+    jsFile{"chef_data.js",          JS_CHF},
     jsFile{"event_information.js",    JS_ADM},
     jsFile{"admin_entry_point.js",    JS_ADM},
     jsFile{"admin_data.js",           JS_ADM},
@@ -941,6 +943,35 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     if !isAdmin(w, privilege_level) { return }
     switch mode {
     case UPDATE:
+      reader, err := readEncryptedData(r.Body)
+      if err != nil {
+        slog.Error("Failed to decrypt data", "cause", err)
+        http.Error(w, "Bad request", http.StatusBadRequest)
+        return
+      }
+
+      userId, err := readInt32(reader)
+      if err != nil {
+        slog.Error("Failed to parse username", "cause", err)
+        http.Error(w, "bad request", http.StatusBadRequest)
+        return
+      }
+
+      password, err := readHash(reader)
+      if err != nil {
+        slog.Error("Failed to parse password", "cause", err)
+        http.Error(w, "bad request", http.StatusBadRequest)
+        return
+      }
+
+      user_index, user_exists := state.UsersMap[userId]
+      if (!user_exists) { 
+        state.mutex.Unlock()
+        http.Error(w, "bad request", http.StatusBadRequest)
+        return
+      }
+      storeValue(&state.UsersPassword, user_index, password)
+
     default:
       noSupport(w, "USER_PASSWORD:default")
     }

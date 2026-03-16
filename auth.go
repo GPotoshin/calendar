@@ -27,8 +27,6 @@ func (s *State) getPublicKey() []byte {
 }
 
 func (s *State) decrypt(data []byte) ([]byte, error) {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
 	return rsa.DecryptOAEP(sha256.New(), rand.Reader, s.privateKey, data, nil)
 }
 
@@ -132,12 +130,14 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	state.mutex.RLock()
   reader, err := readEncryptedData(r.Body)
 	if err != nil {
 		slog.Error("Failed to decrypt data", "cause", err)
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
+	state.mutex.RUnlock()
 
 	userId, err := readInt32(reader)
 	if err != nil {

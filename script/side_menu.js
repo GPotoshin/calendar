@@ -1,5 +1,6 @@
 import * as Global from './global.js';
 import { palette } from './color.js';
+import { privilege } from './login.js';
 import * as DM from './data_manager.js';
 import * as EventInformation from './event_information.js';
 import * as CalendarInformation from './calendar_information.js';
@@ -65,8 +66,11 @@ function setupZone(zones_identifier) {
     );
   });
 }
+
 setupZone(Global.zones_identifier.EVENT);
-setupZone(Global.zones_identifier.STAFF);
+if (privilege !== Global.PRIVILEGE_LEVEL_USER) {
+  setupZone(Global.zones_identifier.STAFF);
+}
 setupZone(Global.zones_identifier.VENUE);
 
 header_container.append(header_button_container);
@@ -83,9 +87,16 @@ function createDataTypeButton(zones_identifier, name) {
 }
 
 let event_button = createDataTypeButton(Global.zones_identifier.EVENT, 'Événements');
-let staff_button = createDataTypeButton(Global.zones_identifier.STAFF, 'Personnel');
+let staff_button = null;
+if (privilege !== Global.PRIVILEGE_LEVEL_USER) {
+  staff_button = createDataTypeButton(Global.zones_identifier.STAFF, 'Personnel');
+}
 let venue_button = createDataTypeButton(Global.zones_identifier.VENUE, 'Lieux');
-header_button_container.append(event_button, staff_button, venue_button);
+if (privilege !== Global.PRIVILEGE_LEVEL_USER) {
+  header_button_container.append(event_button, staff_button, venue_button);
+} else {
+  header_button_container.append(event_button, venue_button);
+}
 
 Global.zones[Global.zones_identifier.DATA_TYPE].selection = event_button;
 
@@ -136,7 +147,10 @@ export function buttonClickCallback(event) {
 
 export function createTemplateButton() {
   let button = document.createElement('button');
-  button.className = 'side-menu-list-button hover deletable editable';
+  button.className = 'side-menu-list-button hover';
+  if (privilege === Global.PRIVILEGE_LEVEL_ADMIN) {
+    button.classList.add('deletable', 'editable');
+  }
   return button;
 }
 
@@ -174,7 +188,9 @@ export function composeEventList() {
   for (const [identifier, index] of Global.data.events_map) {
     const name = Global.data.events_name[index];
     let button = createListButtonAndSetToggleCallback();
-    button.classList.add('instantiatable');
+    if (privilege === Global.PRIVILEGE_LEVEL_ADMIN) {
+      button.classList.add('instantiatable');
+    }
     Utilities.setNameAndIdentifier(button, name, identifier);
     appendButtonToZone(Global.zones_identifier.EVENT, button);
   }

@@ -84,30 +84,33 @@ function handleClickForPasswordChange(e) {
   const button = e.target;
   const [div, input] = Utilities.createBorderedTextInput('Nouveau Mot de Passe');
   input.type = 'password';
-  input.addEventListener('click', event => {
+  input.addEventListener('keydown', async (event) => {
     if (event.key === 'Enter') {
       const value = input.value;
+
       const user_identifier = Global.getZoneUserIdentifier();
+      const hashed = await Io.hashText(value);
+
+      let inner_writer = new Io.BufferWriter();
+      Io.writeString(inner_writer, 'magic');
+      Io.writeInt32(inner_writer, user_identifier);
+      Io.writeHash(inner_writer, hashed);
+
+      const w = await Io.encryptAndPackage(inner_writer.getBuffer(), public_key);
+
       let writer = Api.createBufferWriter(Api.UPDATE, Api.USERS_PASSWORD);
-
-      hashed = io.hashText(value);
-      Io.writeString(writer, 'magic');
-      Io.writeInt32(writer, user_identifier);
-      Io.writeHash(writer, hashed);
-
-      const w = Io.encryptAndPackage(writer.getBuffer(), public_key);
-      Api.request(w)
+      Io.writeArrayBufferNoLength(writer, w.getBuffer());
+      Api.request(writer)
       .then(response => {
         Utilities.throwIfNotOk(response);
+        div.replaceWith(button);
       })
       .catch(e => {
-        console.error("failed to update password");
+        console.error("failed to update password:", e);
       });
 
     } else if (event.key === 'Escape') {
       div.replaceWith(button);
-      input = null;
-      div = null;
     }
   });
   button.replaceWith(div);

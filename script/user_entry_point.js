@@ -1,17 +1,13 @@
 import * as Calendar from './calendar.js';
-import * as Api from './api.js';
 import * as Utilities from './utilities.js';
-import { palette } from './color.js';
 import * as Io from './io.js';
-import * as DM from './data_manager.js';
-import { numeric_input } from './numeric_input.js';
+import { numeric_input } from './numeric_input.js'; // ok
 import {} from './context_menu.js'; // we need it
-import * as Global from './global.js';
+import * as Global from './global.js'; // ok
 import { token } from './login.js';
-import * as SideMenu from './side_menu.js';
-import * as CalendarInformation from './calendar_information.js';
-import * as StaffInformation from './staff_information.js';
-import * as EventInformation from './event_information.js';
+import * as SideMenu from './side_menu.js'; // modify
+import * as StaffInformation from './staff_information.js'; // ok?
+import * as EventInformation from './event_information.js'; // ok?
 
 let state = {
   scroll_pos_save: 0,
@@ -43,11 +39,7 @@ Calendar.init();
           const reader = new Io.BufferReader(binary);
           Global.data.read(reader)
           SideMenu.composeEventList();
-          SideMenu.composeUsersList();
           SideMenu.composeVenueList();
-          EventInformation.loadTemplate();
-          CalendarInformation.loadTemplate();
-          StaffInformation.loadTemplate();
           Calendar.renderBars();
         });
     })
@@ -82,7 +74,6 @@ Calendar.init();
     }
     const data_selection = Global.zones[Global.zones_identifier.DATA_TYPE].selection._data_identifier;
     if (Global.zones[data_selection].selection === null) {
-      Global.elements.views[Global.view_identifier.INFORMATION].replaceChildren(CalendarInformation.dom);
     } else if (data_selection === Global.zones_identifier.EVENT) {
       EventInformation.update();
       Global.elements.views[Global.view_identifier.INFORMATION].replaceChildren(EventInformation.dom);

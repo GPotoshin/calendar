@@ -197,6 +197,13 @@ export function writeUint8Array(writer, array) {
   writer.offset += array.length;
 }
 
+export function writeArrayBufferNoLength(writer, buffer) {
+  writer.ensureCapacity(buffer.byteLength);
+  const sourceView = new Uint8Array(buffer);
+  new Uint8Array(writer.buffer, writer.offset, buffer.byteLength).set(sourceView);
+  writer.offset += buffer.byteLength;
+}
+
 export function writeStringArray(writer, array) {
   writeArray(writer, array, writeString);
 }
