@@ -4,6 +4,7 @@ import * as Api from './api.js';
 import * as Io from './io.js';
 import * as DM from './data_manager.js';
 import { palette } from './color.js';
+import { privilege } from './login.js';
 
 const Int32Slice = DM.Int32Slice;
 
@@ -508,7 +509,10 @@ function getEvents(cell) {
 
 function createBar(position, start_day, end_day, color) {
   let bar = document.createElement('button');
-  bar.classList = 'event-occurrence no-select deletable editable';
+  bar.className = 'event-occurrence no-select';
+  if (privilege == Global.PRIVILAGE_LEVEL_ADMIN) {
+    bar.classList.add('deletable', 'editable');
+  }
   bar.style.top = (20*position)+'%';
   Utilities.setBackgroundColor(bar, color);
   bar._width = end_day-start_day+1; // docs: @set(bar._width)
@@ -666,6 +670,9 @@ export function renderBars(target = gc_current) {
             (day_view_index-1)%7,
             getBarColor(event_identifier, occurrence_identifier),
           );
+          // if (user_can_apply) {
+            bar.classList.add('appliable');
+          // }
           target.bars.push(bar);
 
           const span_name = document.createElement('span');

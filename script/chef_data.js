@@ -30,7 +30,7 @@ export class ChefData {
     this.occurrences_event_identifiers = [];
     this.occurrences_venue = [];
     this.occurrences_dates = [];
-    this.occurrences_participantssRole = [];
+    this.occurrences_participants_role = [];
 
     this.base_day_number = -1;
     this.day_occurrences = [];
@@ -78,7 +78,7 @@ export class ChefData {
     this.occurrences_event_identifiers = Io.readInt32Array(r);
     this.occurrences_venue = Io.readInt32Array(r);
     this.occurrences_dates = Io.readArrayOfInt32PairArrays(r); 
-    this.occurrences_participantssRole = Io.readArrayOfInt32Arrays(r);
+    this.occurrences_participants_role = Io.readArrayOfInt32Arrays(r);
 
     this.base_day_number = Io.readInt32(r);
     this.day_occurrences = Io.readArrayOfInt32Arrays(r);

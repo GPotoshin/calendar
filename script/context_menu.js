@@ -16,12 +16,14 @@ const gcm_edit_button        = document.getElementById('edit-button');
 const gcm_toggle_button      = document.getElementById('toggle-button');
 const gcm_create_button      = document.getElementById('create-button');
 const gcm_instantiate_button = document.getElementById('instantiate-button');
+const gcm_apply_button       = document.getElementById('apply-button');
 
 let gcm_delete_target      = null;
 let gcm_extend_target      = null;
 let gcm_edit_target        = null;
 let gcm_toggle_target      = null;
 let gcm_instantiate_target = null;
+let gcm_apply_target       = null;
 
 let gcm_context_menu_x = 0;
 let gcm_context_menu_y = 0;
@@ -778,6 +780,9 @@ document.addEventListener('contextmenu', event => {
   }
   if (gcm_instantiate_target = target.closest('.instantiatable')) {
     display(local_state, gcm_instantiate_button);
+  }
+  if (gcm_apply_target = target.closest('.appliable')) {
+    display(local_state, gcm_apply_button);
   }
 
   if (local_state.show) {

@@ -10,6 +10,7 @@ export class AdminData {
     this.users_competences = [];
     this.users_duty_station = [];
     this.users_privilege_level = [];
+    this.users_applications = [];
     this.users_free_list = [];
 
     this.events_map = new Map();
@@ -39,7 +40,8 @@ export class AdminData {
     this.occurrences_venue = [];
     this.occurrences_dates = [];
     this.occurrences_participants = [];
-    this.occurrences_participantssRole = [];
+    this.occurrences_participants_role = [];
+    this.occurrences_participants_status = [];
     this.occurrences_free_list = [];
 
     this.base_day_number = -1;
@@ -49,7 +51,7 @@ export class AdminData {
   }
 
   read(r) {
-    const expected_version = "adm_data.v0.0.6";
+    const expected_version = "adm_data.v0.0.7";
     const actual_version = Io.readString(r);
     
     if (expected_version !== actual_version) {
@@ -64,6 +66,7 @@ export class AdminData {
     this.users_competences = Io.readArrayOfInt32Arrays(r);
     this.users_duty_station = Io.readInt32Array(r);
     this.users_privilege_level = Io.readInt32Array(r);
+    this.users_applications = Io.readArrayOfInt32Arrays(r);
 
     this.events_map = Io.readMapInt32Int(r);
     this.events_name = Io.readStringArray(r);
@@ -87,7 +90,8 @@ export class AdminData {
     this.occurrences_venue = Io.readInt32Array(r);
     this.occurrences_dates = Io.readArrayOfInt32PairArrays(r); 
     this.occurrences_participants = Io.readArrayOfInt32Arrays(r);
-    this.occurrences_participantssRole = Io.readArrayOfInt32Arrays(r);
+    this.occurrences_participants_role = Io.readArrayOfInt32Arrays(r);
+    this.occurrences_participants_status = Io.readArrayOfInt32Arrays(r);
 
     this.base_day_number = Io.readInt32(r);
     this.day_occurrences = Io.readArrayOfInt32Arrays(r);

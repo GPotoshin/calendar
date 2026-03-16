@@ -59,7 +59,8 @@ const (
 )
 
 const (
-  PRIVILEGE_LEVEL_ADMIN int32 = iota - 2
+  PRIVILEGE_LEVEL_RETIRED int32 = iota - 3
+  PRIVILEGE_LEVEL_ADMIN
   PRIVILEGE_LEVEL_USER
 )
 
@@ -81,7 +82,8 @@ type State struct {
   UsersPhone []int32
   UsersCompetences [][]int32
   UsersDutyStation []int32
-  UsersPrivilegeLevel []int32 // if it is >= 0, than that shows it as a chief of the Duty Station. If it is a constant
+  UsersPrivilegeLevel []int32
+  UsersApplications [][]int32
   UsersFreeList []int
 
   EventsMap map[int32]int
@@ -115,6 +117,7 @@ type State struct {
   OccurrencesDates [][][2]int32 // idea is that every event can happen in intervals and we store the borders of those intervals
   OccurrencesParticipant [][]int32
   OccurrencesParticipantsRole [][]int32 // role of each participant
+  OccurrencesParticipantsStatus [][]int32
   OccurrencesFreeId []int32
   OccurrencesFreeList []int
 
@@ -149,6 +152,7 @@ func rebaseState() {
   shrinkArray(&state.UsersCompetences, state.UsersFreeList)
   shrinkArray(&state.UsersDutyStation, state.UsersFreeList)
   shrinkArray(&state.UsersPrivilegeLevel, state.UsersFreeList)
+  shrinkArray(&state.UsersApplications, state.UsersFreeList)
   state.UsersFreeList = state.UsersFreeList[:0]
 
   rebaseMap(state.EventsMap, state.EventsFreeList)
@@ -178,6 +182,7 @@ func rebaseState() {
   shrinkArray(&state.OccurrencesDates, state.OccurrencesFreeList)
   shrinkArray(&state.OccurrencesParticipant, state.OccurrencesFreeList)
   shrinkArray(&state.OccurrencesParticipantsRole, state.OccurrencesFreeList)
+  shrinkArray(&state.OccurrencesParticipantsStatus, state.OccurrencesFreeList)
   state.OccurrencesFreeList = state.OccurrencesFreeList[:0]
 
   shrinked_prefix_size := shrinkDays(&state.DayOccurrences)
@@ -200,6 +205,7 @@ func readState(r io.Reader) (State, error) {
   if state.UsersCompetences, err = readArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read UsersCompetences: %w", err) }
   if state.UsersDutyStation, err = readInt32Array(r); err != nil { return state, fmt.Errorf("failed to read UsersDutyStation: %w", err) }
   if state.UsersPrivilegeLevel, err = readInt32Array(r); err != nil { return state, fmt.Errorf("failed to read UsersPrivilegeLevel: %w", err) }
+  if state.UsersApplications, err = readArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read UsersApplications: %w", err) }
 
   if state.EventsMap, err = readMapInt32Int(r); err != nil { return state, fmt.Errorf("failed to read EventsMap: %w", err) }
   if state.EventsName, err = readStringArray(r); err != nil { return state, fmt.Errorf("failed to read EventsName: %w", err) }
@@ -228,6 +234,7 @@ func readState(r io.Reader) (State, error) {
   if state.OccurrencesDates, err = readArrayOfInt32PairArrays(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesDate: %w", err) }
   if state.OccurrencesParticipant, err = readArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesParticipant: %w", err) }
   if state.OccurrencesParticipantsRole, err = readArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesParticipantsRole: %w", err) }
+  if state.OccurrencesParticipantsStatus, err = readArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesParticipantsStatus: %w", err) }
   if state.OccurrencesFreeId, err = readInt32Array(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesFreeId: %w", err) }
 
   if state.BaseDayNumber, err = readInt32(r); err != nil { return state, fmt.Errorf("failed to read BaseDayNumber: %w", err) }
@@ -256,29 +263,18 @@ func writeState(w io.Writer, state State, dest int32, duty_station int32) error 
   case DEST_DISK:
     version = "bin_data.v0.0.9"
   case DEST_ADMIN:
-    version = "adm_data.v0.0.6"
+    version = "adm_data.v0.0.7"
   case DEST_USER:
-    version = "usr_data.v0.0.1"
+    version = "usr_data.v0.0.2"
   case DEST_CHEF:
-    version = "chf_data.v0.0.1"
+    version = "chf_data.v0.0.2"
   default:
     return fmt.Errorf("Unsupported destination\n")
   }
 
   if err := writeString(w, version); err != nil { return fmt.Errorf("Failed to store data [file format]: %v\n", err) }
 
-  // @nocheckin
-  // index := storageIndex(state.UsersMap, &state.UsersFreeList)
-  // state.UsersMap[2] = index
-  // storeValue(&state.UsersPassword, index, sha256.Sum256([]byte("chef")))
-  // storeValue(&state.UsersName, index, "Chef")
-  // storeValue(&state.UsersSurname, index, "Chefovich")
-  // storeValue(&state.UsersMail, index, "chef@mail.fr")
-  // storeValue(&state.UsersPhone, index, 0)
-  // storeValue(&state.UsersCompetences, index, []int32{})
-  // storeValue(&state.UsersDutyStation, index, 0)
-  // storeValue(&state.UsersPrivilegeLevel, index, 0)
-
+  // USER DATA
   if dest >= DEST_ADMIN {
     if err := writeMapInt32Int(w, state.UsersMap); err != nil { return fmt.Errorf("failed to write UsersMap: %w", err) }
   }
@@ -319,7 +315,11 @@ func writeState(w io.Writer, state State, dest int32, duty_station int32) error 
     if err := writeInt32ArrayByPairs(w, state.UsersPhone, selected); err != nil { return fmt.Errorf("failed to write UsersPhone: %w", err) }
     if err := writeArrayOfInt32ArraysByPairs(w, state.UsersCompetences, selected); err != nil { return fmt.Errorf("failed to write UsersCompetences: %w", err) }
   }
+  if dest >= DEST_CHEF {
+    if err := writeArrayOfInt32Arrays(w, state.UsersApplications); err != nil { return fmt.Errorf("failed to write UsersApplications: %w", err) }
+  }
 
+  // EVENT_DATA
   if err := writeMapInt32Int(w, state.EventsMap); err != nil { return fmt.Errorf("failed to write EventsMap: %w", err) }
   if err := writeStringArray(w, state.EventsName); err != nil { return fmt.Errorf("failed to write EventsName: %w", err) }
   if err := writeArrayOfInt32Arrays(w, state.EventsVenues); err != nil { return fmt.Errorf("failed to write EventsVenues: %w", err) }
@@ -331,24 +331,28 @@ func writeState(w io.Writer, state State, dest int32, duty_station int32) error 
     if err := writeInt32Array(w, state.EventsFreeId); err != nil { return fmt.Errorf("failed to write EventsFreeId: %w", err) }
   }
 
+  // VENUE_DATA
   if err := writeMapInt32Int(w, state.VenuesMap); err != nil { return fmt.Errorf("failed to write VenuesMap: %w", err) }
   if err := writeStringArray(w, state.VenuesName); err != nil { return fmt.Errorf("failed to write VenuesName: %w", err) }
   if dest == DEST_DISK {
     if err := writeInt32Array(w, state.VenuesFreeId); err != nil { return fmt.Errorf("failed to write VenuesFreeId: %w", err) }
   }
 
+  // COMPETENCE_DATA
   if err := writeMapInt32Int(w, state.CompetencesMap); err != nil { return fmt.Errorf("failed to write CompetencesMap: %w", err) }
   if err := writeStringArray(w, state.CompetencesName); err != nil { return fmt.Errorf("failed to write CompetencesName: %w", err) }
   if dest == DEST_DISK { 
     if err := writeInt32Array(w, state.CompetencesFreeId); err != nil { return fmt.Errorf("failed to write CompetencesFreeId: %w", err) }
   }
 
+  // ROLE_DATA
   if err := writeMapInt32Int(w, state.RolesMap); err != nil { return fmt.Errorf("failed to write RolesMap: %w", err) }
   if err := writeStringArray(w, state.RolesName); err != nil { return fmt.Errorf("failed to write RolesName: %w", err) }
   if dest == DEST_DISK {
     if err := writeInt32Array(w, state.RolesFreeId); err != nil { return fmt.Errorf("failed to write RolesFreeId: %w", err) }
   }
 
+  // OCCURRENCE_DATA
   if err := writeMapInt32Int(w, state.OccurrencesMap); err != nil { return fmt.Errorf("failed to write OccurencesId: %w", err) }
   if err := writeInt32Array(w, state.OccurrencesEventId); err != nil { return fmt.Errorf("failed to write OccurrencesEventId: %w", err) }
   if err := writeInt32Array(w, state.OccurrencesVenue); err != nil { return fmt.Errorf("failed to write OccurrencesVenue: %w", err) }
@@ -357,10 +361,12 @@ func writeState(w io.Writer, state State, dest int32, duty_station int32) error 
     if err := writeArrayOfInt32Arrays(w, state.OccurrencesParticipant); err != nil { return fmt.Errorf("failed to write OccurrencesParticipant: %w", err) }
   }
   if err := writeArrayOfInt32Arrays(w, state.OccurrencesParticipantsRole); err != nil { return fmt.Errorf("failed to write OccurrencesParticipantsRole: %w", err) }
+  if err := writeArrayOfInt32Arrays(w, state.OccurrencesParticipantsStatus); err != nil { return fmt.Errorf("failed to write OccurrencesParticipantsStatus: %w", err) }
   if dest == DEST_DISK {
     if err := writeInt32Array(w, state.OccurrencesFreeId); err != nil { return fmt.Errorf("failed to write OccurrencesFreeId: %w", err) }
   }
 
+  // CALENDAR_DATA
   if err := writeInt32(w, state.BaseDayNumber); err != nil { return fmt.Errorf("failed to write BaseDayNumber: %w", err) }
   if err := writeArrayOfInt32Arrays(w, state.DayOccurrences); err != nil { return fmt.Errorf("failed to write DayOccurrences: %w", err) }
 
@@ -894,6 +900,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       storeValue(&state.UsersCompetences, index, []int32{})
       storeValue(&state.UsersDutyStation, index, -1)
       storeValue(&state.UsersPrivilegeLevel, index, PRIVILEGE_LEVEL_USER)
+      storeValue(&state.UsersApplications, index, []int32{})
 
       slog.Info("DATA", "name", name, "surname", surname, "mat", mat, "index", index)
     case UPDATE:
@@ -1311,6 +1318,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       storeValue(&state.OccurrencesParticipant, index, []int32{})
       storeValue(&state.OccurrencesEventId, index, event_identifier)
       storeValue(&state.OccurrencesParticipantsRole, index, []int32{})
+      storeValue(&state.OccurrencesParticipantsStatus, index, []int32{})
 
       if len(state.DayOccurrences) == 0 {
         state.BaseDayNumber = intervals[0][0]

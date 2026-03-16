@@ -84,7 +84,7 @@ export function readStringWithLimit(reader, limit) {
 export function readArray(reader, readChild) {
   const N = readInt32(reader);
   if (N < 0) {
-    throw new Error(`Invalid array length: ${arrayLength}`);
+    throw new Error(`Invalid array length: ${N}`);
   }
   const array = [];
 
