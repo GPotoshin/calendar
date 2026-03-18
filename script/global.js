@@ -139,3 +139,7 @@ export function bundleRolesNames() {
 }
 
 window.data = data; // @nocheckin: only in dev
+
+export const PARTICIPATION_REQUESTED = 0;
+export const PARTICIPATION_APPROVED  = 1;
+export const PARTICIPATION_DECLINED  = 2;

@@ -20,42 +20,42 @@ import (
 )
 
 const (
-	USERS_MAP int32 = iota
+  USERS_MAP int32 = iota
   USERS_PASSWORD
-	USERS_NAME
-	USERS_SURNAME
-	USERS_MAIL
-	USERS_PHONE
-	USERS_COMPETENCES
-	USERS_DUTY_STATION
-	USERS_PRIVILEGE_LEVEL
+  USERS_NAME
+  USERS_SURNAME
+  USERS_MAIL
+  USERS_PHONE
+  USERS_COMPETENCES
+  USERS_DUTY_STATION
+  USERS_PRIVILEGE_LEVEL
 
-	EVENTS_MAP
-	EVENTS_NAME
-	EVENTS_VENUE
-	EVENTS_ROLE
-	EVENTS_ROLES_REQUIREMENT
-	EVENTS_PERSONAL_NUM_MAP
-	EVENTS_DURATION
+  EVENTS_MAP
+  EVENTS_NAME
+  EVENTS_VENUE
+  EVENTS_ROLE
+  EVENTS_ROLES_REQUIREMENT
+  EVENTS_PERSONAL_NUM_MAP
+  EVENTS_DURATION
 
-	VENUES_MAP
-	VENUES_NAME
+  VENUES_MAP
+  VENUES_NAME
 
-	COMPETENCES_MAP
-	COMPETENCES_NAME
+  COMPETENCES_MAP
+  COMPETENCES_NAME
 
-	ROLES_MAP
-	ROLES_NAME
+  ROLES_MAP
+  ROLES_NAME
 
-	OCCURRENCES_MAP
-	OCCURRENCES_VENUE
-	OCCURRENCES_DATES
-	OCCURRENCES_PARTICIPANT
-	OCCURRENCES_PARTICIPANTS_ROLE
+  OCCURRENCES_MAP
+  OCCURRENCES_VENUE
+  OCCURRENCES_DATES
+  OCCURRENCES_PARTICIPANT
+  OCCURRENCES_PARTICIPANTS_ROLE
 
   EMPLOYEES_LIMIT
 
-	STATE_FIELD_COUNT
+  STATE_FIELD_COUNT
 )
 
 const (
@@ -63,12 +63,17 @@ const (
   PRIVILEGE_LEVEL_ADMIN
   PRIVILEGE_LEVEL_USER
 )
+const (
+  PARTICIPATION_REQUESTED int32 = iota
+  PARTICIPATION_APPROVED
+  PARTICIPATION_DECLINED
+)
 
 // every data object is always referenced by Id, but is stored at a runtime
 // computable index. For example a user with $usr_identifier has its related
 // information stored at the index $UsersMap[$usr_id]. If we are dealing
 // with subindexing in each category, its indexing is a direct mapping.
-// For exmaple, for a given event EventsRole has a list of role ids and
+// For exmaple, for a given event EventsRoles has a list of role ids and
 // EventsRolesRequirements stores requirements at the same index.
 // There may be some exceptions, as in EventsPersonalNumMap we are storing
 // directly rows from UI.
@@ -89,7 +94,7 @@ type State struct {
   EventsMap map[int32]int
   EventsName []string
   EventsVenues [][]int32
-  EventsRole [][]int32                // roles for event
+  EventsRoles [][]int32                // roles for event
   EventsRolesRequirements [][][]int32 // roles requirements
   EventsPersonalNumMap [][][]int32
   EventsDuration []int32
@@ -115,7 +120,7 @@ type State struct {
   OccurrencesEventId []int32
   OccurrencesVenue []int32
   OccurrencesDates [][][2]int32 // idea is that every event can happen in intervals and we store the borders of those intervals
-  OccurrencesParticipant [][]int32
+  OccurrencesParticipants [][]int32
   OccurrencesParticipantsRole [][]int32 // role of each participant
   OccurrencesParticipantsStatus [][]int32
   OccurrencesFreeId []int32
@@ -158,7 +163,7 @@ func rebaseState() {
   rebaseMap(state.EventsMap, state.EventsFreeList)
   shrinkArray(&state.EventsName, state.EventsFreeList)
   shrinkArray(&state.EventsVenues, state.EventsFreeList)
-  shrinkArray(&state.EventsRole, state.EventsFreeList)
+  shrinkArray(&state.EventsRoles, state.EventsFreeList)
   shrinkArray(&state.EventsRolesRequirements, state.EventsFreeList)
   shrinkArray(&state.EventsPersonalNumMap, state.EventsFreeList)
   shrinkArray(&state.EventsDuration, state.EventsFreeList)
@@ -180,7 +185,7 @@ func rebaseState() {
   shrinkArray(&state.OccurrencesEventId, state.OccurrencesFreeList)
   shrinkArray(&state.OccurrencesVenue, state.OccurrencesFreeList)
   shrinkArray(&state.OccurrencesDates, state.OccurrencesFreeList)
-  shrinkArray(&state.OccurrencesParticipant, state.OccurrencesFreeList)
+  shrinkArray(&state.OccurrencesParticipants, state.OccurrencesFreeList)
   shrinkArray(&state.OccurrencesParticipantsRole, state.OccurrencesFreeList)
   shrinkArray(&state.OccurrencesParticipantsStatus, state.OccurrencesFreeList)
   state.OccurrencesFreeList = state.OccurrencesFreeList[:0]
@@ -210,7 +215,7 @@ func readState(r io.Reader) (State, error) {
   if state.EventsMap, err = readMapInt32Int(r); err != nil { return state, fmt.Errorf("failed to read EventsMap: %w", err) }
   if state.EventsName, err = readStringArray(r); err != nil { return state, fmt.Errorf("failed to read EventsName: %w", err) }
   if state.EventsVenues, err = readArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read EventsVenues: %w", err) }
-  if state.EventsRole, err = readArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read EventsRole: %w", err) }
+  if state.EventsRoles, err = readArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read EventsRole: %w", err) }
   if state.EventsRolesRequirements, err = readArrayOfArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read EventsRolesRequirement: %w", err) }
   if state.EventsPersonalNumMap, err = readArrayOfArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read EventsPresonalNumMap: %w", err) }
   if state.EventsDuration, err = readInt32Array(r); err != nil { return state, fmt.Errorf("failed to read EventsDuration: %w", err) }
@@ -232,7 +237,7 @@ func readState(r io.Reader) (State, error) {
   if state.OccurrencesEventId, err = readInt32Array(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesEventId: %w", err) }
   if state.OccurrencesVenue, err = readInt32Array(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesVenue: %w", err) }
   if state.OccurrencesDates, err = readArrayOfInt32PairArrays(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesDate: %w", err) }
-  if state.OccurrencesParticipant, err = readArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesParticipant: %w", err) }
+  if state.OccurrencesParticipants, err = readArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesParticipant: %w", err) }
   if state.OccurrencesParticipantsRole, err = readArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesParticipantsRole: %w", err) }
   if state.OccurrencesParticipantsStatus, err = readArrayOfInt32Arrays(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesParticipantsStatus: %w", err) }
   if state.OccurrencesFreeId, err = readInt32Array(r); err != nil { return state, fmt.Errorf("failed to read OccurrencesFreeId: %w", err) }
@@ -333,7 +338,7 @@ func writeState(w io.Writer, state State, dest int32, duty_station int32, user_i
         return fmt.Errorf("failed to querry occurrence index")
       }
       querried := []int32{}
-      for i, participant := range state.OccurrencesParticipant[occurrence_index] {
+      for i, participant := range state.OccurrencesParticipants[occurrence_index] {
         if participant == user_id {
           querried = append(querried, state.OccurrencesParticipantsRole[occurrence_index][i])
         }
@@ -347,7 +352,7 @@ func writeState(w io.Writer, state State, dest int32, duty_station int32, user_i
   if err := writeMapInt32Int(w, state.EventsMap); err != nil { return fmt.Errorf("failed to write EventsMap: %w", err) }
   if err := writeStringArray(w, state.EventsName); err != nil { return fmt.Errorf("failed to write EventsName: %w", err) }
   if err := writeArrayOfInt32Arrays(w, state.EventsVenues); err != nil { return fmt.Errorf("failed to write EventsVenues: %w", err) }
-  if err := writeArrayOfInt32Arrays(w, state.EventsRole); err != nil { return fmt.Errorf("failed to write EventsRole: %w", err) }
+  if err := writeArrayOfInt32Arrays(w, state.EventsRoles); err != nil { return fmt.Errorf("failed to write EventsRole: %w", err) }
   if err := writeArrayOfArrayOfInt32Arrays(w, state.EventsRolesRequirements); err != nil { return fmt.Errorf("failed to write EventsRolesRequirement: %w", err) }
   if err := writeArrayOfArrayOfInt32Arrays(w, state.EventsPersonalNumMap); err != nil { return fmt.Errorf("failed to write EventsPresonalNumMap: %w", err) }
   if err := writeInt32Array(w, state.EventsDuration); err != nil { return fmt.Errorf("failed to write EventsDuration: %w", err) }
@@ -382,7 +387,7 @@ func writeState(w io.Writer, state State, dest int32, duty_station int32, user_i
   if err := writeInt32Array(w, state.OccurrencesVenue); err != nil { return fmt.Errorf("failed to write OccurrencesVenue: %w", err) }
   if err := writeArrayOfInt32PairArrays(w, state.OccurrencesDates); err != nil { return fmt.Errorf("failed to write OccurrencesDate: %w", err) }
   if dest == DEST_ADMIN || dest == DEST_DISK {
-    if err := writeArrayOfInt32Arrays(w, state.OccurrencesParticipant); err != nil { return fmt.Errorf("failed to write OccurrencesParticipant: %w", err) }
+    if err := writeArrayOfInt32Arrays(w, state.OccurrencesParticipants); err != nil { return fmt.Errorf("failed to write OccurrencesParticipant: %w", err) }
   }
   if err := writeArrayOfInt32Arrays(w, state.OccurrencesParticipantsRole); err != nil { return fmt.Errorf("failed to write OccurrencesParticipantsRole: %w", err) }
   if err := writeArrayOfInt32Arrays(w, state.OccurrencesParticipantsStatus); err != nil { return fmt.Errorf("failed to write OccurrencesParticipantsStatus: %w", err) }
@@ -404,19 +409,19 @@ func writeState(w io.Writer, state State, dest int32, duty_station int32, user_i
 func middleware(handler http.Handler) http.Handler {
   return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
     csp := []string{
-			"default-src 'self'",
-			"script-src 'self'",
-			"connect-src 'self'",
-			"style-src 'self'",
+      "default-src 'self'",
+      "script-src 'self'",
+      "connect-src 'self'",
+      "style-src 'self'",
       "img-src 'self' data:",
-			"font-src 'self'",
-			"object-src 'none'",
-			"base-uri 'self'",
-			"form-action 'self'",
-			"frame-ancestors 'none'",
-			"upgrade-insecure-requests",
-	}
-		w.Header().Set("Content-Security-Policy", strings.Join(csp, "; "))
+      "font-src 'self'",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'none'",
+      "upgrade-insecure-requests",
+    }
+    w.Header().Set("Content-Security-Policy", strings.Join(csp, "; "))
 
     w.Header().Set("X-Content-Type-Options", "nosniff")
     w.Header().Set("X-Frame-Options", "DENY")
@@ -424,9 +429,9 @@ func middleware(handler http.Handler) http.Handler {
     w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
     w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
 
-		if r.TLS != nil {
-			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
-		}
+    if r.TLS != nil {
+      w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
+    }
 
     handler.ServeHTTP(w, r)
   })
@@ -648,7 +653,7 @@ func handleData(w http.ResponseWriter, r *http.Request) {
   }
 
   token, err := readHash(r.Body) 
-  
+
   index, exists := state.ConnectionsToken[token]
   if doesNotExistError(w, "handleData", "token", exists) { return }
   user_id := state.ConnectionsUser[index]
@@ -712,9 +717,9 @@ func readError(w http.ResponseWriter, loc string, name string, err error) bool {
 
 func doesNotExistError(w http.ResponseWriter, loc string, name string, exists bool) bool{
   if !exists {
-      slog.Error("["+loc+"] "+name+" does not exist")
-      http.Error(w, "incorrect request", http.StatusBadRequest)
-      return true
+    slog.Error("["+loc+"] "+name+" does not exist")
+    http.Error(w, "incorrect request", http.StatusBadRequest)
+    return true
   }
   return false
 }
@@ -959,7 +964,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       }
 
       deleteValue(state.UsersMap, nil, &state.UsersFreeList, mat)
-      deleteOccurrences(state.OccurrencesParticipant, mat)
+      deleteOccurrences(state.OccurrencesParticipants, mat)
       for token, index := range state.ConnectionsToken {
         if state.ConnectionsUser[index] == mat {
           deleteToken(state.ConnectionsToken, &state.ConnectionsFreeList, token)
@@ -1007,7 +1012,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     default:
       noSupport(w, "USER_PASSWORD:default")
     }
-    
+
 
   case USERS_NAME:
     noSupport(w, "USERS_NAME")
@@ -1058,7 +1063,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       if index < 0 { return }
 
       storeValue(&state.EventsVenues, index, []int32{})
-      storeValue(&state.EventsRole, index, []int32{})
+      storeValue(&state.EventsRoles, index, []int32{})
       storeValue(&state.EventsRolesRequirements, index, [][]int32{[]int32{}})
       storeValue(&state.EventsPersonalNumMap, index, [][]int32{})
       storeValue(&state.EventsDuration, index, -1)
@@ -1105,11 +1110,11 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     switch mode {
     case CREATE:
       slog.Info("CREATE")
-      if len(state.EventsRole) <= index {
-        state.EventsRole = slices.Grow(state.EventsRole, index+1-len(state.EventsRole));
-        state.EventsRole = state.EventsRole[:index+1];
+      if len(state.EventsRoles) <= index {
+        state.EventsRoles = slices.Grow(state.EventsRoles, index+1-len(state.EventsRoles));
+        state.EventsRoles = state.EventsRoles[:index+1];
       }
-      state.EventsRole[index] = append(state.EventsRole[index], role_identifier)
+      state.EventsRoles[index] = append(state.EventsRoles[index], role_identifier)
       for i := 0; i < len(num_map); i++ {
         num_map[i] = append(num_map[i], -1)
       }
@@ -1117,8 +1122,8 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       slog.Info("DATA", "event_identifier", event_identifier, "role_identifier", role_identifier)
     case DELETE:
       slog.Info("DELETE")
-      pos := slices.Index(state.EventsRole[index], role_identifier)
-      filterIdx(&state.EventsRole[index], pos)
+      pos := slices.Index(state.EventsRoles[index], role_identifier)
+      filterIdx(&state.EventsRoles[index], pos)
       for i := 0; i < len(num_map); i++ {
         filterIdx(&num_map[i], pos+2)
       }
@@ -1306,7 +1311,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       _, exists := state.RolesMap[id]
       if doesNotExistError(w, "ROLES:DELETE", "index", exists) { return }
       deleteValue(state.RolesMap, &state.RolesFreeId, &state.RolesFreeList, id)
-      deleteOccurrences(state.EventsRole, id)
+      deleteOccurrences(state.EventsRoles, id)
       slog.Info("DATA", "role_identifier", id)
     default:
       noSupport(w, "ROLES:default")
@@ -1340,7 +1345,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         )
       storeValue(&state.OccurrencesVenue, index, -1)
       storeValue(&state.OccurrencesDates, index, intervals)
-      storeValue(&state.OccurrencesParticipant, index, []int32{})
+      storeValue(&state.OccurrencesParticipants, index, []int32{})
       storeValue(&state.OccurrencesEventId, index, event_identifier)
       storeValue(&state.OccurrencesParticipantsRole, index, []int32{})
       storeValue(&state.OccurrencesParticipantsStatus, index, []int32{})
@@ -1394,7 +1399,69 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       noSupport(w, "OCCURRENCES_DATES:default")
     }
   case OCCURRENCES_PARTICIPANT:
-    noSupport(w, "OCCURRENCES_PARTICIPANT")
+    slog.Info("OCCURRENCES_PARTICIPANT")
+    switch mode {
+    case CREATE:
+      slog.Info("CREATE")
+      occurrence_id, err := readInt32(r.Body)
+      if readError(w, "OCCURRENCES_PARTICIPANT:CREATE", "occurrence_id", err) { return }
+      user_id, err := readInt32(r.Body)
+      if readError(w, "OCCURRENCES_PARTICIPANT:CREATE", "user_id", err) { return }
+      role_id, err := readInt32(r.Body)
+      if readError(w, "OCCURRENCES_PARTICIPANT:CREATE", "role_id", err) { return }
+      
+      // geting and checking data
+      user_index, exists := state.UsersMap[user_id]
+      if doesNotExistError(w, "OCCURRENCES_PARTICIPANT:CREATE", "user_index", exists) { return }
+      user_competences := state.UsersCompetences[user_index]
+      occurrence_index, exists := state.OccurrencesMap[occurrence_id]
+      if doesNotExistError(w, "OCCURRENCES_PARTICIPANT:CREATE", "occurence_index", exists) { return }
+      event_id := state.OccurrencesEventId[occurrence_index]
+      event_index, exists := state.EventsMap[event_id]
+      if doesNotExistError(w, "OCCURRENCES_PARTICIPANT:CREATE", "event_index", exists) { return }
+      event_roles := state.EventsRoles[event_index]
+
+      var role_number int
+      if role_id == -1 {
+        role_number = -1
+      } else {
+        if doesNotExistError(w, "OCCURRENCES_PARTICIPANT:CREATE",
+          "role for given event", slices.Contains(event_roles, role_id)) { return }
+        role_number = slices.Index(user_competences, role_id)
+      }
+
+      requirements := state.EventsRolesRequirements[event_index][role_number]
+      reqs_are_satisfied := true
+      for _, req := range(requirements) {
+        if !slices.Contains(user_competences, req) {
+          reqs_are_satisfied = false
+          break
+        }
+      }
+      
+      if !reqs_are_satisfied {
+        slog.Error("[OCCURRENCES_PARTICIPANT:CREATE] requirements are not satisfied")
+        http.Error(w, "incorrect request", http.StatusBadRequest)
+        return
+      }
+
+      // storing results
+      if !slices.Contains(state.UsersApplications[user_index], occurrence_id) {
+        state.UsersApplications[user_index] = append(
+          state.UsersApplications[user_index], occurrence_id)
+      }
+
+      state.OccurrencesParticipants[occurrence_index] = append(
+      state.OccurrencesParticipants[occurrence_index], user_id)
+
+      state.OccurrencesParticipantsRole[occurrence_index] = append(
+      state.OccurrencesParticipantsRole[occurrence_index], role_id)
+
+      state.OccurrencesParticipantsStatus[occurrence_index] = append(
+      state.OccurrencesParticipantsStatus[occurrence_index], PARTICIPATION_REQUESTED)
+    default:
+      noSupport(w, "OCCURRENCES_PARTICIPANT:default")
+    }
   case OCCURRENCES_PARTICIPANTS_ROLE:
     noSupport(w, "OCCURRENCES_PARTICIPANTS_ROLE")
   case EMPLOYEES_LIMIT:

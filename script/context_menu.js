@@ -867,13 +867,24 @@ function cmHandleClickForRoleOption(e) {
   const role_identifier = button._data_identifier);
  
   let writer = Api.createBufferWriter(Api.CREATE, Api.OCCURRENCES_PARTICIPANT);
-  io.writeInt32(writer, gcm_selected_occurrence);
-  io.writeInt32(writer, Global.data.matricule);
-  io.writeInt32(writer, role_identifier);
+  Io.writeInt32(writer, gcm_selected_occurrence);
+  Io.writeInt32(writer, Global.data.matricule);
+  Io.writeInt32(writer, role_identifier);
   Api.request(writer)
   .then(response => {
     Utilities.throwIfNotOk(response);
     Global.elements.option_menu.innerHTML = '';
+    
+    const occurrence_index = Global.data.occurrences_map.get(gcm_selected_occurrence);
+    if (occurrence_index === undefined) {
+      console.error("can't get occurrence index");
+      return;
+    }
+
+    Global.data.occurrences_participants_role[occurrence_index].push(role_identifier);
+    Global.data.occurrences_participants_status[occurrence_index].push(Global.PARTICIPATION_REQUESTED);
+
+    gcm_selected_occurrence = undefined;
   })
   .catch(e => {
     Global.elements.option_menu.classList.replace('disp-none', 'disp-flex');
