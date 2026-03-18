@@ -12,15 +12,13 @@ run `go build && ./calendar` and open `https://localhost`
 ## TODO
 + we should have a custom error window (#1)
 + not yet planed events list (#6)
-+ correct scrolling (it's laggy): optimise DOM manipulation (no trashing) (#9)
-+ We have slope in DataManager, clean it up (#12)
 + A Year old data is stored, but is not send. We need a cache like structure,
     that separatly tracks when was the last time a particular bit of data
     was accessed. And if it is old enough, we store it in a separate file and
     touch this data only on requests. (#14)
 + we should resend the key, if decryption fails, or as a callback on update (#15)
 + triple save + read check with sha (#16)
-`todo counter: 15`
+`todo counter: 16`
 
 ## KEEP EYE ON
 + Think about gc and memory managemenet (#1)

@@ -257,7 +257,7 @@ const (
   DEST_ADMIN
   DEST_DISK
 )
-func writeState(w io.Writer, state State, dest int32, duty_station int32) error {
+func writeState(w io.Writer, state State, dest int32, duty_station int32, user_id int32, user_index int) error {
   var version string
   switch dest {
   case DEST_DISK:
@@ -307,6 +307,7 @@ func writeState(w io.Writer, state State, dest int32, duty_station int32) error 
     if err := writeArrayOfInt32Arrays(w, state.UsersCompetences); err != nil { return fmt.Errorf("failed to write UsersCompetences: %w", err) }
     if err := writeInt32Array(w, state.UsersDutyStation); err != nil { return fmt.Errorf("failed to write UsersDutyStation: %w", err) }
     if err := writeInt32Array(w, state.UsersPrivilegeLevel); err != nil { return fmt.Errorf("failed to write UsersPrivilegeLevel: %w", err) }
+    if err := writeArrayOfInt32Arrays(w, state.UsersApplications); err != nil { return fmt.Errorf("failed to write UsersApplications: %w", err) }
   }
   if dest == DEST_CHEF {
     if err := writeStringArrayByPairs(w, state.UsersName, selected); err != nil { return fmt.Errorf("failed to write UsersName: %w", err) }
@@ -314,9 +315,31 @@ func writeState(w io.Writer, state State, dest int32, duty_station int32) error 
     if err := writeStringArrayByPairs(w, state.UsersMail, selected); err != nil { return fmt.Errorf("failed to write UsersMail: %w", err) }
     if err := writeInt32ArrayByPairs(w, state.UsersPhone, selected); err != nil { return fmt.Errorf("failed to write UsersPhone: %w", err) }
     if err := writeArrayOfInt32ArraysByPairs(w, state.UsersCompetences, selected); err != nil { return fmt.Errorf("failed to write UsersCompetences: %w", err) }
+    if err := writeArrayOfInt32ArraysByPairs(w, state.UsersApplications, selected); err != nil { return fmt.Errorf("failed to write UsersApplications: %w", err) }
   }
-  if dest >= DEST_CHEF {
-    if err := writeArrayOfInt32Arrays(w, state.UsersApplications); err != nil { return fmt.Errorf("failed to write UsersApplications: %w", err) }
+  if dest == DEST_USER {
+    if err := writeString(w, state.UsersName[user_index]); err != nil { return fmt.Errorf("failed to write UsersName: %w", err) }
+    if err := writeString(w, state.UsersSurname[user_index]); err != nil { return fmt.Errorf("failed to write UsersSurname: %w", err) }
+    if err := writeString(w, state.UsersMail[user_index]); err != nil { return fmt.Errorf("failed to write UsersMail: %w", err) }
+    if err := writeInt32(w, state.UsersPhone[user_index]); err != nil { return fmt.Errorf("failed to write UsersPhone: %w", err) }
+    if err := writeInt32Array(w, state.UsersCompetences[user_index]); err != nil { return fmt.Errorf("failed to write UsersCompetences: %w", err) }
+    if err := writeInt32(w, state.UsersDutyStation[user_index]); err != nil { return fmt.Errorf("failed to write UsersDutyStation: %w", err) }
+    if err := writeInt32Array(w, state.UsersApplications[user_index]); err != nil { return fmt.Errorf("failed to write UsersApplications: %w", err) }
+    if err := writeInt32(w, int32(len(state.UsersApplications[user_index]))); err != nil { return fmt.Errorf("failed to write users Applications roles length: %w", err) }
+    for _, occurrence_id := range state.UsersApplications[user_index] {
+      occurrence_index, exists := state.OccurrencesMap[occurrence_id]
+      if !exists {
+        return fmt.Errorf("failed to querry occurrence index")
+      }
+      querried := []int32{}
+      for i, participant := range state.OccurrencesParticipant[occurrence_index] {
+        if participant == user_id {
+          querried = append(querried, state.OccurrencesParticipantsRole[occurrence_index][i])
+        }
+      }
+      if err := writeInt32Array(w, querried); err != nil { return fmt.Errorf("failed to write users roles: %w", err) }
+    }
+
   }
 
   // EVENT_DATA
@@ -532,7 +555,7 @@ func main() {
     }
     rebaseState()
     writer := bufio.NewWriter(file)
-    if err = writeState(writer, state, DEST_DISK, -1); err != nil {
+    if err = writeState(writer, state, DEST_DISK, -99, -1, -1); err != nil {
       slog.Error("Failed to store data [binary]", "cause", err)
     }
     if err = writer.Flush(); err != nil {
@@ -627,7 +650,8 @@ func handleData(w http.ResponseWriter, r *http.Request) {
   
   index, exists := state.ConnectionsToken[token]
   if doesNotExistError(w, "handleData", "token", exists) { return }
-  index, exists = state.UsersMap[state.ConnectionsUser[index]]
+  user_id := state.ConnectionsUser[index]
+  index, exists = state.UsersMap[user_id]
   if !exists {
     slog.Error("Incorrect user id", "We have a token", token, "which corresponds to a not existing user", state.ConnectionsUser[index])
     http.Error(w, "Internal error", http.StatusInternalServerError)
@@ -651,7 +675,7 @@ func handleData(w http.ResponseWriter, r *http.Request) {
     return
   }
   rebaseState()
-  if err = writeState(w, state, dest, p_level); err != nil {
+  if err = writeState(w, state, dest, p_level, user_id, index); err != nil {
     slog.Error("Couldn't write admin data", "cause", err)
     http.Error(w, "Error writing application state", http.StatusInternalServerError)
     return

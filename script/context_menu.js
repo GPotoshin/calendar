@@ -761,6 +761,12 @@ function handleClickForContextMenu() {
   }
 }
 
+gcm_apply_button.addEventListener('click', () => {
+  const target = gcm_apply_target;
+  const target_identifier = target._data_identifier;
+  console.log(target_identifier);
+});
+
 document.addEventListener('contextmenu', event => {
   const local_state = { show: false };
   const menu = Global.elements.right_click_menu;

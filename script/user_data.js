@@ -2,6 +2,15 @@ import * as Io from './io.js';
 
 export class UserData {
   constructor() {
+    this.name = "";
+    this.surname = "";
+    this.mail = "";
+    this.phone = "";
+    this.competences = []
+    this.duty_station = -1;
+    this.applications = [];
+    this.applications_roles = [];
+
     this.events_map = new Map();
     this.events_name = [];
     this.events_venues = [];
@@ -13,6 +22,7 @@ export class UserData {
 
     this.occurrences_map = new Map();
     this.occurrences_event_identifiers = [];
+    this.occurrences_venue = [];
     this.occurrences_dates = [];
     
     this.base_day_number = -1;
@@ -20,11 +30,20 @@ export class UserData {
   }
 
   read(r) {
-    const expected_version = "usr_data.v0.0.1";
+    const expected_version = "usr_data.v0.0.2";
     const actual_version = Io.readString(r);
     if (expected_version !== actual_version) {
       throw new Error(`Format mismatch. Found: ${actual_version}, Expected: ${expected_version}`);
     }
+
+    this.name = Io.readString(r);
+    this.surname = Io.readString(r);
+    this.mail = Io.readString(r);
+    this.phone = Io.readInt32(r);
+    this.competences = Io.readInt32Array(r);
+    this.duty_station = Io.readInt32(r);
+    this.applications = Io.readInt32Array(r);
+    this.applications_roles = Io.readArrayOfInt32Arrays(r);
 
     this.events_map = Io.readMapInt32Int(r);
     this.events_name = Io.readStringArray(r);
@@ -48,6 +67,7 @@ export class UserData {
     this.occurrences_venue = Io.readInt32Array(r);
     this.occurrences_dates = Io.readArrayOfInt32PairArrays(r); 
     this.occurrences_participants_role = Io.readArrayOfInt32Arrays(r);
+    this.occurrences_participants_status = Io.readArrayOfInt32Arrays(r);
 
     this.base_day_number = Io.readInt32(r);
     this.day_occurrences = Io.readArrayOfInt32Arrays(r);
