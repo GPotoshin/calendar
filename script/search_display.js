@@ -64,13 +64,13 @@ export function createButton(interactable = true) {
   if (interactable) {
     button.className = 'hover search-list-button togglable deletable';
   } else {
-    button.className = 'hover';
+    button.className = 'hover search-list-button';
   }
   button.textContent = name;
   return button;
 }
 
-export function createTemplate(name, identifier) {
+export function createTemplate(name, identifier, interactable=true) {
   let menu = document.createElement('div');
 
   menu.className = 'm-box v-container align-items-center';
@@ -80,7 +80,7 @@ export function createTemplate(name, identifier) {
       <div class="searching-field h-container disp-flex grow"><div class="arrow">></div><input class="grow" type="text" placeholder="Trouver"></input></div>
     </div>
     <div class="h-container grow">
-    <div class="js-set text-box v-container scrollable-box scroll bordered grow half-wide extendable"></div>
+    <div class="js-set text-box v-container scrollable-box scroll bordered grow half-wide"></div>
     </div>
     `;
   const objList = menu.querySelectorAll('.js-set');
@@ -89,6 +89,9 @@ export function createTemplate(name, identifier) {
   Utilities.setWidthInPixels(menu.children[1], 200);
   Utilities.setWidthInPixels(menu.children[2], 200);
   menu._container = objList[1];
+  if (interactable) {
+    menu._container.classList.add('extendable');
+  }
   menu._container._identifier = identifier;
 
   menu._container._button_list = [];
@@ -100,7 +103,7 @@ export function createTemplate(name, identifier) {
 }
 
 export function create(name, identifier, meta_data, interactable=true) {
-  let menu = createTemplate(name, identifier);
+  let menu = createTemplate(name, identifier, interactable);
 
   for (const [identifier, index] of meta_data.map) {
     const name = meta_data.array[index];

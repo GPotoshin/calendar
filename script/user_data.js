@@ -2,6 +2,7 @@ import * as Io from './io.js';
 
 export class UserData {
   constructor() {
+    this.matricule = -1;
     this.name = "";
     this.surname = "";
     this.mail = "";
@@ -30,12 +31,13 @@ export class UserData {
   }
 
   read(r) {
-    const expected_version = "usr_data.v0.0.2";
+    const expected_version = "usr_data.v0.0.3";
     const actual_version = Io.readString(r);
     if (expected_version !== actual_version) {
       throw new Error(`Format mismatch. Found: ${actual_version}, Expected: ${expected_version}`);
     }
 
+    this.matricule = Io.readInt32(r);
     this.name = Io.readString(r);
     this.surname = Io.readString(r);
     this.mail = Io.readString(r);

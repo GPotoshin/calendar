@@ -317,7 +317,8 @@ func writeState(w io.Writer, state State, dest int32, duty_station int32, user_i
     if err := writeArrayOfInt32ArraysByPairs(w, state.UsersCompetences, selected); err != nil { return fmt.Errorf("failed to write UsersCompetences: %w", err) }
     if err := writeArrayOfInt32ArraysByPairs(w, state.UsersApplications, selected); err != nil { return fmt.Errorf("failed to write UsersApplications: %w", err) }
   }
-  if dest == DEST_USER {
+  if dest == DEST_USER { // actually we may want to supply that information to everyone
+    if err := writeInt32(w, user_id); err != nil { return fmt.Errorf("failed to write user_id: %w", err) }
     if err := writeString(w, state.UsersName[user_index]); err != nil { return fmt.Errorf("failed to write UsersName: %w", err) }
     if err := writeString(w, state.UsersSurname[user_index]); err != nil { return fmt.Errorf("failed to write UsersSurname: %w", err) }
     if err := writeString(w, state.UsersMail[user_index]); err != nil { return fmt.Errorf("failed to write UsersMail: %w", err) }

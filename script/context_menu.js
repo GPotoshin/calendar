@@ -764,15 +764,18 @@ function handleClickForContextMenu() {
 gcm_apply_button.addEventListener('click', () => {
   const target = gcm_apply_target;
   const occurrence_identifier = target._data_identifier;
+  gcm_selected_occurrence = occurrence_identifier;
   const occurrence_index = Global.data.occurrences_map.get(occurrence_identifier);
   if (occurrence_index === undefined) {
     console.error("can't get occurrence index");
+    gcm_selected_occurrence = undefined;
     return;
   }
   const event_identifier = Global.data.occurrences_event_identifiers[occurrence_index];
   const event_index = Global.data.events_map.get(event_identifier)
   if (event_identifier === undefined) {
     console.error("can't get event index");
+    gcm_selected_occurrence = undefined;
     return;
   }
 
@@ -794,6 +797,7 @@ gcm_apply_button.addEventListener('click', () => {
       const role_index = Global.data.roles_map.get(role_identifier);
       if (role_index === undefined) {
         console.error("can't get role index");
+        gcm_selected_occurrence = undefined;
         return;
       }
       selected_role.set(role_identifier, role_index);
@@ -821,17 +825,68 @@ gcm_apply_button.addEventListener('click', () => {
   if (role_is_available) {
     const button = SearchDisplay.createButton(false); 
     button._data_idenetifier = -1;
-    Utilities.setNameAndIdentifier(button, "participant", -1);
+    Utilities.setNameAndIdentifier(button, "Participant", -1);
     loc_search_display._container.appendChild(button);
     loc_search_display._container._button_list.push(button);
   }
-  
+
+  for (const button of loc_search_display._container._button_list) {
+    button.addEventListener('click', cmHandleClickForRoleOption);
+  }
+ 
   const menu = Global.elements.option_menu;
   menu.replaceChildren(loc_search_display);
   menu.style.setProperty('--menu-left', gcm_context_menu_x+'px');
   menu.style.setProperty('--menu-top',  gcm_context_menu_y+'px');
   menu.classList.replace('disp-none', 'disp-flex');
+
+  setTimeout(() => { // not to trigger it right away
+    document.addEventListener('click', cmHandleClickForOptions);
+  });
 });
+
+function removeOptionMenu() {
+  Global.elements.option_menu.classList.replace('disp-flex', 'disp-none');
+  Global.elements.option_menu.innerHTML = '';
+  document.removeEventListener('click', cmHandleClickForOptions);
+}
+
+let gcm_selected_occurrence = undefined;
+
+function cmHandleClickForRoleOption(e) {
+  if (gcm_selected_occurrence === undefined) {
+    removeOptionMenu();
+    console.error("selected occurence is undefined");
+    return;
+  }
+
+  Global.elements.option_menu.classList.replace('disp-flex', 'disp-none');
+  document.removeEventListener('click', cmHandleClickForOptions);
+
+  const button = e.target.closest('button');
+  const role_identifier = button._data_identifier);
+ 
+  let writer = Api.createBufferWriter(Api.CREATE, Api.OCCURRENCES_PARTICIPANT);
+  io.writeInt32(writer, gcm_selected_occurrence);
+  io.writeInt32(writer, Global.data.matricule);
+  io.writeInt32(writer, role_identifier);
+  Api.request(writer)
+  .then(response => {
+    Utilities.throwIfNotOk(response);
+    Global.elements.option_menu.innerHTML = '';
+  })
+  .catch(e => {
+    Global.elements.option_menu.classList.replace('disp-none', 'disp-flex');
+    document.addEventListener('click', cmHandleClickForOptions);
+    console.log("failed to apply for a role: ", e);;
+  });
+}
+
+function cmHandleClickForOptions(e) {
+  if (!Global.elements.option_menu.contains(e.target)) {
+    removeOptionMenu();
+  }
+}
 
 document.addEventListener('contextmenu', event => {
   const local_state = { show: false };
