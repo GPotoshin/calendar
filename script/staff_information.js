@@ -58,7 +58,7 @@ gsi_chef_button.addEventListener('click', () => {
   const loc_search_display = SearchDisplay.create(
     "Centres",
     undefined,
-    Global.data.bundleVenuesNames(),
+    Global.bundleVenuesNames(),
     false,
   );
   loc_search_display._container.parentElement.classList.add('min-height-0');

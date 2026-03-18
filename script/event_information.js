@@ -54,7 +54,7 @@ function createCompetencesTable() {
   const participants_search_display = SearchDisplay.create(
     'Participants',
     Global.zones_identifier.COMPETENCES,
-    Global.data.bundleCompetencesNames(),
+    Global.bundleCompetencesNames(),
   );
   state.participant_competences_button_list =
     participants_search_display._container._button_list;
@@ -85,7 +85,7 @@ export function loadTemplate() {
   let search_display = SearchDisplay.create(
     'Personnel',
     Global.zones_identifier.EVENT_STAFF,
-    Global.data.bundleRolesNames(),
+    Global.bundleRolesNames(),
   );
   state.event_role_button_list = search_display._container._button_list;
 

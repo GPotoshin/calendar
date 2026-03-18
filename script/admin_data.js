@@ -99,32 +99,4 @@ export class AdminData {
     this.employees_limit = Io.readInt32(r);
   }
 
-  bundleCompetencesNames() {
-    return {
-      map: this.competences_map,
-      array: this.competences_name,
-      free_list: this.competences_free_list,
-    };
-  }
-  bundleEventsNames() {
-    return {
-      map: this.events_map,
-      array: this.events_name,
-      free_list: this.events_free_list,
-    };
-  }
-  bundleVenuesNames() {
-    return {
-      map: this.venues_map,
-      array: this.venues_name,
-      free_list: this.venues_free_list,
-    };
-  }
-  bundleRolesNames() {
-    return {
-      map: this.roles_map,
-      array: this.roles_name,
-      free_list: this.roles_free_list,
-    };
-  }
 }

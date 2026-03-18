@@ -190,7 +190,7 @@ gcm_edit_button.addEventListener('click', function() {
         target_button,
         'Nom d\'Événement',
         Api.EVENTS_MAP,
-        Global.data.bundleEventsNames(),
+        Global.bundleEventsNames(),
       );
       break;
     }
@@ -199,7 +199,7 @@ gcm_edit_button.addEventListener('click', function() {
         target_button,
         'Nom de Lieu',
         Api.VENUES_MAP,
-        Global.data.bundleVenuesNames(),
+        Global.bundleVenuesNames(),
       );
       break;
     }
@@ -593,7 +593,7 @@ gcm_create_button.addEventListener('click', () => {
         Global.zones[Global.zones_identifier.EVENT].element_list, 
         'Nouvel Événement',
         Api.EVENTS_MAP,
-        Global.data.bundleEventsNames(),
+        Global.bundleEventsNames(),
       );
       break;
     }
@@ -602,7 +602,7 @@ gcm_create_button.addEventListener('click', () => {
         Global.zones[Global.zones_identifier.VENUE].element_list, 
         'Nouveau Lieu',
         Api.VENUES_MAP,
-        Global.data.bundleVenuesNames(),
+        Global.bundleVenuesNames(),
       );
       break;
     }
@@ -617,7 +617,7 @@ gcm_create_button.addEventListener('click', () => {
         button,
         input,
         Api.ROLES_MAP,
-        Global.data.bundleRolesNames(),
+        Global.bundleRolesNames(),
         (button) => { EventInformation.gcm_event_role_button_list.push(button); },
       );
       break;
@@ -633,7 +633,7 @@ gcm_create_button.addEventListener('click', () => {
         button,
         input,
         Api.COMPETENCES_MAP,
-        Global.data.bundleCompetencesNames(),
+        Global.bundleCompetencesNames(),
         (button) => {
           EventInformation.gcm_participant_competences_button_list.push(button);
           EventInformation.update();
@@ -763,8 +763,74 @@ function handleClickForContextMenu() {
 
 gcm_apply_button.addEventListener('click', () => {
   const target = gcm_apply_target;
-  const target_identifier = target._data_identifier;
-  console.log(target_identifier);
+  const occurrence_identifier = target._data_identifier;
+  const occurrence_index = Global.data.occurrences_map.get(occurrence_identifier);
+  if (occurrence_index === undefined) {
+    console.error("can't get occurrence index");
+    return;
+  }
+  const event_identifier = Global.data.occurrences_event_identifiers[occurrence_index];
+  const event_index = Global.data.events_map.get(event_identifier)
+  if (event_identifier === undefined) {
+    console.error("can't get event index");
+    return;
+  }
+
+  const selected_role = new Map();
+
+  for (let i = 0; i < Global.data.events_roles[event_index].length; i++) {
+    const role_identifier = Global.data.events_roles[event_index][i];
+    const role_requirements = Global.data.events_roles_requirements[event_index][i+1]
+
+    let role_is_available = true;
+    for (const req of role_requirements) {
+      if (!Global.data.competences.includes(req)) {
+        role_is_available = false;
+        break;
+      }
+    }
+
+    if (role_is_available) {
+      const role_index = Global.data.roles_map.get(role_identifier);
+      if (role_index === undefined) {
+        console.error("can't get role index");
+        return;
+      }
+      selected_role.set(role_identifier, role_index);
+    }
+  }
+
+  const roles = Global.bundleRolesNames();
+  roles.map = selected_role;
+
+  const loc_search_display = SearchDisplay.create(
+    "Rôles",
+    undefined,
+    roles,
+    false,
+  );
+  // addinng participant button
+  const role_requirements = Global.data.events_roles_requirements[event_index][0];
+  let role_is_available = true;
+  for (const req of role_requirements) {
+    if (!Global.data.competences.includes(req)) {
+      role_is_available = false;
+      break;
+    }
+  }
+  if (role_is_available) {
+    const button = SearchDisplay.createButton(false); 
+    button._data_idenetifier = -1;
+    Utilities.setNameAndIdentifier(button, "participant", -1);
+    loc_search_display._container.appendChild(button);
+    loc_search_display._container._button_list.push(button);
+  }
+  
+  const menu = Global.elements.option_menu;
+  menu.replaceChildren(loc_search_display);
+  menu.style.setProperty('--menu-left', gcm_context_menu_x+'px');
+  menu.style.setProperty('--menu-top',  gcm_context_menu_y+'px');
+  menu.classList.replace('disp-none', 'disp-flex');
 });
 
 document.addEventListener('contextmenu', event => {

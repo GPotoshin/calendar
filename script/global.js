@@ -109,4 +109,33 @@ if (privilege == -2) {
 
 export const data = _data;
 
+export function bundleCompetencesNames() {
+  return {
+    map: data.competences_map,
+    array: data.competences_name,
+    free_list: data.competences_free_list,
+  };
+}
+export function bundleEventsNames() {
+  return {
+    map: data.events_map,
+    array: data.events_name,
+    free_list: data.events_free_list,
+  };
+}
+export function bundleVenuesNames() {
+  return {
+    map: data.venues_map,
+    array: data.venues_name,
+    free_list: data.venues_free_list,
+  };
+}
+export function bundleRolesNames() {
+  return {
+    map: data.roles_map,
+    array: data.roles_name,
+    free_list: data.roles_free_list,
+  };
+}
+
 window.data = data; // @nocheckin: only in dev
