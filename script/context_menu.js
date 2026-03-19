@@ -864,7 +864,7 @@ function cmHandleClickForRoleOption(e) {
   document.removeEventListener('click', cmHandleClickForOptions);
 
   const button = e.target.closest('button');
-  const role_identifier = button._data_identifier);
+  const role_identifier = button._data_identifier;
  
   let writer = Api.createBufferWriter(Api.CREATE, Api.OCCURRENCES_PARTICIPANT);
   Io.writeInt32(writer, gcm_selected_occurrence);

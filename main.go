@@ -270,7 +270,7 @@ func writeState(w io.Writer, state State, dest int32, duty_station int32, user_i
   case DEST_ADMIN:
     version = "adm_data.v0.0.7"
   case DEST_USER:
-    version = "usr_data.v0.0.2"
+    version = "usr_data.v0.0.3"
   case DEST_CHEF:
     version = "chf_data.v0.0.2"
   default:
@@ -1354,7 +1354,6 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         state.BaseDayNumber = intervals[0][0]
       }
 
-      // @work: we need to factor out that in a function
       assurePrefix(intervals)
       pushIdentifierToDayOccurrences(intervals, id)
       writeInt32(w, id)
@@ -1430,7 +1429,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         role_number = slices.Index(user_competences, role_id)
       }
 
-      requirements := state.EventsRolesRequirements[event_index][role_number]
+      requirements := state.EventsRolesRequirements[event_index][role_number+1]
       reqs_are_satisfied := true
       for _, req := range(requirements) {
         if !slices.Contains(user_competences, req) {
