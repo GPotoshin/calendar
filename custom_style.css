@@ -320,3 +320,13 @@
 .connect-button {
   margin-top: 5px;
 }
+
+.option-menu {
+  width: 250px;
+}
+
+.password-button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}

@@ -42,13 +42,13 @@ Calendar.init();
         binary => {
           const reader = new Io.BufferReader(binary);
           Global.data.read(reader)
+          Calendar.renderBars();
           SideMenu.composeEventList();
           SideMenu.composeUsersList();
           SideMenu.composeVenueList();
           EventInformation.loadTemplate();
           CalendarInformation.loadTemplate();
           StaffInformation.loadTemplate();
-          Calendar.renderBars();
         });
     })
     .catch(error => {

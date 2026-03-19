@@ -38,9 +38,9 @@ Calendar.init();
         binary => {
           const reader = new Io.BufferReader(binary);
           Global.data.read(reader)
+          Calendar.renderBars();
           SideMenu.composeEventList();
           SideMenu.composeVenueList();
-          Calendar.renderBars();
         });
     })
     .catch(error => {

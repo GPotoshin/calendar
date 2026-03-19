@@ -40,6 +40,7 @@ export const zones_identifier = {
   DURATION: 10,
   EMPLOYEES_LIMIT: 11,
   PRIVILEGE_LEVEL: 12,
+  DUTY_STATION: 13,
 };
 
 // eList is the list of buttons, that way we have a direct access to it

@@ -263,6 +263,19 @@ gcm_edit_button.addEventListener('click', function() {
       StaffInformation.openOptions(gcm_context_menu_x, gcm_context_menu_y);
       break;
     }
+    case Global.zones_identifier.DUTY_STATION: {
+      const loc_search_display = SearchDisplay.create(
+        "Centres",
+        undefined,
+        Global.bundleVenuesNames(),
+        false,
+      );
+      for (const button of loc_search_display._container._button_list) {
+        button.addEventListener('click', cmHandleClickForStationOption);
+      }
+      makeOptionMenuAppearWith(loc_search_display);
+      break;
+    }
     default: {
       if (gcm_edit_target.classList.contains('event-occurrence')) {
         Calendar.startInstantiating(null, gcm_edit_target._data_identifier)
@@ -272,6 +285,12 @@ gcm_edit_button.addEventListener('click', function() {
     }
   }
 });
+
+function makeOptionMenuAppearWith(...content) {
+  const menu = Global.elements.option_menu;
+  menu.replaceChildren(...content);
+  makeMenuAppearAt(menu, gcm_context_menu_x, gcm_context_menu_y);
+}
 
 function swapNumberButtonToInputAndSetLatterToOldValue(button, old_value) {
   numeric_input.element.value = old_value;
@@ -834,11 +853,7 @@ gcm_apply_button.addEventListener('click', () => {
     button.addEventListener('click', cmHandleClickForRoleOption);
   }
  
-  const menu = Global.elements.option_menu;
-  menu.replaceChildren(loc_search_display);
-  menu.style.setProperty('--menu-left', gcm_context_menu_x+'px');
-  menu.style.setProperty('--menu-top',  gcm_context_menu_y+'px');
-  menu.classList.replace('disp-none', 'disp-flex');
+  makeOptionMenuAppearWith(loc_search_display);
 
   setTimeout(() => { // not to trigger it right away
     document.addEventListener('click', cmHandleClickForOptions);
@@ -852,6 +867,44 @@ function removeOptionMenu() {
 }
 
 let gcm_selected_occurrence = undefined;
+
+function cmHandleClickForStationOption(e) {
+  const target_user_id = Global.getZoneUserIdentifier();
+  if (target_user_id === undefined) {
+    removeOptionMenu();
+    console.error("selected occurence is undefined");
+    return;
+  }
+
+  Global.elements.option_menu.classList.replace('disp-flex', 'disp-none');
+  document.removeEventListener('click', cmHandleClickForOptions); // do we really need it?
+
+  const button = e.target.closest('button');
+  const center_id = button._data_identifier;
+
+  let writer = Api.createBufferWriter(Api.UPDATE, Api.USERS_DUTY_STATION);
+  Io.writeInt32(writer, target_user_id);
+  Io.writeInt32(writer, center_id);
+  Api.request(writer)
+  .then(response => {
+    Utilities.throwIfNotOk(response);
+    Global.elements.option_menu.innerHTML = '';
+
+    const user_index = Global.data.users_map.get(target_user_id);
+    if (user_index === undefined) {
+      console.error("can't get user index");
+      return;
+    }
+    Global.data.users_duty_station[user_index] = center_id;
+    StaffInformation.update();
+  })
+  .catch(e => {
+    Global.elements.option_menu.classList.replace('disp-none', 'disp-flex');
+    document.addEventListener('click', cmHandleClickForOptions);
+    console.log("failed to update duty station: ", e);;
+  });
+
+}
 
 function cmHandleClickForRoleOption(e) {
   if (gcm_selected_occurrence === undefined) {
@@ -899,6 +952,12 @@ function cmHandleClickForOptions(e) {
   }
 }
 
+function makeMenuAppearAt(menu, x, y) {
+  menu.style.setProperty('--menu-left', x+'px');
+  menu.style.setProperty('--menu-top',  y+'px');
+  menu.classList.replace('disp-none', 'disp-flex');
+}
+
 document.addEventListener('contextmenu', event => {
   const local_state = { show: false };
   const menu = Global.elements.right_click_menu;
@@ -925,9 +984,7 @@ document.addEventListener('contextmenu', event => {
 
   if (local_state.show) {
     event.preventDefault();
-    menu.classList.replace('disp-none', 'disp-flex');
-    menu.style.setProperty('--menu-left', event.clientX + 'px');
-    menu.style.setProperty('--menu-top', event.clientY + 'px');
+    makeMenuAppearAt(menu, event.clientX, event.clientY);
     gcm_context_menu_x = event.clientX;
     gcm_context_menu_y = event.clientY;
     document.addEventListener('click', handleClickForContextMenu);

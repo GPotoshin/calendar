@@ -1025,7 +1025,24 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
   case USERS_COMPETENCES:
     noSupport(w, "USERS_COMPETENCES")
   case USERS_DUTY_STATION:
-    noSupport(w, "USERS_DUTY_STATION")
+    slog.Info("USERS_DUTY_STATION")
+    if !isAdmin(w, privilege_level) { return }
+    switch mode {
+    case UPDATE:
+      slog.Info("UPDATE")
+      user_id, err := readInt32(r.Body)
+      if readError(w, "USERS_DUTY_STATION:UPDATE", "user_id", err) { return }
+      new_center_id, err := readInt32(r.Body)
+      if readError(w, "USERS_DUTY_STATION:UPDATE", "new_privilege_identifier", err) { return }
+      index, user_exists := state.UsersMap[user_id]
+      if doesNotExistError(w, "USERS_DUTY_STATION:UPDATE", "user", user_exists) { return }
+      _, center_exists := state.VenuesMap[new_center_id]
+      if doesNotExistError(w, "USERS_DUTY_STATION:UPDATE", "venue", center_exists) { return }
+      storeValue(&state.UsersDutyStation, index, new_center_id)
+
+    default:
+      noSupport(w, "USERS_DUTY_STATION")
+    }
   case USERS_PRIVILEGE_LEVEL:
     slog.Info("USERS_PRIVILEGE_LEVEL")
     if !isAdmin(w, privilege_level) { return }

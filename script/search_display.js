@@ -79,7 +79,7 @@ export function createTemplate(name, identifier, interactable=true) {
     <div class="h-container">
       <div class="searching-field h-container disp-flex grow"><div class="arrow">></div><input class="grow" type="text" placeholder="Trouver"></input></div>
     </div>
-    <div class="h-container grow">
+    <div class="h-container grow min-height-0">
     <div class="js-set text-box v-container scrollable-box scroll bordered grow half-wide"></div>
     </div>
     `;

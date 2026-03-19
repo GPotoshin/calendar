@@ -15,6 +15,9 @@ const gsi_admin_button = document.createElement('button');
 const gsi_user_button  = document.createElement('button');
 const gsi_chef_button  = document.createElement('button');
 
+let gsi_privilege_button = null;
+let gsi_station_button = null;
+
 let gsi_click_for_options_is_disabled = false;
 
 function handlePrivilegeLevel(privilege_level) {
@@ -61,23 +64,21 @@ gsi_chef_button.addEventListener('click', () => {
     Global.bundleVenuesNames(),
     false,
   );
-  loc_search_display._container.parentElement.classList.add('min-height-0');
+  // loc_search_display._container.parentElement.classList.add('min-height-0');
   Global.elements.option_menu.replaceChildren(loc_search_display);
   for (const b of loc_search_display._container._button_list) {
     b.addEventListener('click', handleCenterButtonClick)
   }
 });
 
-function createPrivilegeLevel() {
-  let pl_div = document.createElement('div');
-  pl_div.className = 'h-container';
-  pl_div.innerHTML = `
-    <div class="row-selection">
-    Niveau de privilège: <button id="privilege-level" class="hover std-min no-padding txt-center tiny-button editable">\u00A0</button>
-    </div>
+function createOptionLine(text, zone_id) {
+  let div = document.createElement('div');
+  div.className = 'h-container option-menu';
+  div.innerHTML = `
+    <span class="half-wide">${text}:</span><button class="hover std-min no-padding txt-center tiny-button editable">\u00A0</button>
     `;
-  pl_div.children[0]._identifier = Global.zones_identifier.PRIVILEGE_LEVEL;
-  return pl_div;
+  div._identifier = zone_id;
+  return [div, div.querySelector('button')];
 }
 
 function handleClickForPasswordChange(e) {
@@ -119,7 +120,7 @@ function handleClickForPasswordChange(e) {
 
 function createPasswordButton() {
   let button = document.createElement('button');
-  button.classList = "hover disp-flex align-items-center justify-content-center with-border";
+  button.classList = "hover password-button with-border";
   button.textContent = "Changer le Mot de Passe";
   button.addEventListener('click', handleClickForPasswordChange);
   return button;
@@ -149,15 +150,22 @@ export function openOptions(x, y) {
 
 export function loadTemplate() {
   dom.innerHTML = `
-    <div class="v-container">
+    <div class="v-container option-menu">
     </div>
   `;
   gsi_admin_button.textContent = 'Admin';
   gsi_chef_button.textContent = 'Chef';
   gsi_user_button.textContent = 'Utilisateur';
 
+  const [privilege_line, pr_btn] = createOptionLine("Niveau de privilège", Global.zones_identifier.PRIVILEGE_LEVEL);
+  const [station_line, st_btn] = createOptionLine("Centre d'affectation", Global.zones_identifier.DUTY_STATION);
+
+  gsi_privilege_button = pr_btn;
+  gsi_station_button = st_btn;
+
   dom.children[0].append(
-    createPrivilegeLevel(),
+    station_line,
+    privilege_line,
     createPasswordButton(),
   );
 }
@@ -165,6 +173,16 @@ export function loadTemplate() {
 export function update() {
   const user_index = Global.getZoneUserIndex();
   if (user_index === undefined) { throw new Error("[update] no user selected"); }
+  
+  const user_station = Global.data.users_duty_station[user_index];
+  if (user_station >= 0) {
+    const station_index = Global.data.venues_map.get(user_station);
+    if (station_index === undefined) { throw new Error("[update] incorrect duty station"); }
+
+    gsi_station_button.textContent = Global.data.venues_name[station_index];
+  } else {
+    gsi_station_button.textContent = '\u00A0';
+  }
 
   let user_privilege_level = Global.data.users_privilege_level[user_index];
   if (user_privilege_level === undefined) {
@@ -172,15 +190,14 @@ export function update() {
     user_privilege_level = PRIVILEGE_LEVEL_USER;
   }
 
-  const button = dom.querySelector('#privilege-level');
   if (user_privilege_level === PRIVILEGE_LEVEL_USER) {
-    button.textContent = 'Utilisateur';
+    gsi_privilege_button.textContent = 'Utilisateur';
   } else if (user_privilege_level == PRIVILEGE_LEVEL_ADMIN)  {
-    button.textContent = 'Admin';
+    gsi_privilege_button.textContent = 'Admin';
   } else if (user_privilege_level >= 0) {
     const venue_index = Global.data.venues_map.get(user_privilege_level);
     const venue_name  = Global.data.venues_name[venue_index];
-    button.textContent = 'Chef de '+venue_name; 
+    gsi_privilege_button.textContent = 'Chef de '+venue_name; 
   } else {
     throw new Error("unreachable: unknown privilege level");
   }
