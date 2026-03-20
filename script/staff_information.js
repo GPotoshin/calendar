@@ -279,6 +279,7 @@ export function update() {
 
         const button = document.createElement('button');
         button.className = 'search-list-button';
+        button._data_identifier = [role_id, occurrence_id];
         const role = document.createElement('span');
         role.className = 'width-45';
         role.textContent = role_name;
@@ -287,15 +288,32 @@ export function update() {
         event.textContent = Global.data.events_name[event_index]+'#'+occurrence_id;
 
         const tick = gsi_tick.children[0].cloneNode(true);
-        tick.addEventListener('click', () => { console.log('ok') });
+        tick.addEventListener('click', acceptCandidature);
         const cross = gsi_cross.children[0].cloneNode(true);
-        cross.addEventListener('click', () => { console.log('no') });
+        cross.addEventListener('click', rejectCandidature);
 
         button.replaceChildren(role, event, tick, cross);
         frag.appendChild(button);
       }
     }
   }
-
   gsi_candidature_list._container.replaceChildren(frag);
+}
+
+function acceptCandidature(e) {
+  const button = e.target.closest('button');
+  const [role_id, occurrence_id] = button._data_identifier;
+  console.log('ok');
+  // we just need to change the status and rerender
+  const user_id = Global.getZoneUserIdentifier();
+  if (user_id === undefined) {
+    console.error("[si:update] user is not selected");
+    return;
+  }
+
+}
+
+function rejectCadidature(e) {
+  console.log('no');
+
 }
