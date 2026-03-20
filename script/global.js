@@ -90,7 +90,7 @@ export function getEventsDuration(identifier) {
 export function getOccurrencesEvent(identifier) {
   const occurrence_index = data.occurrences_map.get(identifier);
   if (occurrence_index !== undefined) {
-    return data.occurrences_event_identifiers[occurrence_index];
+    return data.occurrences_event_identifier[occurrence_index];
   }
   return undefined;
 }

@@ -230,7 +230,7 @@ export function startInstantiating(event_identifier, occurrence_identifier = und
   gc_is_instantiating = true;
   if (occurrence_identifier !== undefined) {
     const occurrence_index = Global.data.occurrences_map.get(occurrence_identifier);
-    const event_identifier = Global.data.occurrences_event_identifiers[occurrence_index];
+    const event_identifier = Global.data.occurrences_event_identifier[occurrence_index];
     gc_instantiating_occurrence_identifier = occurrence_identifier;
     gc_instantiating_event_identifier = event_identifier;
     gc_selection_intervals = structuredClone(Global.data.occurrences_dates[occurrence_index]);
@@ -484,7 +484,7 @@ function saveCreationCallback(e) {
 
         map.set(identifier, index);
         Global.data.occurrences_venue[index]             = -1;
-        Global.data.occurrences_event_identifiers[index] = event_identifier;
+        Global.data.occurrences_event_identifier[index] = event_identifier;
         Global.data.occurrences_dates[index]             = intervals;
         Global.data.occurrences_participants[index]      = [];
 

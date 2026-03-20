@@ -8,6 +8,7 @@ export class ChefData {
     this.users_mail = [];
     this.users_phone = [];
     this.users_competences = [];
+    this.users_applications = [];
     
     this.events_map = new Map();
     this.events_name = [];
@@ -27,17 +28,19 @@ export class ChefData {
     this.roles_name = [];
 
     this.occurrences_map = new Map();
-    this.occurrences_event_identifiers = [];
+    this.occurrences_event_identifier = [];
     this.occurrences_venue = [];
     this.occurrences_dates = [];
+    this.occurrences_participants = []
     this.occurrences_participants_role = [];
+    this.occurrences_participants_status = [];
 
     this.base_day_number = -1;
     this.day_occurrences = [];
   }
 
   read(r) {
-    const expected_version = "chf_data.v0.0.1";
+    const expected_version = "chf_data.v0.0.2";
     const actual_version = Io.readString(r);
     if (expected_version !== actual_version) {
       throw new Error(`Format mismatch. Found: ${actual_version}, Expected: ${expected_version}`);
@@ -56,6 +59,7 @@ export class ChefData {
     this.users_mail = Io.readStringArray(r);
     this.users_phone = Io.readInt32Array(r);
     this.users_competences = Io.readArrayOfInt32Arrays(r);
+    this.users_applications = Io.readArrayOfInt32Arrays(r);
 
     this.events_map = Io.readMapInt32Int(r);
     this.events_name = Io.readStringArray(r);
@@ -75,10 +79,12 @@ export class ChefData {
     this.roles_name = Io.readStringArray(r);
 
     this.occurrences_map = Io.readMapInt32Int(r);
-    this.occurrences_event_identifiers = Io.readInt32Array(r);
+    this.occurrences_event_identifier = Io.readInt32Array(r);
     this.occurrences_venue = Io.readInt32Array(r);
     this.occurrences_dates = Io.readArrayOfInt32PairArrays(r); 
+    this.occurrences_participants = Io.readArrayOfInt32Arrays(r);
     this.occurrences_participants_role = Io.readArrayOfInt32Arrays(r);
+    this.occurrences_participants_status = Io.readArrayOfInt32Arrays(r);
 
     this.base_day_number = Io.readInt32(r);
     this.day_occurrences = Io.readArrayOfInt32Arrays(r);

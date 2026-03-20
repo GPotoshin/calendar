@@ -386,7 +386,7 @@ func writeState(w io.Writer, state State, dest int32, duty_station int32, user_i
   if err := writeInt32Array(w, state.OccurrencesEventId); err != nil { return fmt.Errorf("failed to write OccurrencesEventId: %w", err) }
   if err := writeInt32Array(w, state.OccurrencesVenue); err != nil { return fmt.Errorf("failed to write OccurrencesVenue: %w", err) }
   if err := writeArrayOfInt32PairArrays(w, state.OccurrencesDates); err != nil { return fmt.Errorf("failed to write OccurrencesDate: %w", err) }
-  if dest == DEST_ADMIN || dest == DEST_DISK {
+  if dest >= DEST_CHEF {
     if err := writeArrayOfInt32Arrays(w, state.OccurrencesParticipants); err != nil { return fmt.Errorf("failed to write OccurrencesParticipant: %w", err) }
   }
   if err := writeArrayOfInt32Arrays(w, state.OccurrencesParticipantsRole); err != nil { return fmt.Errorf("failed to write OccurrencesParticipantsRole: %w", err) }
@@ -586,23 +586,23 @@ func main() {
     jsFile{"io.js",        JS_ALL},
     jsFile{"sw.js",        JS_ALL},
     jsFile{"color.js",     JS_ALL},
-    jsFile{"user_entry_point.js", JS_USR},
-    jsFile{"user_data.js",        JS_USR},
-    jsFile{"numeric_input.js",    JS_USR},
-    jsFile{"data_manager.js",     JS_USR},
-    jsFile{"search_display.js",   JS_USR},
-    jsFile{"calendar.js",         JS_USR},
-    jsFile{"context_menu.js",     JS_USR},
-    jsFile{"side_menu.js",        JS_USR},
-    jsFile{"api.js",              JS_USR},
-    jsFile{"global.js",           JS_USR},
+    jsFile{"user_entry_point.js",     JS_USR},
+    jsFile{"user_data.js",            JS_USR},
+    jsFile{"numeric_input.js",        JS_USR},
+    jsFile{"data_manager.js",         JS_USR},
+    jsFile{"search_display.js",       JS_USR},
+    jsFile{"calendar.js",             JS_USR},
+    jsFile{"context_menu.js",         JS_USR},
+    jsFile{"side_menu.js",            JS_USR},
+    jsFile{"api.js",                  JS_USR},
+    jsFile{"global.js",               JS_USR},
+    jsFile{"event_information.js",    JS_USR},
+    jsFile{"calendar_information.js", JS_USR},
     jsFile{"chef_entry_point.js",   JS_CHF},
     jsFile{"chef_data.js",          JS_CHF},
-    jsFile{"event_information.js",    JS_ADM},
+    jsFile{"staff_information.js",  JS_CHF},
     jsFile{"admin_entry_point.js",    JS_ADM},
     jsFile{"admin_data.js",           JS_ADM},
-    jsFile{"calendar_information.js", JS_ADM},
-    jsFile{"staff_information.js",    JS_ADM},
   }
   for _, file := range jsFiles {
     http.HandleFunc("/"+file.name, serveJsFile(file))

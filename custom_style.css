@@ -330,3 +330,53 @@
   justify-content: center;
   align-items: center;
 }
+
+.list-container {
+  width: 100%;
+  min-height: 0;
+  flex-grow: 1;
+}
+
+.svg-line {
+  fill:none;
+  stroke:rgb(255, 255, 255);
+  color:rgb(255, 255, 255);
+  stroke-width:13px;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  opacity:1;
+  /* font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif; */
+  font-size:16px;
+  font-weight:400;
+  text-anchor:start;
+  dominant-baseline:auto;
+}
+
+.svg-circle {
+  stroke:none;color:rgb(255, 255, 255);
+  stroke-width:1px;
+  stroke-linecap:butt;
+  stroke-linejoin:miter;
+  /* opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif; */
+  font-size:16px;
+  font-weight:400;
+  text-anchor:start;
+  dominant-baseline:auto;
+}
+
+
+.fill-green {
+  fill:rgb(163, 190, 140);
+}
+
+.fill-red {
+  fill:rgb(191, 97, 106);
+}
+
+svg:hover .svg-circle {
+  fill: var(--hover-color);
+}
+
+.width-45 {
+  width: 45%;
+}

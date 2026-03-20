@@ -22,7 +22,7 @@ export class UserData {
     this.venues_name = [];
 
     this.occurrences_map = new Map();
-    this.occurrences_event_identifiers = [];
+    this.occurrences_event_identifier = [];
     this.occurrences_venue = [];
     this.occurrences_dates = [];
     
@@ -65,7 +65,7 @@ export class UserData {
     this.roles_name = Io.readStringArray(r);
 
     this.occurrences_map = Io.readMapInt32Int(r);
-    this.occurrences_event_identifiers = Io.readInt32Array(r);
+    this.occurrences_event_identifier = Io.readInt32Array(r);
     this.occurrences_venue = Io.readInt32Array(r);
     this.occurrences_dates = Io.readArrayOfInt32PairArrays(r); 
     this.occurrences_participants_role = Io.readArrayOfInt32Arrays(r);

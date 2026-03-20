@@ -790,7 +790,7 @@ gcm_apply_button.addEventListener('click', () => {
     gcm_selected_occurrence = undefined;
     return;
   }
-  const event_identifier = Global.data.occurrences_event_identifiers[occurrence_index];
+  const event_identifier = Global.data.occurrences_event_identifier[occurrence_index];
   const event_index = Global.data.events_map.get(event_identifier)
   if (event_identifier === undefined) {
     console.error("can't get event index");
