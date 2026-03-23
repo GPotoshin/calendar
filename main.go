@@ -8,6 +8,7 @@ import (
   "bufio"
   "crypto/rsa"
   "encoding/base64"
+  "encoding/binary"
   "syscall"
   "sync"
   "context"
@@ -1573,7 +1574,7 @@ func sendUpdates(author_token [32]byte, new_id int32, remaining []byte) {
   var data_to_send []byte
   
   if new_id >= 0 {
-    data_to_send = make([]byte, len(remaining+4))
+    data_to_send = make([]byte, len(remaining)+4)
     copy(data_to_send[:8], remaining[:8])
     binary.LittleEndian.PutUint32(data_to_send[8:12], uint32(new_id))
     copy(data_to_send[12:], remaining[8:])

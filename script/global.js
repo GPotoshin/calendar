@@ -1,6 +1,8 @@
 import * as DM from './data_manager.js';
 import { privilege, token } from './login.js';
 import * as Io from './io.js';
+import * as Calendar from './calendar.js';
+import * as Api from './api.js';
 
 export let elements = {
   calendar_body: document.getElementById('calendar-body'),
@@ -12,6 +14,7 @@ export let elements = {
   side_menu_container: null,
   todayFrame: null,
   dataListContainer: null,
+  calendar_button: null,
   views: [document.getElementsByClassName('view-content')[0], null],
 }
 
@@ -53,7 +56,6 @@ export let zones = [
   { selection: null, element_list: null, content: document.createElement('div') },
   { selection: null, element_list: null, content: document.createElement('div') },
 ];
-
 
 export function getZoneUserIdentifier() {
   const zone = zones[zones_identifier.STAFF];
@@ -147,7 +149,7 @@ export const PARTICIPATION_REQUESTED = 0;
 export const PARTICIPATION_APPROVED  = 1;
 export const PARTICIPATION_DECLINED  = 2;
 
-async function waitForUpdate() {
+export async function waitForUpdate() {
   const writer = new Io.BufferWriter();
   Io.writeHash(writer, token);
 
@@ -231,7 +233,7 @@ async function waitForUpdate() {
     case Api.EVENTS_MAP: {
       switch (mode) {
         case Api.CREATE: {
-          breakconst new_id = Io.readInt32(reader);
+          const new_id = Io.readInt32(reader);
           const name   = Io.readString(reader);
           
           const index = DM.newId(data.events_map, data.events_free_list);
@@ -568,7 +570,12 @@ async function waitForUpdate() {
       break;
   }
 
+  if (zones[zones_identifier.VIEW_TYPE].selection == elements.calendar_button) {
+    Calendar.update();
+  } else {
+    StaffInformation.update();
+    EventInformation.update();
+  }
+
   waitForUpdate();
 }
-
-waitForUpdate();

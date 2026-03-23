@@ -39,6 +39,7 @@ Calendar.init();
           const reader = new Io.BufferReader(binary);
           Global.data.read(reader)
           Calendar.renderBars();
+          Global.waitForUpdate();
           SideMenu.composeEventList();
           SideMenu.composeVenueList();
         });
@@ -51,6 +52,7 @@ Calendar.init();
 {
   let view_type = document.getElementById('view-type');
   let calendar_button = document.createElement('button');
+  Global.elements.calendar_button = calendar_button;
   let information_button = document.createElement('button');
   calendar_button.textContent = 'Calendrier';
   calendar_button._data_identifier = Global.view_identifier.CALENDAR;

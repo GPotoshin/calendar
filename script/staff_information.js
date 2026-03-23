@@ -335,7 +335,7 @@ function setParticipantStatus(e, status) {
     const roles = Global.data.occurrences_participants_role[occurrence_index];
     const statuses = Global.data.occurrences_participants_status[occurrence_index];
     for (let i = 0; i < participants.length; i += 1) {
-      if (participants[i] == user_id && roles[i] == roles_id) {
+      if (participants[i] == user_id && roles[i] == role_id) {
         statuses[i] = status;
         break;
       }
