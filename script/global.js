@@ -1,4 +1,5 @@
-import { privilege } from './login.js';
+import { privilege, token } from './login.js';
+import * as Io from './io.js';
 
 export let elements = {
   calendar_body: document.getElementById('calendar-body'),
@@ -159,8 +160,8 @@ async function waitForUpdate() {
   const reader = new Io.BufferReader(binary);
   // handle update here
   console.log("we are getting an update");
-  
+
   waitForUpdate();
 }
 
-await waitForUpdate();
+waitForUpdate();

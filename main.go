@@ -1564,7 +1564,15 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     noSupport(w, "default")
   }
 
-  for _, ch := range state.ConnectionsChannel {
+  go sendUpdates(token, remaining)
+}
+
+func sendUpdates(author_token [32]byte, remaining []byte) {
+  for token, i := range state.ConnectionsToken {
+    if token == author_token {
+      continue;
+    }
+    ch := state.ConnectionsChannel[i]
     select {
     case ch <- remaining:
     default:
