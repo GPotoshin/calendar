@@ -231,18 +231,18 @@ async function waitForUpdate() {
     case Api.EVENTS_MAP: {
       switch (mode) {
         case Api.CREATE: {
-          console.error("not working yet");
-          // needs to be done
-          //
-          // server echoes back: string name then id (via writeInt32 in handleSimpleCreate)
-          // but sendUpdates sends `remaining` which is what bodyReader sees *after* mode+field
-          // so here we have: event_name string (from handleSimpleCreate's readStringWithLimits)
-          // However handleSimpleCreate writes the id back to w (the http.ResponseWriter), NOT
-          // into remaining. remaining = everything after mode+field in the original request body.
-          // So for EVENTS_MAP CREATE the remaining after mode+field is just: the name string.
-          const name  = Io.readString(reader);
-          // We don't get the assigned id from the update stream — skip silent insert to avoid
-          // corrupting id↔index mapping. The creator already has the real id.
+          breakconst new_id = Io.readInt32(reader);
+          const name   = Io.readString(reader);
+          
+          const index = DM.newId(data.events_map, data.events_free_list);
+          data.events_map.set(new_id, index);
+
+          DM.storeValue(data.events_name,               index, name);
+          DM.storeValue(data.events_venues,             index, []);
+          DM.storeValue(data.events_roles,              index, []);
+          DM.storeValue(data.events_roles_requirements, index, [[]]);
+          DM.storeValue(data.events_staff_number_map,   index, []);
+          DM.storeValue(data.events_duration,           index, -1);
           break;
         }
         case Api.DELETE: {
@@ -356,9 +356,11 @@ async function waitForUpdate() {
     case Api.VENUES_MAP: {
       switch (mode) {
         case Api.CREATE: {
-          console.error("not working yet");
-          // same as EVENTS_MAP CREATE — we don't have the assigned id
-          Io.readString(reader); // consume name
+          const new_id = Io.readInt32(reader);
+          const name   = Io.readString(reader);
+          const index  = DM.newId(data.venues_map, data.venues_free_list);
+          data.venues_map.set(new_id, index);
+          DM.storeValue(data.venues_name, index, name);
           break;
         }
         case Api.DELETE: {
@@ -383,8 +385,11 @@ async function waitForUpdate() {
     case Api.COMPETENCES_MAP: {
       switch (mode) {
         case Api.CREATE: {
-          console.error("not wroking yet");
-          Io.readString(reader); // consume name, no id available
+          const new_id = Io.readInt32(reader);
+          const name   = Io.readString(reader);
+          const index  = DM.newId(data.competences_map, data.competences_free_list);
+          data.competences_map.set(new_id, index);
+          DM.storeValue(data.competences_name, index, name);
           break;
         }
         case Api.DELETE: {
@@ -402,8 +407,11 @@ async function waitForUpdate() {
     case Api.ROLES_MAP: {
       switch (mode) {
         case Api.CREATE: {
-          console.error("not worling yet");
-          Io.readString(reader); // consume name, no id available
+          const new_id = Io.readInt32(reader);
+          const name   = Io.readString(reader);
+          const index  = DM.newId(data.roles_map, data.roles_free_list);
+          data.roles_map.set(new_id, index);
+          DM.storeValue(data.roles_name, index, name);
           break;
         }
         case Api.DELETE: {
@@ -419,9 +427,32 @@ async function waitForUpdate() {
     case Api.OCCURRENCES_MAP: {
       switch (mode) {
         case Api.CREATE: {
-          console.error("not working yet");
-          // remaining has: event_identifier, intervals — but not the assigned id
-          // skip consumption to avoid partial reads corrupting future updates
+          const new_id           = Io.readInt32(reader);
+          const event_identifier = Io.readInt32(reader);
+          const intervals        = Io.readArrayOfInt32PairArrays(reader);
+
+          const index = DM.newId(data.occurrences_map, data.occurrences_free_list);
+          data.occurrences_map.set(new_id, index);
+
+          DM.storeValue(data.occurrences_event_identifier,     index, event_identifier);
+          DM.storeValue(data.occurrences_venue,                index, -1);
+          DM.storeValue(data.occurrences_dates,                index, intervals);
+          DM.storeValue(data.occurrences_participants,         index, []);
+          DM.storeValue(data.occurrences_participants_role,    index, []);
+          DM.storeValue(data.occurrences_participants_status,  index, []);
+
+          if (data.day_occurrences.length === 0 && intervals.length > 0) {
+            data.base_day_number = intervals[0][0];
+          }
+
+          for (const interval of intervals) {
+            const start = Math.max(interval[0] - data.base_day_number, 0);
+            const end   = interval[1] - data.base_day_number;
+            for (let i = start; i <= end; i++) {
+              if (!data.day_occurrences[i]) data.day_occurrences[i] = [];
+              data.day_occurrences[i].push(new_id);
+            }
+          }
           break;
         }
         case Api.DELETE: {

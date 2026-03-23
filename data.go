@@ -20,10 +20,14 @@ func newEntry(m map[int32]int, freeList *[]int, freeId *[]int32) (int32, int) {
   return id, index
 }
 
+// id can only be positive
 func newId(m map[int32]int, freeId *[]int32) int32 {
 	if len(*freeId) > 0 {
     id := (*freeId)[len(*freeId)-1]
     *freeId = (*freeId)[:len(*freeId)-1]
+    if id < 0 {
+      return int32(len(m))
+    }
     return id
 	} else {
 		return int32(len(m))

@@ -741,15 +741,15 @@ func handleSimpleCreate(
   names *[]string,
   freeId *[]int32,
   freeList *[]int,
-) int {
+) (int32, int) {
   str, err := readStringWithLimits(r, []int32{128})
-  if readError(w, "handleSimpleCreate", "name", err) { return -1 }
+  if readError(w, "handleSimpleCreate", "name", err) { return -1, -1 }
 
   for _, index := range m {
     if (*names)[index] == str {
       slog.Error("collision in names")
       http.Error(w, "collision in names", http.StatusBadRequest)
-      return -1
+      return -1, -1
     }
   }
   id, index := newEntry(m, freeList, freeId)
@@ -758,7 +758,7 @@ func handleSimpleCreate(
   slog.Info("DATA", "name", str, "id", id, "index", index)
 
   writeInt32(w, id)
-  return index
+  return id, index
 }
 
 func handleSimpleUpdate(
@@ -908,6 +908,8 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     http.Error(w, "incorrect api", http.StatusBadRequest)
     return
   }
+
+  new_id := int32(-1)
 
   switch field_identifier {
   case USERS_MAP:
@@ -1078,7 +1080,8 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     switch mode {
     case CREATE:
       slog.Info("CREATE")
-      index := handleSimpleCreate(
+      var index int
+      new_id, index = handleSimpleCreate(
         bodyReader,
         w,
         state.EventsMap,
@@ -1246,7 +1249,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     switch mode {
     case CREATE:
       slog.Info("CREATE")
-      _ = handleSimpleCreate(
+      new_id, _ = handleSimpleCreate(
         bodyReader,
         w,
         state.VenuesMap,
@@ -1286,7 +1289,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     switch mode {
     case CREATE:
       slog.Info("CREATE")
-      _ = handleSimpleCreate(
+      new_id, _ = handleSimpleCreate(
         bodyReader,
         w,
         state.CompetencesMap,
@@ -1322,7 +1325,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     switch mode {
     case CREATE:
       slog.Info("CREATE")
-      _ = handleSimpleCreate(
+      new_id, _ = handleSimpleCreate(
         bodyReader,
         w,
         state.RolesMap,
@@ -1364,7 +1367,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       if !checkOrderedArrayOfInt32Pairs(w, intervals) { return }
 
       // storing
-      id, index := newEntry(
+      new_id, index := newEntry(
         state.OccurrencesMap,
         &state.OccurrencesFreeList,
         &state.OccurrencesFreeId,
@@ -1381,8 +1384,8 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       }
 
       assurePrefix(intervals)
-      pushIdentifierToDayOccurrences(intervals, id)
-      writeInt32(w, id)
+      pushIdentifierToDayOccurrences(intervals, new_id)
+      writeInt32(w, new_id)
 
     case DELETE:
       slog.Info("DELETE")
@@ -1563,17 +1566,28 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     noSupport(w, "default")
   }
 
-  go sendUpdates(token, remaining)
+  go sendUpdates(token, new_id, remaining)
 }
 
-func sendUpdates(author_token [32]byte, remaining []byte) {
+func sendUpdates(author_token [32]byte, new_id int32, remaining []byte) {
+  var data_to_send []byte
+  
+  if new_id >= 0 {
+    data_to_send = make([]byte, len(remaining+4))
+    copy(data_to_send[:8], remaining[:8])
+    binary.LittleEndian.PutUint32(data_to_send[8:12], uint32(new_id))
+    copy(data_to_send[12:], remaining[8:])
+  } else {
+    data_to_send = remaining
+  }
+
   for token, i := range state.ConnectionsToken {
     if token == author_token {
-      continue;
+      continue
     }
     ch := state.ConnectionsChannel[i]
     select {
-    case ch <- remaining:
+    case ch <- data_to_send:
     default:
     }
   }
