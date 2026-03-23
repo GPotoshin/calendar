@@ -1470,7 +1470,6 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         return
       }
 
-      // storing results
       if !slices.Contains(state.UsersApplications[user_index], occurrence_id) {
         state.UsersApplications[user_index] = append(
           state.UsersApplications[user_index], occurrence_id)

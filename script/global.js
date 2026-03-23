@@ -1,3 +1,4 @@
+import * as DM from './data_manager.js';
 import { privilege, token } from './login.js';
 import * as Io from './io.js';
 
@@ -158,8 +159,383 @@ async function waitForUpdate() {
 
   const binary = await response.arrayBuffer();
   const reader = new Io.BufferReader(binary);
-  // handle update here
-  console.log("we are getting an update");
+
+  const mode             = Io.readInt32(reader);
+  const field_identifier = Io.readInt32(reader);
+
+  switch (field_identifier) {
+    case Api.USERS_MAP: {
+      const mat = Io.readInt32(reader);
+      switch (mode) {
+        case Api.CREATE: {
+          const name    = Io.readString(reader);
+          const surname = Io.readString(reader);
+          if (!data.users_map.has(mat)) {
+            const index = data.users_map.size;
+            data.users_map.set(mat, index);
+            DM.storeValue(data.users_name,            index, name);
+            DM.storeValue(data.users_surname,         index, surname);
+            DM.storeValue(data.users_mail,            index, '');
+            DM.storeValue(data.users_phone,           index, 0);
+            DM.storeValue(data.users_competences,     index, []);
+            DM.storeValue(data.users_duty_station,    index, -1);
+            DM.storeValue(data.users_privilege_level, index, PRIVILEGE_LEVEL_USER);
+            DM.storeValue(data.users_applications,    index, []);
+          }
+          break;
+        }
+        case Api.UPDATE: {
+          const new_identifier = Io.readInt32(reader);
+          const name           = Io.readString(reader);
+          const surname        = Io.readString(reader);
+          const index = data.users_map.get(mat);
+          if (index !== undefined) {
+            if (new_identifier !== mat) {
+              data.users_map.delete(mat);
+              data.users_map.set(new_identifier, index);
+            }
+            data.users_name[index]    = name;
+            data.users_surname[index] = surname;
+          }
+          break;
+        }
+        case Api.DELETE: {
+          DM.deleteValue(data.users_map, data.users_free_list, mat);
+          DM.deleteOccurrences(data.occurrences_participants, mat);
+          break;
+        }
+      }
+      break;
+    }
+
+    case Api.USERS_DUTY_STATION: {
+      const user_id    = Io.readInt32(reader);
+      const center_id  = Io.readInt32(reader);
+      const user_index = data.users_map.get(user_id);
+      if (user_index !== undefined) {
+        data.users_duty_station[user_index] = center_id;
+      }
+      break;
+    }
+
+    case Api.USERS_PRIVILEGE_LEVEL: {
+      const user_identifier = Io.readInt32(reader);
+      const new_p_level     = Io.readInt32(reader);
+      const index = data.users_map.get(user_identifier);
+      if (index !== undefined) {
+        data.users_privilege_level[index] = new_p_level;
+      }
+      break;
+    }
+
+    case Api.EVENTS_MAP: {
+      switch (mode) {
+        case Api.CREATE: {
+          console.error("not working yet");
+          // needs to be done
+          //
+          // server echoes back: string name then id (via writeInt32 in handleSimpleCreate)
+          // but sendUpdates sends `remaining` which is what bodyReader sees *after* mode+field
+          // so here we have: event_name string (from handleSimpleCreate's readStringWithLimits)
+          // However handleSimpleCreate writes the id back to w (the http.ResponseWriter), NOT
+          // into remaining. remaining = everything after mode+field in the original request body.
+          // So for EVENTS_MAP CREATE the remaining after mode+field is just: the name string.
+          const name  = Io.readString(reader);
+          // We don't get the assigned id from the update stream — skip silent insert to avoid
+          // corrupting id↔index mapping. The creator already has the real id.
+          break;
+        }
+        case Api.DELETE: {
+          const id = Io.readInt32(reader);
+          DM.deleteValue(data.events_map, data.events_free_list, id);
+          break;
+        }
+        case Api.UPDATE: {
+          const id       = Io.readInt32(reader);
+          const new_name = Io.readString(reader);
+          const index = data.events_map.get(id);
+          if (index !== undefined) {
+            data.events_name[index] = new_name;
+          }
+          break;
+        }
+      }
+      break;
+    }
+
+    case Api.EVENTS_ROLE: {
+      const event_identifier = Io.readInt32(reader);
+      const role_identifier  = Io.readInt32(reader);
+      const event_index = data.events_map.get(event_identifier);
+      if (event_index !== undefined) {
+        switch (mode) {
+          case Api.CREATE: {
+            data.events_roles[event_index].push(role_identifier);
+            for (const line of data.events_staff_number_map[event_index]) {
+              line.push(-1);
+            }
+            data.events_roles_requirements[event_index].push([]);
+            break;
+          }
+          case Api.DELETE: {
+            const pos = data.events_roles[event_index].indexOf(role_identifier);
+            if (pos !== -1) {
+              data.events_roles[event_index].splice(pos, 1);
+              data.events_roles_requirements[event_index].splice(pos + 1, 1);
+              for (const line of data.events_staff_number_map[event_index]) {
+                line.splice(pos + 2, 1);
+              }
+            }
+            break;
+          }
+        }
+      }
+      break;
+    }
+
+    case Api.EVENTS_ROLES_REQUIREMENT: {
+      const event_identifier     = Io.readInt32(reader);
+      const role_ordinal         = Io.readInt32(reader);
+      const competence_identifier = Io.readInt32(reader);
+      const event_index = data.events_map.get(event_identifier);
+      if (event_index !== undefined) {
+        const requirements = data.events_roles_requirements[event_index][role_ordinal];
+        if (requirements !== undefined) {
+          switch (mode) {
+            case Api.CREATE:
+              requirements.push(competence_identifier);
+              break;
+            case Api.DELETE: {
+              const pos = requirements.indexOf(competence_identifier);
+              if (pos !== -1) requirements.splice(pos, 1);
+              break;
+            }
+          }
+        }
+      }
+      break;
+    }
+
+    case Api.EVENTS_PERSONAL_NUM_MAP: {
+      const event_identifier = Io.readInt32(reader);
+      const event_index = data.events_map.get(event_identifier);
+      if (event_index !== undefined) {
+        switch (mode) {
+          case Api.CREATE: {
+            const row_data = Io.readInt32Array(reader);
+            data.events_staff_number_map[event_index].push(row_data);
+            break;
+          }
+          case Api.DELETE: {
+            const line_index = Io.readInt32(reader);
+            data.events_staff_number_map[event_index].splice(line_index, 1);
+            break;
+          }
+          case Api.UPDATE: {
+            const line_index = Io.readInt32(reader);
+            const num_index  = Io.readInt32(reader);
+            const val        = Io.readInt32(reader);
+            data.events_staff_number_map[event_index][line_index][num_index] = val;
+            break;
+          }
+        }
+      }
+      break;
+    }
+
+    case Api.EVENTS_DURATION: {
+      const event_identifier = Io.readInt32(reader);
+      const duration         = Io.readInt32(reader);
+      const event_index = data.events_map.get(event_identifier);
+      if (event_index !== undefined) {
+        data.events_duration[event_index] = duration;
+      }
+      break;
+    }
+
+    case Api.VENUES_MAP: {
+      switch (mode) {
+        case Api.CREATE: {
+          console.error("not working yet");
+          // same as EVENTS_MAP CREATE — we don't have the assigned id
+          Io.readString(reader); // consume name
+          break;
+        }
+        case Api.DELETE: {
+          const id = Io.readInt32(reader);
+          DM.deleteValue(data.venues_map, data.venues_free_list, id);
+          DM.deleteOccurrences(data.events_venues, id);
+          break;
+        }
+        case Api.UPDATE: {
+          const id       = Io.readInt32(reader);
+          const new_name = Io.readString(reader);
+          const index = data.venues_map.get(id);
+          if (index !== undefined) {
+            data.venues_name[index] = new_name;
+          }
+          break;
+        }
+      }
+      break;
+    }
+
+    case Api.COMPETENCES_MAP: {
+      switch (mode) {
+        case Api.CREATE: {
+          console.error("not wroking yet");
+          Io.readString(reader); // consume name, no id available
+          break;
+        }
+        case Api.DELETE: {
+          const id = Io.readInt32(reader);
+          DM.deleteValue(data.competences_map, data.competences_free_list, id);
+          for (const [, event_index] of data.events_map) {
+            DM.deleteOccurrences(data.events_roles_requirements[event_index], id);
+          }
+          break;
+        }
+      }
+      break;
+    }
+
+    case Api.ROLES_MAP: {
+      switch (mode) {
+        case Api.CREATE: {
+          console.error("not worling yet");
+          Io.readString(reader); // consume name, no id available
+          break;
+        }
+        case Api.DELETE: {
+          const id = Io.readInt32(reader);
+          DM.deleteValue(data.roles_map, data.roles_free_list, id);
+          DM.deleteOccurrences(data.events_roles, id);
+          break;
+        }
+      }
+      break;
+    }
+
+    case Api.OCCURRENCES_MAP: {
+      switch (mode) {
+        case Api.CREATE: {
+          console.error("not working yet");
+          // remaining has: event_identifier, intervals — but not the assigned id
+          // skip consumption to avoid partial reads corrupting future updates
+          break;
+        }
+        case Api.DELETE: {
+          const occurrence_identifier = Io.readInt32(reader);
+          const occurrence_index = data.occurrences_map.get(occurrence_identifier);
+          if (occurrence_index !== undefined) {
+            const intervals = data.occurrences_dates[occurrence_index];
+            // remove from day_occurrences
+            for (const interval of intervals) {
+              const start = interval[0] - data.base_day_number;
+              const end   = interval[1] - data.base_day_number;
+              for (let i = start; i <= end; i++) {
+                if (data.day_occurrences[i]) {
+                  data.day_occurrences[i] = data.day_occurrences[i].filter(v => v !== occurrence_identifier);
+                }
+              }
+            }
+            DM.deleteValue(data.occurrences_map, data.occurrences_free_list, occurrence_identifier);
+          }
+          break;
+        }
+      }
+      break;
+    }
+
+    case Api.OCCURRENCES_DATES: {
+      if (mode === Api.UPDATE) {
+        const identifier = Io.readInt32(reader);
+        const intervals  = Io.readArrayOfInt32PairArrays(reader);
+        const index = data.occurrences_map.get(identifier);
+        if (index !== undefined) {
+          // remove old entries from day_occurrences
+          for (const interval of data.occurrences_dates[index]) {
+            const start = interval[0] - data.base_day_number;
+            const end   = interval[1] - data.base_day_number;
+            for (let i = start; i <= end; i++) {
+              if (data.day_occurrences[i]) {
+                data.day_occurrences[i] = data.day_occurrences[i].filter(v => v !== identifier);
+              }
+            }
+          }
+          // add new entries
+          for (const interval of intervals) {
+            const start = Math.max(interval[0] - data.base_day_number, 0);
+            const end   = Math.min(interval[1] - data.base_day_number, data.day_occurrences.length - 1);
+            for (let i = start; i <= end; i++) {
+              if (!data.day_occurrences[i]) data.day_occurrences[i] = [];
+              data.day_occurrences[i].push(identifier);
+            }
+          }
+          data.occurrences_dates[index] = intervals;
+        }
+      }
+      break;
+    }
+
+    case Api.OCCURRENCES_PARTICIPANT: {
+      if (mode === Api.CREATE) {
+        const occurrence_id = Io.readInt32(reader);
+        const user_id       = Io.readInt32(reader);
+        const role_id       = Io.readInt32(reader);
+        const occurrence_index = data.occurrences_map.get(occurrence_id);
+        if (occurrence_index !== undefined) {
+          if (!data.occurrences_participants[occurrence_index].includes(occurrence_id)) {
+            data.users_applications &&
+              (() => {
+                const user_index = data.users_map.get(user_id);
+                if (user_index !== undefined && data.users_applications[user_index]) {
+                  if (!data.users_applications[user_index].includes(occurrence_id)) {
+                    data.users_applications[user_index].push(occurrence_id);
+                  }
+                }
+              })();
+          }
+          data.occurrences_participants[occurrence_index].push(user_id);
+          data.occurrences_participants_role[occurrence_index].push(role_id);
+          data.occurrences_participants_status[occurrence_index].push(PARTICIPATION_REQUESTED);
+        }
+      }
+      break;
+    }
+
+    case Api.OCCURRENCES_PARTICIPANTS_STATUS: {
+      if (mode === Api.UPDATE) {
+        const occurrence_id = Io.readInt32(reader);
+        const user_id       = Io.readInt32(reader);
+        const role_id       = Io.readInt32(reader);
+        const status        = Io.readInt32(reader);
+        const occurrence_index = data.occurrences_map.get(occurrence_id);
+        if (occurrence_index !== undefined) {
+          const participants = data.occurrences_participants[occurrence_index];
+          const roles        = data.occurrences_participants_role[occurrence_index];
+          const statuses     = data.occurrences_participants_status[occurrence_index];
+          for (let i = 0; i < participants.length; i++) {
+            if (participants[i] === user_id && roles[i] === role_id) {
+              statuses[i] = status;
+            }
+          }
+        }
+      }
+      break;
+    }
+
+    case Api.EMPLOYEES_LIMIT: {
+      if (mode === Api.UPDATE) {
+        data.employees_limit = Io.readInt32(reader);
+      }
+      break;
+    }
+
+    default:
+      console.warn('[waitForUpdate] unhandled field_identifier:', field_identifier);
+      break;
+  }
 
   waitForUpdate();
 }
