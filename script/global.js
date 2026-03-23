@@ -144,3 +144,23 @@ window.data = data; // @nocheckin: only in dev
 export const PARTICIPATION_REQUESTED = 0;
 export const PARTICIPATION_APPROVED  = 1;
 export const PARTICIPATION_DECLINED  = 2;
+
+async function waitForUpdate() {
+  const writer = new Io.BufferWriter();
+  Io.writeHash(writer, token);
+
+  const response = await fetch('/update', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/octet-stream' },
+    body: writer.getBuffer(),
+  });
+
+  const binary = await response.arrayBuffer();
+  const reader = new Io.BufferReader(binary);
+  // handle update here
+  console.log("we are getting an update");
+  
+  waitForUpdate();
+}
+
+await waitForUpdate();

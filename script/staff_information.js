@@ -189,7 +189,7 @@ export function loadTemplate() {
   }
 
   gsi_candidature_list = document.createElement('div');
-  gsi_candidature_list.className = 'm-box v-container align-items-center';
+  gsi_candidature_list.className = 'height-20 v-container align-items-center';
   gsi_candidature_list.innerHTML = `
     <h4 class="txt-center">Candidature</h4>
     <div class="h-container list-container">
@@ -301,9 +301,16 @@ export function update() {
 }
 
 function acceptCandidature(e) {
+  setParticipantStatus(e, Global.PARTICIPATION_APPROVED);
+}
+
+function rejectCandidature(e) {
+  setParticipantStatus(e, Global.PARTICIPATION_DECLINED);
+}
+
+function setParticipantStatus(e, status) {
   const button = e.target.closest('button');
   const [role_id, occurrence_id] = button._data_identifier;
-  console.log('ok');
   // we just need to change the status and rerender
   const user_id = Global.getZoneUserIdentifier();
   if (user_id === undefined) {
@@ -311,9 +318,31 @@ function acceptCandidature(e) {
     return;
   }
 
-}
-
-function rejectCadidature(e) {
-  console.log('no');
-
+  const writer = Api.createBufferWriter(Api.UPDATE, Api.OCCURRENCES_PARTICIPANTS_STATUS);
+  Io.writeInt32(writer, occurrence_id);
+  Io.writeInt32(writer, user_id);
+  Io.writeInt32(writer, role_id);
+  Io.writeInt32(writer, status);
+  Api.request(writer)
+  .then(response => {
+    Utilities.throwIfNotOk(response);
+    const occurrence_index = Global.data.occurrences_map.get(occurrence_id);
+    if (occurrence_index === undefined) {
+      console.error("user does not exist locally");
+      return;
+    }
+    const participants = Global.data.occurrences_participants[occurrence_index];
+    const roles = Global.data.occurrences_participants_role[occurrence_index];
+    const statuses = Global.data.occurrences_participants_status[occurrence_index];
+    for (let i = 0; i < participants.length; i += 1) {
+      if (participants[i] == user_id && roles[i] == roles_id) {
+        statuses[i] = status;
+        break;
+      }
+    }
+    update();
+  })
+  .catch(e => {
+    console.error(e);
+  });
 }

@@ -139,6 +139,10 @@ button {
   -ms-overflow-style: none;
 }
 
+.height-20 {
+  height: 15vh;
+}
+
 .s-box {
   width: 120px;
   height: 200px;

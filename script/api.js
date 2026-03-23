@@ -33,15 +33,16 @@ export const COMPETENCES_NAME = 19;
 export const ROLES_MAP  = 20;
 export const ROLES_NAME = 21;
 
-export const OCCURRENCES_MAP               = 22;
-export const OCCURRENCES_VENUE             = 23;
-export const OCCURRENCES_DATES             = 24;
-export const OCCURRENCES_PARTICIPANT       = 25;
-export const OCCURRENCES_PARTICIPANTS_ROLE = 26;
+export const OCCURRENCES_MAP                 = 22;
+export const OCCURRENCES_VENUE               = 23;
+export const OCCURRENCES_DATES               = 24;
+export const OCCURRENCES_PARTICIPANT         = 25;
+export const OCCURRENCES_PARTICIPANTS_ROLE   = 26;
+export const OCCURRENCES_PARTICIPANTS_STATUS = 27;
 
-export const EMPLOYEES_LIMIT = 27;
+export const EMPLOYEES_LIMIT = 28;
 
-export const STATE_FIELD_COUNT = 28;
+export const STATE_FIELD_COUNT = 29;
 
 export function writeHeader(writer, operation_identifier, field_identifier) {
   if (writer == null || operation_identifier == null || field_identifier == null) {
