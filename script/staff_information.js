@@ -38,15 +38,13 @@ gsi_cross.innerHTML = `
 function handlePrivilegeLevel(privilege_level) {
   const user_identifier = Global.getZoneUserIdentifier();
   if (user_identifier === undefined) { throw new Error("[handlePrivilegeLevel] no user selected"); }
-  const user_index = Global.data.users_map.get(user_identifier);
-  if (user_index === undefined) { throw new Error("[handlePrivilegeLevel] cannot resolve user index"); }
   const w = Api.createBufferWriter(Api.UPDATE, Api.USERS_PRIVILEGE_LEVEL);
   Io.writeInt32(w, user_identifier);
   Io.writeInt32(w, privilege_level);
   Api.request(w)
   .then(response => {
     Utilities.throwIfNotOk(response);
-    Global.data.users_privilege_level[user_index] = privilege_level;
+    Global.updateUserPrivilegeLevel(user_indetifier, privilege_level);
     update();
   })
   .catch(e => {

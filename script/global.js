@@ -1,4 +1,4 @@
-import * as DM from './data_manager.js';
+import {storeValue, deleteValue, storageIndex} from './data_manager.js';
 import { privilege, token } from './login.js';
 import * as Io from './io.js';
 import * as Calendar from './calendar.js';
@@ -174,38 +174,18 @@ export async function waitForUpdate() {
         case Api.CREATE: {
           const name    = Io.readString(reader);
           const surname = Io.readString(reader);
-          if (!data.users_map.has(mat)) {
-            const index = data.users_map.size;
-            data.users_map.set(mat, index);
-            DM.storeValue(data.users_name,            index, name);
-            DM.storeValue(data.users_surname,         index, surname);
-            DM.storeValue(data.users_mail,            index, '');
-            DM.storeValue(data.users_phone,           index, 0);
-            DM.storeValue(data.users_competences,     index, []);
-            DM.storeValue(data.users_duty_station,    index, -1);
-            DM.storeValue(data.users_privilege_level, index, PRIVILEGE_LEVEL_USER);
-            DM.storeValue(data.users_applications,    index, []);
-          }
+          createUser(mat, name, surename);
           break;
         }
         case Api.UPDATE: {
-          const new_identifier = Io.readInt32(reader);
-          const name           = Io.readString(reader);
-          const surname        = Io.readString(reader);
-          const index = data.users_map.get(mat);
-          if (index !== undefined) {
-            if (new_identifier !== mat) {
-              data.users_map.delete(mat);
-              data.users_map.set(new_identifier, index);
-            }
-            data.users_name[index]    = name;
-            data.users_surname[index] = surname;
-          }
+          const new_mat = Io.readInt32(reader);
+          const name    = Io.readString(reader);
+          const surname = Io.readString(reader);
+          updateUser(mat, new_mat, name, surname);
           break;
         }
         case Api.DELETE: {
-          DM.deleteValue(data.users_map, data.users_free_list, mat);
-          DM.deleteOccurrences(data.occurrences_participants, mat);
+          deleteUser(mat);
           break;
         }
       }
@@ -215,38 +195,23 @@ export async function waitForUpdate() {
     case Api.USERS_DUTY_STATION: {
       const user_id    = Io.readInt32(reader);
       const center_id  = Io.readInt32(reader);
-      const user_index = data.users_map.get(user_id);
-      if (user_index !== undefined) {
-        data.users_duty_station[user_index] = center_id;
-      }
+      updateUsersDutyStation(user_id, center_id)
       break;
     }
 
     case Api.USERS_PRIVILEGE_LEVEL: {
-      const user_identifier = Io.readInt32(reader);
-      const new_p_level     = Io.readInt32(reader);
-      const index = data.users_map.get(user_identifier);
-      if (index !== undefined) {
-        data.users_privilege_level[index] = new_p_level;
-      }
+      const mat = Io.readInt32(reader);
+      const p_level = Io.readInt32(reader);
+      updateUserPrivilegeLevel(mat, p_level);
       break;
     }
 
     case Api.EVENTS_MAP: {
       switch (mode) {
         case Api.CREATE: {
-          const new_id = Io.readInt32(reader);
+          const id = Io.readInt32(reader);
           const name   = Io.readString(reader);
-          
-          const index = DM.newId(data.events_map, data.events_free_list);
-          data.events_map.set(new_id, index);
-
-          DM.storeValue(data.events_name,               index, name);
-          DM.storeValue(data.events_venues,             index, []);
-          DM.storeValue(data.events_roles,              index, []);
-          DM.storeValue(data.events_roles_requirements, index, [[]]);
-          DM.storeValue(data.events_staff_number_map,   index, []);
-          DM.storeValue(data.events_duration,           index, -1);
+          createEvent(id, name);
           break;
         }
         case Api.DELETE: {
@@ -360,17 +325,14 @@ export async function waitForUpdate() {
     case Api.VENUES_MAP: {
       switch (mode) {
         case Api.CREATE: {
-          const new_id = Io.readInt32(reader);
-          const name   = Io.readString(reader);
-          const index  = DM.newId(data.venues_map, data.venues_free_list);
-          data.venues_map.set(new_id, index);
-          DM.storeValue(data.venues_name, index, name);
+          const id = Io.readInt32(reader);
+          const name = Io.readString(reader);
+          createVenue(id, name);
           break;
         }
         case Api.DELETE: {
           const id = Io.readInt32(reader);
-          DM.deleteValue(data.venues_map, data.venues_free_list, id);
-          DM.deleteOccurrences(data.events_venues, id);
+          deleteVenue(id);
           break;
         }
         case Api.UPDATE: {
@@ -389,18 +351,16 @@ export async function waitForUpdate() {
     case Api.COMPETENCES_MAP: {
       switch (mode) {
         case Api.CREATE: {
-          const new_id = Io.readInt32(reader);
-          const name   = Io.readString(reader);
-          const index  = DM.newId(data.competences_map, data.competences_free_list);
-          data.competences_map.set(new_id, index);
-          DM.storeValue(data.competences_name, index, name);
+          const id = Io.readInt32(reader);
+          const name = Io.readString(reader);
+          createCompetence(id, name);
           break;
         }
         case Api.DELETE: {
           const id = Io.readInt32(reader);
-          DM.deleteValue(data.competences_map, data.competences_free_list, id);
+          deleteValue(data.competences_map, data.competences_free_list, id);
           for (const [, event_index] of data.events_map) {
-            DM.deleteOccurrences(data.events_roles_requirements[event_index], id);
+            deleteOccurrences(data.events_roles_requirements[event_index], id);
           }
           break;
         }
@@ -411,17 +371,15 @@ export async function waitForUpdate() {
     case Api.ROLES_MAP: {
       switch (mode) {
         case Api.CREATE: {
-          const new_id = Io.readInt32(reader);
-          const name   = Io.readString(reader);
-          const index  = DM.newId(data.roles_map, data.roles_free_list);
-          data.roles_map.set(new_id, index);
-          DM.storeValue(data.roles_name, index, name);
+          const id = Io.readInt32(reader);
+          const name = Io.readString(reader);
+          createRole(new_id, name);
           break;
         }
         case Api.DELETE: {
           const id = Io.readInt32(reader);
-          DM.deleteValue(data.roles_map, data.roles_free_list, id);
-          DM.deleteOccurrences(data.events_roles, id);
+          deleteValue(data.roles_map, data.roles_free_list, id);
+          deleteOccurrences(data.events_roles, id);
           break;
         }
       }
@@ -435,15 +393,15 @@ export async function waitForUpdate() {
           const event_identifier = Io.readInt32(reader);
           const intervals        = Io.readArrayOfInt32PairArrays(reader);
 
-          const index = DM.newId(data.occurrences_map, data.occurrences_free_list);
+          const index = storageIndex(data.occurrences_map, data.occurrences_free_list);
           data.occurrences_map.set(new_id, index);
 
-          DM.storeValue(data.occurrences_event_identifier,     index, event_identifier);
-          DM.storeValue(data.occurrences_venue,                index, -1);
-          DM.storeValue(data.occurrences_dates,                index, intervals);
-          DM.storeValue(data.occurrences_participants,         index, []);
-          DM.storeValue(data.occurrences_participants_role,    index, []);
-          DM.storeValue(data.occurrences_participants_status,  index, []);
+          storeValue(data.occurrences_event_identifier,     index, event_identifier);
+          storeValue(data.occurrences_venue,                index, -1);
+          storeValue(data.occurrences_dates,                index, intervals);
+          storeValue(data.occurrences_participants,         index, []);
+          storeValue(data.occurrences_participants_role,    index, []);
+          storeValue(data.occurrences_participants_status,  index, []);
 
           if (data.day_occurrences.length === 0 && intervals.length > 0) {
             data.base_day_number = intervals[0][0];
@@ -474,7 +432,7 @@ export async function waitForUpdate() {
                 }
               }
             }
-            DM.deleteValue(data.occurrences_map, data.occurrences_free_list, occurrence_identifier);
+            deleteValue(data.occurrences_map, data.occurrences_free_list, occurrence_identifier);
           }
           break;
         }
@@ -582,10 +540,60 @@ export async function waitForUpdate() {
   waitForUpdate();
 }
 
-function deleteEvent(id) {
+export function createUser(matricule, name, surname) {
+  let index = -1;
+  if (data.users_map != nil) {
+    index = storageIndex(data.users_map, data.users_free_list);
+  } else {
+    return;
+  }
+  data.users_map.set(matricule, index);
+  if (data.users_name != null) storeValue(data.users_name, index, name);
+  if (data.users_surname != null) storeValue(data.users_surname, index, surname);
+  if (data.users_mail != null) storeValue(data.users_mail, index, '');
+  if (data.users_phone != null) storeValue(data.users_phone, index, 0);
+  if (data.users_competences != null) storeValue(data.users_competences, index, []);
+  if (data.users_duty_station != null) storeValue(data.users_duty_station, index, -1);
+  if (data.users_privilege_level != null) storeValue(data.users_privilege_level, index, PRIVILEGE_LEVEL_USER);
+  if (data.users_applications != null) storeValue(data.users_applications,    index, []);
+}
+
+export function deleteUser(mat) {
+  if (data.users_map != null) deleteValue(data.users_map, data.users_free_list, mat);
+  else return
+  if (data.occurrences_participants != null) deleteOccurrences(data.occurrences_participants, mat);
+}
+
+export function updateUser(mat, new_mat, name, surname) {
+  const index = data.users_map.get(mat);
+  if (index !== undefined) {
+    if (new_identifier !== mat) {
+      data.users_map.delete(mat);
+      data.users_map.set(new_mat, index);
+    }
+    data.users_name[index]    = name;
+    data.users_surname[index] = surname;
+  } else {
+    createUser(new_mat, name, surname);
+  }
+}
+
+export function createEvent(id, name) {
+  const index = storageIndex(data.events_map, data.events_free_list);
+  data.events_map.set(id, index);
+
+  storeValue(data.events_name,               index, name);
+  storeValue(data.events_venues,             index, []);
+  storeValue(data.events_roles,              index, []);
+  storeValue(data.events_roles_requirements, index, [[]]);
+  storeValue(data.events_staff_number_map,   index, []);
+  if (dataevents_duration != null) storeValue(data.events_duration, index, -1);
+}
+
+export function deleteEvent(id) {
   const event_index = Global.data.events_map.get(id);
-  if (event_index == undefined) {
-    console.error("deleting localy unexisting event");
+  if (event_index == null) {
+    unexistingError("event");
     return;
   }
 
@@ -595,5 +603,51 @@ function deleteEvent(id) {
   if (data.events_roles_requirements != null) data.events_roles_requirements[event_index].length = 0;
   if (data.events_staff_number_map != null) data.events_staff_number_map[event_index].length = 0;
   if (data.events_duration != null) data.events_duration[event_index] = -1;
-  DM.deleteValue(data.events_map, data.events_free_list, identifier);
+  deleteValue(data.events_map, data.events_free_list, identifier);
+}
+
+export function deleteVenue(id) {
+  if(data.venue_map != null) deleteValue(data.venues_map, data.venues_free_list, id);
+  if(data.events_venues != null) deleteOccurrences(data.events_venues, id);
+}
+
+export function updateUsersDutyStation(user_id, center_id) {
+  let user_index = -1;
+  if (data.users_map != null) users_index = data.users_map.get(user_id);
+  else return
+  if (user_index != null) data.users_duty_station[user_index] = center_id;
+  else unexistingError("user");
+}
+
+export function updateUsersPrivilegeLevel(user_id, p_level) {
+  let index = -1;
+  if (data.users_map != null) index = data.users_map.get(user_id);
+  else return
+  if (index != null) {
+    data.users_privilege_level[index] = p_level;
+  }
+  else unexistingError("user");
+}
+
+export function createRole(id, name) {
+  const index = storageIndex(data.roles_map, data.roles_free_list);
+  data.roles_map.set(id, index);
+  storeValue(data.roles_name, index, name);
+}
+
+export function createCompetence(id, name) {
+  const index  = storageIndex(data.competences_map, data.competences_free_list);
+  data.competences_map.set(id, index);
+  storeValue(data.competences_name, index, name);
+}
+
+export function createVenue(id, name) {
+  const index  = storageIndex(data.venues_map, data.venues_free_list);
+  data.venues_map.set(id, index);
+  storeValue(data.venues_name, index, name);
+}
+
+// @note: we probably should request it then
+function unexistingError(subj) {
+  console.error("referencing localy unexisting "+subj);
 }

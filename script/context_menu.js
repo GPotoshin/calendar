@@ -80,16 +80,7 @@ function escOrCreateOnEnter(event, button, inputs, next = null) {
       Api.request(writer)
       .then(response => {
         Utilities.throwIfNotOk(response);
-
-        let index = storageIndex(Global.data.users_map, Global.data.users_free_list);
-        Global.data.users_map.set(matricule, index);
-        storeValue(Global.data.users_name, index, name);
-        storeValue(Global.data.users_surname, index, surname);
-
-        storeValue(Global.data.users_phone, index, 0);
-        storeValue(Global.data.users_competences, index, []);
-        storeValue(Global.data.users_duty_station, index, -1);
-        storeValue(Global.data.users_privilege_level, index, Global.PRIVILEGE_LEVEL_USER);
+        Global.createUser(matricule, name, surname);
         button._data_identifier = matricule;
       })
       .catch(error => {
@@ -122,17 +113,7 @@ function escOrUpdateOnEnter(event, button, inputs, old) {
       Api.request(writer)
       .then(response => {
         Utilities.throwIfNotOk(response);
-        const index = Global.data.users_map.get(old.matricule);
-        if (index === undefined) {
-          console.error("old matricule does not exist locally");
-          return
-        }
-        if (old.matricule !== matricule) {
-          Global.data.users_map.delete(old.matricule);
-          Global.data.users_map.set(matricule, index);
-        }
-        Global.data.users_name[index] = name;
-        Global.data.users_surname[index] = surname;
+        Global.updateUser(old.matricule, matricule, name, surname);
         button._data_identifier = matricule;
       })
       .catch(error => {
@@ -333,8 +314,7 @@ gcm_delete_button.addEventListener('click', function() {
       Api.request(writer)
         .then(response => {
           Utilities.throwIfNotOk(response);
-          deleteValue(Global.data.users_map, Global.data.users_free_list, identifier);
-          deleteOccurrences(Global.data.occurrences_participants, identifier);
+          Global.deleteUsers(identifier);
           gcm_delete_target.parentElement._button_list.filter(b => b !== gcm_delete_target);
           gcm_delete_target.remove();
         })
@@ -350,8 +330,7 @@ gcm_delete_button.addEventListener('click', function() {
       Api.request(writer)
         .then(response => {
           Utilities.throwIfNotOk(response);
-          deleteValue(Global.data.venues_map, Global.data.venues_free_list, identifier);
-          deleteOccurrences(Global.data.events_venues, identifier);
+          Global.deleteVenue(identifier);
           gcm_delete_target.parentElement._button_list.filter(b => b !== gcm_delete_target);
           gcm_delete_target.remove();
         })
@@ -504,13 +483,7 @@ function setCreateInput(button, input, api, meta_data, endCallback) {
         .then(binary => {
           let reader = new Io.BufferReader(binary);
           let identifier = Io.readInt32(reader);
-          let index = storageIndex(meta_data.map, meta_data.free_list);
-          meta_data.map.set(identifier, index);
-          meta_data.array[index] = value;
-          button.textContent = '';
-          Utilities.setNameAndIdentifier(button, value, identifier);
-          button.addEventListener('click', SideMenu.buttonClickCallback);
-          if (endCallback) endCallback(button);
+          endCallback(button, identifier, value); // @new
         });
       })
       .catch(error => {
@@ -525,13 +498,13 @@ function setCreateInput(button, input, api, meta_data, endCallback) {
   input.focus();
 }
 
-function createEventOrVenue(parent, placeholder, api, meta_data) {
+function createEventOrVenue(parent, placeholder, api, meta_data, endCallback) { // @new: endCallback
   let button = SideMenu.createTemplateButton();
   const input = Utilities.createTextInput(placeholder)
   button.replaceChildren(input);
   parent.appendChild(button);
   parent._button_list.push(button);
-  setCreateInput(button, input, api, meta_data, null);
+  setCreateInput(button, input, api, meta_data, endCallback);
 }
 
 function updateEventOrVenue(button, placeholder, api, meta_data) {
@@ -613,6 +586,13 @@ gcm_create_button.addEventListener('click', () => {
         'Nouvel Événement',
         Api.EVENTS_MAP,
         Global.bundleEventsNames(),
+        (button, id, name) => {
+          Global.createEvent(id, name);
+
+          button.textContent = ''; 
+          Utilities.setNameAndIdentifier(button, value, identifier);
+          button.addEventListener('click', SideMenu.buttonClickCallback);
+        }
       );
       break;
     }
@@ -622,6 +602,13 @@ gcm_create_button.addEventListener('click', () => {
         'Nouveau Lieu',
         Api.VENUES_MAP,
         Global.bundleVenuesNames(),
+        (button, id, name) => {
+          Global.createVenue(id, name);
+
+          button.textContent = ''; 
+          Utilities.setNameAndIdentifier(button, value, identifier);
+          button.addEventListener('click', SideMenu.buttonClickCallback);
+        }
       );
       break;
     }
@@ -637,7 +624,15 @@ gcm_create_button.addEventListener('click', () => {
         input,
         Api.ROLES_MAP,
         Global.bundleRolesNames(),
-        (button) => { EventInformation.gcm_event_role_button_list.push(button); },
+        (button, id, name) => {
+          Global.createRole(id, name);
+          // @original:
+          button.textContent = ''; 
+          Utilities.setNameAndIdentifier(button, value, identifier);
+          button.addEventListener('click', SideMenu.buttonClickCallback);
+          // @old_callback
+          EventInformation.gcm_event_role_button_list.push(button);
+        },
       );
       break;
     }
@@ -653,7 +648,13 @@ gcm_create_button.addEventListener('click', () => {
         input,
         Api.COMPETENCES_MAP,
         Global.bundleCompetencesNames(),
-        (button) => {
+        (button, id, name) => {
+          Global.createCompetence(id, name);
+          // @original:
+          button.textContent = ''; 
+          Utilities.setNameAndIdentifier(button, value, identifier);
+          button.addEventListener('click', SideMenu.buttonClickCallback);
+          // @old_callback
           EventInformation.gcm_participant_competences_button_list.push(button);
           EventInformation.update();
         }
@@ -890,12 +891,7 @@ function cmHandleClickForStationOption(e) {
     Utilities.throwIfNotOk(response);
     Global.elements.option_menu.innerHTML = '';
 
-    const user_index = Global.data.users_map.get(target_user_id);
-    if (user_index === undefined) {
-      console.error("can't get user index");
-      return;
-    }
-    Global.data.users_duty_station[user_index] = center_id;
+    Global.updateUsersDutyStation(target_user_id, center_id);
     StaffInformation.update();
   })
   .catch(e => {
