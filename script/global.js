@@ -3,6 +3,8 @@ import { privilege, token } from './login.js';
 import * as Io from './io.js';
 import * as Calendar from './calendar.js';
 import * as Api from './api.js';
+import * as StaffInformation from './staff_information.js';
+import * as EventInformation from './event_information.js';
 
 export let elements = {
   calendar_body: document.getElementById('calendar-body'),
@@ -249,7 +251,7 @@ export async function waitForUpdate() {
         }
         case Api.DELETE: {
           const id = Io.readInt32(reader);
-          DM.deleteValue(data.events_map, data.events_free_list, id);
+          deleteEvent(id);
           break;
         }
         case Api.UPDATE: {
@@ -578,4 +580,20 @@ export async function waitForUpdate() {
   }
 
   waitForUpdate();
+}
+
+function deleteEvent(id) {
+  const event_index = Global.data.events_map.get(id);
+  if (event_index == undefined) {
+    console.error("deleting localy unexisting event");
+    return;
+  }
+
+  if (data.events_name != null) data.events_name[event_index] = "";
+  if (data.events_venues != null) data.events_venues[event_index].length = 0;
+  if (data.events_roles != null) data.events_roles[event_index].length = 0;
+  if (data.events_roles_requirements != null) data.events_roles_requirements[event_index].length = 0;
+  if (data.events_staff_number_map != null) data.events_staff_number_map[event_index].length = 0;
+  if (data.events_duration != null) data.events_duration[event_index] = -1;
+  deleteValue(data.events_map, data.events_free_list, identifier);
 }

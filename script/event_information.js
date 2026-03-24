@@ -331,7 +331,7 @@ export function update() {
     search_display._container._data_identifier = role_ordinal;
     requirements = role_requirements[role_ordinal];
     if (requirements === undefined) { 
-      console.Error('UNREACHABLE');
+      console.error('UNREACHABLE'); // we are hitting that
       requirements = [];
     }
 

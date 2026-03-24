@@ -367,7 +367,7 @@ gcm_delete_button.addEventListener('click', function() {
       Api.request(writer)
         .then(response => {
           Utilities.throwIfNotOk(response);
-          deleteValue(Global.data.events_map, Global.data.events_free_list, identifier);
+          Global.deleteEvent(identifier);
           gcm_delete_target.parentElement._button_list.filter(b => b !== gcm_delete_target);
           gcm_delete_target.remove();
         })
@@ -701,7 +701,7 @@ gcm_toggle_button.addEventListener('click', () => {
           for (const line of staff_number_map[event_index]) {
             line.push(-1);
           }
-          Global.datat.events_roles_requirements[event_index].push([]);
+          Global.data.events_roles_requirements[event_index].push([]);
         } else {
           const position = Global.data.events_roles[event_index].indexOf(target_identifier); 
           Global.data.events_roles[event_index].splice(position, 1);

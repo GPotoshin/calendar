@@ -118,7 +118,7 @@ const monthDisplay = {
   }
 };
 
-export function update(days) {
+export function update(days = gc_current.days) {
   const date = pool_date;
   date.setTime(Date.now());
   const today = Math.floor(date.getTime()/MS_IN_DAY);

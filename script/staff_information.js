@@ -6,9 +6,6 @@ import * as Utilities from './utilities.js';
 import { numeric_input } from './numeric_input.js';
 import { public_key, privilege } from './login.js';
 
-const PRIVILEGE_LEVEL_ADMIN = Global.PRIVILEGE_LEVEL_ADMIN;
-const PRIVILEGE_LEVEL_USER  = Global.PRIVILEGE_LEVEL_USER;
-
 export let dom = document.createElement('div');
 
 const gsi_admin_button = document.createElement('button');
@@ -58,11 +55,11 @@ function handlePrivilegeLevel(privilege_level) {
 }
 
 gsi_admin_button.addEventListener('click', () => {
-  handlePrivilegeLevel(PRIVILEGE_LEVEL_ADMIN);
+  handlePrivilegeLevel(Global.PRIVILEGE_LEVEL_ADMIN);
 });
 
 gsi_user_button.addEventListener('click', () => {
-  handlePrivilegeLevel(PRIVILEGE_LEVEL_USER);
+  handlePrivilegeLevel(Global.PRIVILEGE_LEVEL_USER);
 });
 
 function handleCenterButtonClick(e) {
@@ -217,7 +214,7 @@ export function update() {
     return;
   }
   
-  if (privilege === PRIVILEGE_LEVEL_ADMIN) {
+  if (privilege === Global.PRIVILEGE_LEVEL_ADMIN) {
     const user_station = Global.data.users_duty_station[user_index];
     if (user_station >= 0) {
       const station_index = Global.data.venues_map.get(user_station);
@@ -231,12 +228,12 @@ export function update() {
     let user_privilege_level = Global.data.users_privilege_level[user_index];
     if (user_privilege_level === undefined) {
       Global.data.users_privilege_level[user_index] = undefined;
-      user_privilege_level = PRIVILEGE_LEVEL_USER;
+      user_privilege_level = Global.PRIVILEGE_LEVEL_USER;
     }
 
-    if (user_privilege_level === PRIVILEGE_LEVEL_USER) {
+    if (user_privilege_level === Global.PRIVILEGE_LEVEL_USER) {
       gsi_privilege_button.textContent = 'Utilisateur';
-    } else if (user_privilege_level == PRIVILEGE_LEVEL_ADMIN)  {
+    } else if (user_privilege_level == Global.PRIVILEGE_LEVEL_ADMIN)  {
       gsi_privilege_button.textContent = 'Admin';
     } else if (user_privilege_level >= 0) {
       const venue_index = Global.data.venues_map.get(user_privilege_level);
