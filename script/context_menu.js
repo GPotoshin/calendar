@@ -689,23 +689,14 @@ gcm_toggle_button.addEventListener('click', () => {
         return;
       }
       const writer = createConditionalApiWriter(turning_on, Api.EVENTS_ROLE);
-      Io.writeInt32(writer, event_identifier);
+      Io.writeInt32(writer, event_id);
       Io.writeInt32(writer, target_identifier);
 
       Api.request(writer)
       .then(response => {
         Utilities.throwIfNotOk(response);
-        let staff_number_map = Global.data.events_staff_number_map;
-
-        if (turning_on) {
-          Global.data.events_roles[event_index].push(target_identifier);
-          for (const line of staff_number_map[event_index]) {
-            line.push(-1);
-          }
-          Global.data.events_roles_requirements[event_index].push([]);
-        } else {
-          Global.deleteEventsRole(event_id, target_identifier);
-        }
+        if (turning_on) Global.createEventsRole(event_id, target_identifier);
+        else Global.deleteEventsRole(event_id, target_identifier);
         EventInformation.update();
       })
       .catch(error => {
@@ -722,7 +713,7 @@ gcm_toggle_button.addEventListener('click', () => {
         return;
       }
       const writer = createConditionalApiWriter(turning_on, Api.EVENTS_ROLES_REQUIREMENT);
-      Io.writeInt32(writer, event_identifier);
+      Io.writeInt32(writer, event_id);
       Io.writeInt32(writer, role_ordinal);
       Io.writeInt32(writer, target_identifier);
 

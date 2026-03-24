@@ -235,21 +235,14 @@ export async function waitForUpdate() {
     case Api.EVENTS_ROLE: {
       const event_id = Io.readInt32(reader);
       const role_id  = Io.readInt32(reader);
-      const event_index = data.events_map.get(event_id);
-      if (event_index !== undefined) {
-        switch (mode) {
-          case Api.CREATE: {
-            data.events_roles[event_index].push(role_id);
-            for (const line of data.events_staff_number_map[event_index]) {
-              line.push(-1);
-            }
-            data.events_roles_requirements[event_index].push([]);
-            break;
-          }
-          case Api.DELETE: {
-            deleteEventsRole(event_id, role_id)
-            break;
-          }
+      switch (mode) {
+        case Api.CREATE: {
+          createEventsRole(event_id, role_id);
+          break;
+        }
+        case Api.DELETE: {
+          deleteEventsRole(event_id, role_id)
+          break;
         }
       }
       break;
@@ -640,6 +633,15 @@ export function createVenue(id, name) {
   storeValue(data.venues_name, index, name);
 }
 
+export function createEventsRole(event_id, role_id) {
+  const event_index = data.events_map.get(event_id);
+  data.events_roles[event_index].push(role_id);
+  for (const line of data.events_staff_number_map[event_index]) {
+    line.push(-1);
+  }
+  data.events_roles_requirements[event_index].push([]);
+}
+
 export function deleteEventsRole(event_id, role_id) {
   const event_index = data.events_map.get(event_id);
   const pos = data.events_roles[event_index].indexOf(role_id);
@@ -650,6 +652,7 @@ export function deleteEventsRole(event_id, role_id) {
     line.splice(pos + 2, 1);
   }
 }
+
 
 // @note: we probably should request it then
 function unexistingError(subj) {
