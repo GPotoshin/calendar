@@ -219,7 +219,7 @@ export async function waitForUpdate() {
           deleteEvent(id);
           break;
         }
-        case Api.UPDATE: {
+        case Api.UPDATE: { // leaving it as right now
           const id       = Io.readInt32(reader);
           const new_name = Io.readString(reader);
           const index = data.events_map.get(id);
@@ -233,13 +233,13 @@ export async function waitForUpdate() {
     }
 
     case Api.EVENTS_ROLE: {
-      const event_identifier = Io.readInt32(reader);
-      const role_identifier  = Io.readInt32(reader);
-      const event_index = data.events_map.get(event_identifier);
+      const event_id = Io.readInt32(reader);
+      const role_id  = Io.readInt32(reader);
+      const event_index = data.events_map.get(event_id);
       if (event_index !== undefined) {
         switch (mode) {
           case Api.CREATE: {
-            data.events_roles[event_index].push(role_identifier);
+            data.events_roles[event_index].push(role_id);
             for (const line of data.events_staff_number_map[event_index]) {
               line.push(-1);
             }
@@ -247,14 +247,7 @@ export async function waitForUpdate() {
             break;
           }
           case Api.DELETE: {
-            const pos = data.events_roles[event_index].indexOf(role_identifier);
-            if (pos !== -1) {
-              data.events_roles[event_index].splice(pos, 1);
-              data.events_roles_requirements[event_index].splice(pos + 1, 1);
-              for (const line of data.events_staff_number_map[event_index]) {
-                line.splice(pos + 2, 1);
-              }
-            }
+            deleteEventsRole(event_id, role_id)
             break;
           }
         }
@@ -647,7 +640,19 @@ export function createVenue(id, name) {
   storeValue(data.venues_name, index, name);
 }
 
+export function deleteEventsRole(event_id, role_id) {
+  const event_index = data.events_map.get(event_id);
+  const pos = data.events_roles[event_index].indexOf(role_id);
+  if (pos === -1) return;
+  data.events_roles[event_index].splice(pos, 1);
+  data.events_roles_requirements[event_index].splice(pos + 1, 1);
+  for (const line of data.events_staff_number_map[event_index]) {
+    line.splice(pos + 2, 1);
+  }
+}
+
 // @note: we probably should request it then
 function unexistingError(subj) {
   console.error("referencing localy unexisting "+subj);
 }
+

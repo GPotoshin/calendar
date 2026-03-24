@@ -679,8 +679,8 @@ gcm_toggle_button.addEventListener('click', () => {
   const target = gcm_toggle_target;
   const target_identifier = target._data_identifier;
   const turning_on = target.classList.toggle('clicked');
-  const event_identifier = Global.getEventSelectionIdentifier(); 
-  const event_index = Global.data.events_map.get(event_identifier);
+  const event_id = Global.getEventSelectionIdentifier(); 
+  const event_index = Global.data.events_map.get(event_id);
   switch (target.parentElement._identifier) {
     case Global.zones_identifier.EVENT_STAFF: {
       const role_index = Global.data.roles_map.get(target_identifier);
@@ -704,12 +704,7 @@ gcm_toggle_button.addEventListener('click', () => {
           }
           Global.data.events_roles_requirements[event_index].push([]);
         } else {
-          const position = Global.data.events_roles[event_index].indexOf(target_identifier); 
-          Global.data.events_roles[event_index].splice(position, 1);
-          Global.data.events_roles_requirements[event_index].splice(position, 1);
-          for (let line of staff_number_map[event_index]) {
-            line.splice(position+2, 1);
-          }
+          Global.deleteEventsRole(event_id, target_identifier);
         }
         EventInformation.update();
       })
