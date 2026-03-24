@@ -976,7 +976,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       }
 
       deleteValue(state.UsersMap, nil, &state.UsersFreeList, mat)
-      deleteOccurrences(state.OccurrencesParticipants, mat)
+      removeAllOf(state.OccurrencesParticipants, mat)
       for token, index := range state.ConnectionsToken {
         if state.ConnectionsUser[index] == mat {
           deleteToken(state.ConnectionsToken, &state.ConnectionsFreeList, token)
@@ -1266,7 +1266,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       _, exists := state.VenuesMap[id]
       if doesNotExistError(w, "VENUES:DELETE", "index", exists) { return }
       deleteValue(state.VenuesMap, &state.VenuesFreeId, &state.VenuesFreeList, id)
-      deleteOccurrences(state.EventsVenues, id);
+      removeAllOf(state.EventsVenues, id);
       slog.Info("DATA", "venue_identifier", id)
 
     case UPDATE:
@@ -1311,7 +1311,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         identifier_to_delete,
         )
       for _, _index := range state.CompetencesMap {
-        deleteOccurrences(state.EventsRolesRequirements[_index], identifier_to_delete)
+        removeAllOf(state.EventsRolesRequirements[_index], identifier_to_delete)
       }
       slog.Info("DATA", "competence_identifier", identifier_to_delete)
     default:
@@ -1341,7 +1341,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       _, exists := state.RolesMap[id]
       if doesNotExistError(w, "ROLES:DELETE", "index", exists) { return }
       deleteValue(state.RolesMap, &state.RolesFreeId, &state.RolesFreeList, id)
-      deleteOccurrences(state.EventsRoles, id)
+      removeAllOf(state.EventsRoles, id)
       slog.Info("DATA", "role_identifier", id)
     default:
       noSupport(w, "ROLES:default")

@@ -1,6 +1,6 @@
 import * as Global from './global.js';
 import * as Io from './io.js';
-import { storageIndex, deleteValue, deleteOccurrences, storeValue } from './data_manager.js';
+import { storageIndex, deleteValue, removeAllOf, storeValue } from './data_manager.js';
 import * as Api from './api.js';
 import * as SideMenu from './side_menu.js';
 import * as Utilities from './utilities.js';
@@ -365,7 +365,7 @@ gcm_delete_button.addEventListener('click', function() {
           gcm_extend_target._button_list =
             gcm_extend_target._button_list.filter(b => b !== gcm_delete_target);
           deleteValue(Global.data.roles_map, Global.data.roles_free_list, identifier);
-          deleteOccurrences(Global.data.events_roles, identifier);
+          removeAllOf(Global.data.events_roles, identifier);
           for (let i = 0; i < Global.data.events_roles.length; i++) {
             let events_roles = Global.data.events_roles[i];
             let index = events_roles.indexOf(identifier);
@@ -410,7 +410,7 @@ gcm_delete_button.addEventListener('click', function() {
           EventInformation.gcm_participant_competences_button_list.push(button);
           deleteValue(Global.data.competences_map, Global.data.competences_free_list, identifier);
           for (const [event_identifier, event_index] in Global.data.events_map) {
-            deleteOccurrences(Global.data.events_competences[event_index], identifier);
+            removeAllOf(Global.data.events_competences[event_index], identifier);
           }
           EventInformation.update();
         })

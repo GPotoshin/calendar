@@ -403,21 +403,6 @@ function assurePrefix(first_occurrence) {
   }
 }
 
-function pushIdentifier(intervals, identifier) {
-  const day_occurrences = Global.data.day_occurrences;
-  const base_day_number = Global.data.base_day_number;
-  for (const interval of intervals) {
-    const start = interval[0]-base_day_number;
-    const end   = interval[1]-base_day_number;
-    for (let i = start; i <= end; i++) {
-      if (!day_occurrences[i]) {
-        day_occurrences[i] = [];
-      }
-      day_occurrences[i].push(identifier);
-    }
-  }
-}
-
 function saveModificationCallback(e) {
   if (e.key === "Enter") {
     gc_is_instantiating = false;
@@ -447,7 +432,7 @@ function saveModificationCallback(e) {
         }
       }
 
-      pushIdentifier(intervals, identifier);
+      Global.pushToDayOccurrences(intervals, identifier);
       Global.data.occurrences_dates[index] = intervals;
 
       gc_current.days_data.fill(0);
@@ -480,8 +465,8 @@ function saveCreationCallback(e) {
         const identifier = Io.readInt32(reader);
         const free_list  = Global.data.occurrences_free_list;
         const map        = Global.data.occurrences_map;
-        const index      = DM.storageIndex(map, free_list);
 
+        const index      = DM.storageIndex(map, free_list);
         map.set(identifier, index);
         Global.data.occurrences_venue[index]             = -1;
         Global.data.occurrences_event_identifier[index] = event_identifier;
@@ -489,7 +474,7 @@ function saveCreationCallback(e) {
         Global.data.occurrences_participants[index]      = [];
 
         assurePrefix(intervals[0][0]);
-        pushIdentifier(intervals, identifier);
+        Global.pushToDayOccurrences(intervals, identifier);
         gc_current.days_data.fill(0);
         renderBars(gc_current);
       });

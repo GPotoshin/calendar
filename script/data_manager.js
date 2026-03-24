@@ -67,7 +67,7 @@ export function shrinkArray(array, free_list) {
   array.length = array.length - free_list.length;
 }
 
-export function deleteOccurrences(array, value) {
+export function removeAllOf(array, value) {
   for (let i = 0; i < array.length; i++) {
     array[i] = array[i].filter(array_value => array_value !== value);
   }

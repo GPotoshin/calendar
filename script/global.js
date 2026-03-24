@@ -1,4 +1,4 @@
-import {storeValue, deleteValue, storageIndex} from './data_manager.js';
+import {storeValue, deleteValue, removeAllOf, storageIndex} from './data_manager.js';
 import { privilege, token } from './login.js';
 import * as Io from './io.js';
 import * as Calendar from './calendar.js';
@@ -210,7 +210,7 @@ export async function waitForUpdate() {
       switch (mode) {
         case Api.CREATE: {
           const id = Io.readInt32(reader);
-          const name   = Io.readString(reader);
+          const name = Io.readString(reader);
           createEvent(id, name);
           break;
         }
@@ -253,19 +253,17 @@ export async function waitForUpdate() {
       const role_ordinal         = Io.readInt32(reader);
       const competence_identifier = Io.readInt32(reader);
       const event_index = data.events_map.get(event_identifier);
-      if (event_index !== undefined) {
-        const requirements = data.events_roles_requirements[event_index][role_ordinal];
-        if (requirements !== undefined) {
-          switch (mode) {
-            case Api.CREATE:
-              requirements.push(competence_identifier);
-              break;
-            case Api.DELETE: {
-              const pos = requirements.indexOf(competence_identifier);
-              if (pos !== -1) requirements.splice(pos, 1);
-              break;
-            }
-          }
+      if (event_index === undefined) return;
+      const requirements = data.events_roles_requirements[event_index][role_ordinal];
+      if (requirements !== undefined) return;
+      switch (mode) {
+        case Api.CREATE:
+          requirements.push(competence_identifier);
+          break;
+        case Api.DELETE: {
+          const pos = requirements.indexOf(competence_identifier);
+          if (pos !== -1) requirements.splice(pos, 1);
+          break;
         }
       }
       break;
@@ -274,25 +272,24 @@ export async function waitForUpdate() {
     case Api.EVENTS_PERSONAL_NUM_MAP: {
       const event_identifier = Io.readInt32(reader);
       const event_index = data.events_map.get(event_identifier);
-      if (event_index !== undefined) {
-        switch (mode) {
-          case Api.CREATE: {
-            const row_data = Io.readInt32Array(reader);
-            data.events_staff_number_map[event_index].push(row_data);
-            break;
-          }
-          case Api.DELETE: {
-            const line_index = Io.readInt32(reader);
-            data.events_staff_number_map[event_index].splice(line_index, 1);
-            break;
-          }
-          case Api.UPDATE: {
-            const line_index = Io.readInt32(reader);
-            const num_index  = Io.readInt32(reader);
-            const val        = Io.readInt32(reader);
-            data.events_staff_number_map[event_index][line_index][num_index] = val;
-            break;
-          }
+      if (event_index === undefined) return;
+      switch (mode) {
+        case Api.CREATE: {
+          const row_data = Io.readInt32Array(reader);
+          data.events_staff_number_map[event_index].push(row_data);
+          break;
+        }
+        case Api.DELETE: {
+          const line_index = Io.readInt32(reader);
+          data.events_staff_number_map[event_index].splice(line_index, 1);
+          break;
+        }
+        case Api.UPDATE: {
+          const line_index = Io.readInt32(reader);
+          const num_index  = Io.readInt32(reader);
+          const val        = Io.readInt32(reader);
+          data.events_staff_number_map[event_index][line_index][num_index] = val;
+          break;
         }
       }
       break;
@@ -346,7 +343,7 @@ export async function waitForUpdate() {
           const id = Io.readInt32(reader);
           deleteValue(data.competences_map, data.competences_free_list, id);
           for (const [, event_index] of data.events_map) {
-            deleteOccurrences(data.events_roles_requirements[event_index], id);
+            removeAllOf(data.events_roles_requirements[event_index], id);
           }
           break;
         }
@@ -365,7 +362,7 @@ export async function waitForUpdate() {
         case Api.DELETE: {
           const id = Io.readInt32(reader);
           deleteValue(data.roles_map, data.roles_free_list, id);
-          deleteOccurrences(data.events_roles, id);
+          removeAllOf(data.events_roles, id);
           break;
         }
       }
@@ -375,32 +372,12 @@ export async function waitForUpdate() {
     case Api.OCCURRENCES_MAP: {
       switch (mode) {
         case Api.CREATE: {
-          const new_id           = Io.readInt32(reader);
-          const event_identifier = Io.readInt32(reader);
-          const intervals        = Io.readArrayOfInt32PairArrays(reader);
+          const id = Io.readInt32(reader);
+          const event_id = Io.readInt32(reader);
+          const intervals = Io.readArrayOfInt32PairArrays(reader);
 
-          const index = storageIndex(data.occurrences_map, data.occurrences_free_list);
-          data.occurrences_map.set(new_id, index);
-
-          storeValue(data.occurrences_event_identifier,     index, event_identifier);
-          storeValue(data.occurrences_venue,                index, -1);
-          storeValue(data.occurrences_dates,                index, intervals);
-          storeValue(data.occurrences_participants,         index, []);
-          storeValue(data.occurrences_participants_role,    index, []);
-          storeValue(data.occurrences_participants_status,  index, []);
-
-          if (data.day_occurrences.length === 0 && intervals.length > 0) {
-            data.base_day_number = intervals[0][0];
-          }
-
-          for (const interval of intervals) {
-            const start = Math.max(interval[0] - data.base_day_number, 0);
-            const end   = interval[1] - data.base_day_number;
-            for (let i = start; i <= end; i++) {
-              if (!data.day_occurrences[i]) data.day_occurrences[i] = [];
-              data.day_occurrences[i].push(new_id);
-            }
-          }
+          createOccurrence(id, event_id, intervals);
+          pushToDayOccurrences(intervals, id);
           break;
         }
         case Api.DELETE: {
@@ -547,7 +524,7 @@ export function createUser(matricule, name, surname) {
 export function deleteUser(mat) {
   if (data.users_map != null) deleteValue(data.users_map, data.users_free_list, mat);
   else return
-  if (data.occurrences_participants != null) deleteOccurrences(data.occurrences_participants, mat);
+  if (data.occurrences_participants != null) removeAllOf(data.occurrences_participants, mat);
 }
 
 export function updateUser(mat, new_mat, name, surname) {
@@ -594,7 +571,7 @@ export function deleteEvent(id) {
 
 export function deleteVenue(id) {
   if(data.venue_map != null) deleteValue(data.venues_map, data.venues_free_list, id);
-  if(data.events_venues != null) deleteOccurrences(data.events_venues, id);
+  if(data.events_venues != null) removeAllOf(data.events_venues, id);
 }
 
 export function updateUsersDutyStation(user_id, center_id) {
@@ -653,6 +630,32 @@ export function deleteEventsRole(event_id, role_id) {
   }
 }
 
+export function createOccurrence(id, event_id, intervals) {
+  const index = storageIndex(data.occurrences_map, data.occurrences_free_list);
+  data.occurrences_map.set(id, index);
+
+  storeValue(data.occurrences_event_identifier,     index, event_id);
+  storeValue(data.occurrences_venue,                index, -1);
+  storeValue(data.occurrences_dates,                index, intervals);
+  storeValue(data.occurrences_participants,         index, []);
+  storeValue(data.occurrences_participants_role,    index, []);
+  storeValue(data.occurrences_participants_status,  index, []);
+}
+
+export function pushToDayOccurrences(intervals, id) {
+  if (data.day_occurrences.length === 0 && intervals.length > 0) {
+    data.base_day_number = intervals[0][0];
+  }
+
+  for (const interval of intervals) {
+    const start = Math.max(interval[0] - data.base_day_number, 0);
+    const end   = interval[1] - data.base_day_number;
+    for (let i = start; i <= end; i++) {
+      if (!data.day_occurrences[i]) data.day_occurrences[i] = [];
+      data.day_occurrences[i].push(id);
+    }
+  }
+}
 
 // @note: we probably should request it then
 function unexistingError(subj) {

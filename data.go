@@ -174,7 +174,7 @@ func filterIdx[T any](arr *[]T, index int) {
   (*arr) = (*arr)[:len(*arr)-1]
 }
 
-func deleteOccurrences(arr [][]int32, val int32) {
+func removeAllOf(arr [][]int32, val int32) {
 	for i := range arr {
     filterVal(&arr[i], val)
 	}
