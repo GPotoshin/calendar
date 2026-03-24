@@ -595,5 +595,5 @@ function deleteEvent(id) {
   if (data.events_roles_requirements != null) data.events_roles_requirements[event_index].length = 0;
   if (data.events_staff_number_map != null) data.events_staff_number_map[event_index].length = 0;
   if (data.events_duration != null) data.events_duration[event_index] = -1;
-  deleteValue(data.events_map, data.events_free_list, identifier);
+  DM.deleteValue(data.events_map, data.events_free_list, identifier);
 }

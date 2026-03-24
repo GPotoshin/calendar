@@ -9,6 +9,7 @@ export class ChefData {
     this.users_phone = [];
     this.users_competences = [];
     this.users_applications = [];
+    this.users_free_list = [];
     
     this.events_map = new Map();
     this.events_name = [];
@@ -17,15 +18,19 @@ export class ChefData {
     this.events_roles_requirements = [];
     this.events_staff_number_map = [];
     this.events_duration = [];
+    this.events_free_list = [];
 
     this.venues_map = new Map();
     this.venues_name = [];
+    this.venues_free_list = [];
 
     this.competences_map = new Map();
     this.competences_name = [];
+    this.competences_free_list = [];
 
     this.roles_map = new Map();
     this.roles_name = [];
+    this.roles_free_list = [];
 
     this.occurrences_map = new Map();
     this.occurrences_event_identifier = [];
@@ -34,6 +39,7 @@ export class ChefData {
     this.occurrences_participants = []
     this.occurrences_participants_role = [];
     this.occurrences_participants_status = [];
+    this.occurrences_free_list = [];
 
     this.base_day_number = -1;
     this.day_occurrences = [];

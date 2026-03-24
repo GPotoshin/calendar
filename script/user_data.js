@@ -17,14 +17,17 @@ export class UserData {
     this.events_venues = [];
     this.events_roles = [];
     this.events_duration = [];
+    this.events_free_list = [];
 
     this.venues_map = new Map();
     this.venues_name = [];
+    this.venuse_free_list = [];
 
     this.occurrences_map = new Map();
     this.occurrences_event_identifier = [];
     this.occurrences_venue = [];
     this.occurrences_dates = [];
+    this.occurrences_free_list = [];
     
     this.base_day_number = -1;
     this.day_occurrences = [];
