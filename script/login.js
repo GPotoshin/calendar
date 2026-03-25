@@ -7,6 +7,8 @@ const matricule_input = document.getElementById('id');
 const password_input = document.getElementById('password');
 const connect_button = document.getElementById('connect');
 
+matricule_input.focus();
+
 matricule_input.addEventListener('input', () => {
   matricule_input.value = Utilities.digitise(matricule_input.value);
 });
@@ -126,5 +128,11 @@ connect_button.addEventListener('click', async () => {
 password_input.addEventListener('keypress', event => {
   if (event.key === 'Enter') {
     connect_button.click();
+  }
+});
+
+matricule_input.addEventListener('keypress', event => {
+  if (event.key === 'Enter') {
+    password_input.focus();
   }
 });

@@ -4,7 +4,6 @@ import * as Global from './global.js';
 import * as SearchDisplay from './search_display.js';
 import * as Utilities from './utilities.js';
 import { numeric_input } from './numeric_input.js';
-import { public_key, privilege } from './login.js';
 
 export let dom = document.createElement('div');
 
@@ -110,7 +109,7 @@ function handleClickForPasswordChange(e) {
       Io.writeInt32(inner_writer, user_identifier);
       Io.writeHash(inner_writer, hashed);
 
-      const w = await Io.encryptAndPackage(inner_writer.getBuffer(), public_key);
+      const w = await Io.encryptAndPackage(inner_writer.getBuffer(), Global.public_key);
 
       let writer = Api.createBufferWriter(Api.UPDATE, Api.USERS_PASSWORD);
       Io.writeArrayBufferNoLength(writer, w.getBuffer());
@@ -166,7 +165,7 @@ export function loadTemplate() {
     <div class="v-container option-menu">
     </div>
   `;
-  if (privilege == Global.PRIVILEGE_LEVEL_ADMIN) {
+  if (Global.privilege == Global.PRIVILEGE_LEVEL_ADMIN) {
     gsi_admin_button.textContent = 'Admin';
     gsi_chef_button.textContent = 'Chef';
     gsi_user_button.textContent = 'Utilisateur';
@@ -212,7 +211,7 @@ export function update() {
     return;
   }
   
-  if (privilege === Global.PRIVILEGE_LEVEL_ADMIN) {
+  if (Global.privilege === Global.PRIVILEGE_LEVEL_ADMIN) {
     const user_station = Global.data.users_duty_station[user_index];
     if (user_station >= 0) {
       const station_index = Global.data.venues_map.get(user_station);

@@ -4,7 +4,6 @@ import * as Api from './api.js';
 import * as Io from './io.js';
 import * as DM from './data_manager.js';
 import { palette } from './color.js';
-import { privilege } from './login.js';
 
 const Int32Slice = DM.Int32Slice;
 
@@ -439,8 +438,17 @@ function saveModificationCallback(e) {
       gc_instantiating_occurrence_identifier = undefined;
       renderBars(gc_current);
     }).catch(e => {
-        console.error("Could not store ", e);
+        console.error('Could not store ', e);
     });
+  } else if (e.key === 'Escape') {
+    console.log('trying to escape #1');
+
+    e.preventDefault();
+    gc_is_instantiating = false;
+    document.removeEventListener('keydown', saveModificationCallback);
+    gc_current.days_data.fill(0);
+    gc_instantiating_occurrence_identifier = undefined;
+    renderBars(gc_current);
   }
 }
 
@@ -450,7 +458,7 @@ function saveModificationCallback(e) {
 function saveCreationCallback(e) {
   if (e.key === "Enter") {
     gc_is_instantiating = false;
-    document.removeEventListener("keydown", saveCreationCallback);
+    document.removeEventListener('keydown', saveCreationCallback);
     renderBars(gc_current);
     const event_identifier = gc_instantiating_event_identifier; 
     const intervals = gc_selection_intervals;
@@ -481,6 +489,14 @@ function saveCreationCallback(e) {
     }).catch(e => {
         console.error("Could not store ", e);
     });
+  } else if (e.key === "Escape") {
+    console.log('trying to escape #2');
+    e.preventDefault();
+    gc_is_instantiating = false;
+    document.removeEventListener("keydown", saveCreationCallback);
+    gc_current.days_data.fill(0);
+    gc_instantiating_occurrence_identifier = undefined;
+    renderBars(gc_current);
   }
 }
 
@@ -495,7 +511,7 @@ function getEvents(cell) {
 function createBar(position, start_day, end_day, color) {
   let bar = document.createElement('button');
   bar.className = 'event-occurrence no-select';
-  if (privilege == Global.PRIVILAGE_LEVEL_ADMIN) {
+  if (Global.privilege === Global.PRIVILEGE_LEVEL_ADMIN) {
     bar.classList.add('deletable', 'editable');
   }
   bar.style.top = (20*position)+'%';

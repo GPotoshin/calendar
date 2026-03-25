@@ -1612,8 +1612,8 @@ func handleUpdate(w http.ResponseWriter, r *http.Request) {
   state.mutex.RLock()
   connection_index, exists := state.ConnectionsToken[token]
   if !exists {
-    state.mutex.RUnlock()
     http.Error(w, "bad request", http.StatusBadRequest)
+    state.mutex.RUnlock()
     return
   }
   ch := state.ConnectionsChannel[connection_index]

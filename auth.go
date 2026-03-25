@@ -34,23 +34,19 @@ func (s *State) decrypt(data []byte) ([]byte, error) {
 func (s *State) validateToken(token [32]byte) (int32, bool) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
-
 	index, exists := s.ConnectionsToken[token]
 	if !exists || index < 0 {
 		return -1, false
 	}
-
 	if time.Now().After(s.ConnectionsTime[index][1]) {
 		return -1, false
 	}
-
 	return s.ConnectionsUser[index], true
 }
 
 func (s *State) cleanupExpiredTokens() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-
 	now := time.Now()
 	for token, index := range s.ConnectionsToken {
 		if now.After(s.ConnectionsTime[index][1]) {
@@ -78,11 +74,13 @@ func (s *State) startKeyRotation() {
 				slog.Error("failed to rotate keys", "cause", err)
 			} else { // we need to send new key to open connections
 				slog.Info("keys rotated successfully")
+        pubKey := state.getPublicKey()
 
-        data_to_send := make([]byte, 8+32)
+        data_to_send := make([]byte, 12+len(pubKey))
         binary.LittleEndian.PutUint32(data_to_send[0:4], uint32(PUBLIC_KEY))
         binary.LittleEndian.PutUint32(data_to_send[4:8], uint32(UPDATE))
-        copy(data_to_send[4:], s.publicKey)
+        binary.LittleEndian.PutUint32(data_to_send[8:12], uint32(len(pubKey)))
+        copy(data_to_send[12:], pubKey)
 
         for _, i := range s.ConnectionsToken {
           ch := state.ConnectionsChannel[i]
@@ -149,6 +147,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Error("Failed to decrypt data", "cause", err)
 		http.Error(w, "Bad request", http.StatusBadRequest)
+    state.mutex.RUnlock()
 		return
 	}
 	state.mutex.RUnlock()
