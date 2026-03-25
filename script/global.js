@@ -1,5 +1,5 @@
 import {storeValue, deleteValue, removeAllOf, storageIndex} from './data_manager.js';
-import { privilege, token } from './login.js';
+import { privilege, token, public_key } from './login.js';
 import * as Io from './io.js';
 import * as Calendar from './calendar.js';
 import * as Api from './api.js';
@@ -164,8 +164,8 @@ export async function waitForUpdate() {
   const binary = await response.arrayBuffer();
   const reader = new Io.BufferReader(binary);
 
-  const mode             = Io.readInt32(reader);
   const field_identifier = Io.readInt32(reader);
+  const mode             = Io.readInt32(reader);
 
   switch (field_identifier) {
     case Api.USERS_MAP: {
@@ -485,6 +485,11 @@ export async function waitForUpdate() {
       if (mode === Api.UPDATE) {
         data.employees_limit = Io.readInt32(reader);
       }
+      break;
+    }
+
+    case Api.PUBLIC_KEY: {
+      public_key = Io.readHash(reader);
       break;
     }
 

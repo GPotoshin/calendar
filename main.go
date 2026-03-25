@@ -58,6 +58,8 @@ const (
 
   EMPLOYEES_LIMIT
 
+  PUBLIC_KEY
+
   STATE_FIELD_COUNT
 )
 
@@ -900,10 +902,10 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
   if readError(w, "handleApi", "remaining body", err) { return }
   bodyReader := bytes.NewReader(remaining)
 
-  mode, err := readInt32(bodyReader)
-  if readError(w, "handleApi", "mode", err) { return }
   field_identifier, err := readInt32(bodyReader)
   if readError(w, "handleApi", "field_identifier", err) { return }
+  mode, err := readInt32(bodyReader)
+  if readError(w, "handleApi", "mode", err) { return }
   if field_identifier < 0 || field_identifier >= STATE_FIELD_COUNT {
     slog.Error("incorrect field_identifier in api")
     http.Error(w, "incorrect api", http.StatusBadRequest)

@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
   "html/template"
+  "encoding/binary"
 	"log/slog"
 	"net/http"
 	"time"
@@ -77,6 +78,19 @@ func (s *State) startKeyRotation() {
 				slog.Error("failed to rotate keys", "cause", err)
 			} else { // we need to send new key to open connections
 				slog.Info("keys rotated successfully")
+
+        data_to_send := make([]byte, 8+32)
+        binary.LittleEndian.PutUint32(data_to_send[0:4], uint32(PUBLIC_KEY))
+        binary.LittleEndian.PutUint32(data_to_send[4:8], uint32(UPDATE))
+        copy(data_to_send[4:], s.publicKey)
+
+        for _, i := range s.ConnectionsToken {
+          ch := state.ConnectionsChannel[i]
+          select {
+          case ch <- data_to_send:
+          default:
+          }
+        }
 			}
 		}
 	}()
@@ -182,7 +196,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
       state.ConnectionsToken[token] = token_index
       storeValue(&state.ConnectionsUser, token_index, userId)
       storeValue(&state.ConnectionsTime, token_index, [2]time.Time{now, now.Add(time.Hour)})
-      storeValue(&state.ConnectionsChannel, token_index, make(chan []byte))
+      storeValue(&state.ConnectionsChannel, token_index, make(chan []byte, 8))
 
       state.mutex.Unlock()
       goto _token_generation_success

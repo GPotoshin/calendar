@@ -41,8 +41,8 @@ export const OCCURRENCES_PARTICIPANTS_ROLE   = 26;
 export const OCCURRENCES_PARTICIPANTS_STATUS = 27;
 
 export const EMPLOYEES_LIMIT = 28;
-
-export const STATE_FIELD_COUNT = 29;
+export const PUBLIC_KEY = 29;
+export const STATE_FIELD_COUNT = 30;
 
 export function writeHeader(writer, operation_identifier, field_identifier) {
   if (writer == null || operation_identifier == null || field_identifier == null) {
@@ -50,8 +50,8 @@ export function writeHeader(writer, operation_identifier, field_identifier) {
   }
   Io.writeString(writer, "bin_api.v0.0.0");
   Io.writeHash(writer, token);
-  Io.writeInt32(writer, operation_identifier);
   Io.writeInt32(writer, field_identifier);
+  Io.writeInt32(writer, operation_identifier);
 }
 
 export function createBufferWriter(operation_identifier, field_identifier) {

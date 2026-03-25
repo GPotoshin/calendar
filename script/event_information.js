@@ -184,14 +184,14 @@ function endOfLineWriting(
     // we need to make an API store request here
     let writer = Api.createBufferWriter(Api.CREATE, Api.EVENTS_PERSONAL_NUM_MAP);
     Io.writeInt32(writer, event_identifier);
-    Io.writeInt32(write, buttons.length);
+    Io.writeInt32(writer, buttons.length);
     let data = [];
     for (let j = 0; j < buttons.length; j++) {
       const numeric_value = Number(buttons[j].textContent);
       buttons[j]._data_identifier = j;
       evolveButton(buttons[j]);
       const n = getNumericValue(buttons[j]);
-      Io.writeInt32(write, numeric_value); // we don't have numeric value yet
+      Io.writeInt32(writer, numeric_value); // we don't have numeric value yet
       data.push(numeric_value);
     }
     Api.request(writer)
