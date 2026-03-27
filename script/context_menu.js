@@ -430,15 +430,8 @@ gcm_delete_button.addEventListener('click', function() {
             const index = deleteValue(Global.data.occurrences_map,
               Global.data.occurrences_free_list,
               identifier);
-            const intervals = Global.data.occurrences_dates[index];
-            for (let i = 0; i < intervals.length; i++) {
-              for (let j = intervals[i][0]-Global.data.base_day_number;
-                       j <= intervals[i][1]-Global.data.base_day_number;
-                       j++
-              ) {
-                Global.data.day_occurrences[j].filter(v => v !== identifier);
-              }
-            }
+            Global.removeFromDayOccurrences(identifier, index);
+            Calendar.renderBars();
           })
           .catch(e => {
             for (const bar of Calendar.gc_current.bars) {

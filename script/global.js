@@ -386,21 +386,11 @@ export async function waitForUpdate() {
             break;
           }
           case Api.DELETE: {
-            const occurrence_identifier = Io.readInt32(reader); // @error
-            const occurrence_index = data.occurrences_map.get(occurrence_identifier);
+            const occurrence_id = Io.readInt32(reader); // @error
+            const occurrence_index = data.occurrences_map.get(occurrence_id);
             if (occurrence_index !== undefined) {
-              const intervals = data.occurrences_dates[occurrence_index];
-              // remove from day_occurrences
-              for (const interval of intervals) {
-                const start = interval[0] - data.base_day_number;
-                const end   = interval[1] - data.base_day_number;
-                for (let i = start; i <= end; i++) {
-                  if (data.day_occurrences[i]) {
-                    data.day_occurrences[i] = data.day_occurrences[i].filter(v => v !== occurrence_identifier);
-                  }
-                }
-              }
-              deleteValue(data.occurrences_map, data.occurrences_free_list, occurrence_identifier);
+              removeFromDayOccurrences(occurrence_id, occurrence_index);
+              deleteValue(data.occurrences_map, data.occurrences_free_list, occurrence_id);
             }
             break;
           }
@@ -680,6 +670,19 @@ export function pushToDayOccurrences(intervals, id) {
     for (let i = start; i <= end; i++) {
       if (!data.day_occurrences[i]) data.day_occurrences[i] = [];
       data.day_occurrences[i].push(id);
+    }
+  }
+}
+
+export function removeFromDayOccurrences(occurrence_identifier, occurrence_index) {
+  const intervals = data.occurrences_dates[occurrence_index];
+  for (const interval of intervals) {
+    const start = interval[0] - data.base_day_number;
+    const end   = interval[1] - data.base_day_number;
+    for (let i = start; i <= end; i++) {
+      if (data.day_occurrences[i]) {
+        data.day_occurrences[i] = data.day_occurrences[i].filter(v => v !== occurrence_identifier);
+      }
     }
   }
 }
