@@ -170,17 +170,28 @@ export function setUserButton(button, name, surname, matricule) {
   button.replaceChildren(left, right);
 }
 
-function appendButtonToZone(zone_identifier, button) {
-    Global.zones[zone_identifier].element_list.appendChild(button);
-    Global.zones[zone_identifier].element_list._button_list.push(button);
+function appendButtonToZone(zone_id, button) {
+    Global.zones[zone_id].element_list.appendChild(button);
+    Global.zones[zone_id].element_list._button_list.push(button);
+}
+
+
+export function addButtonToZone(zone_id, name, id) {
+  const button = createListButtonAndSetToggleCallback();
+  Utilities.setNameAndIdentifier(button, name, id);
+  appendButtonToZone(Global.zones_identifier.VENUE, button);
+}
+
+export function addUserButton(name, surname, matricule) {
+  let button = createListButtonAndSetToggleCallback();
+  setUserButton(button, name, surname, matricule);
+  appendButtonToZone(Global.zones_identifier.STAFF, button);
 }
 
 export function composeVenueList(map, names, list_identifier) {
-  for (const [identifier, index] of Global.data.venues_map) {
+  for (const [id, index] of Global.data.venues_map) {
     const name = Global.data.venues_name[index];
-    let button = createListButtonAndSetToggleCallback();
-    Utilities.setNameAndIdentifier(button, name, identifier);
-    appendButtonToZone(Global.zones_identifier.VENUE, button);
+    addButtonToZone(Global.zones_identifier.VENUE, name, id);
   }
 }
 
@@ -202,8 +213,6 @@ export function composeUsersList() {
   for (const [matricule, index] of Global.data.users_map) {
     const name = Global.data.users_name[index];
     const surname = Global.data.users_surname[index];
-    let button = createListButtonAndSetToggleCallback();
-    setUserButton(button, name, surname, matricule);
-    appendButtonToZone(Global.zones_identifier.STAFF, button);
+    addUserButton(name, surname, matricule);
   }
 }

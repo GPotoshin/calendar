@@ -541,10 +541,10 @@ function updateEventOrVenue(button, placeholder, api, meta_data) {
         console.error("Could not store ", value, error);
       });
     } else if (event.key === 'Escape') {
+      event.preventDefault();
       button.textContent = '';
       button.addEventListener('click', SideMenu.buttonClickCallback);
       Utilities.setNameAndIdentifier(button, old_name, identifier);
-      button.remove();
     }
   });
   input.focus();
@@ -583,7 +583,7 @@ gcm_create_button.addEventListener('click', () => {
           Global.createEvent(id, name);
 
           button.textContent = ''; 
-          Utilities.setNameAndIdentifier(button, value, identifier);
+          Utilities.setNameAndIdentifier(button, name, id);
           button.addEventListener('click', SideMenu.buttonClickCallback);
         }
       );

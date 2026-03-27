@@ -8,6 +8,7 @@ import { token } from './login.js';
 import * as SideMenu from './side_menu.js'; // modify
 import * as StaffInformation from './staff_information.js'; // ok?
 import * as EventInformation from './event_information.js'; // ok?
+import * as Update from './update.js';
 
 let state = {
   scroll_pos_save: 0,
@@ -39,7 +40,7 @@ Calendar.init();
           const reader = new Io.BufferReader(binary);
           Global.data.read(reader)
           Calendar.renderBars();
-          Global.waitForUpdate();
+          Update.waitForUpdate();
           SideMenu.composeEventList();
           SideMenu.composeVenueList();
         });

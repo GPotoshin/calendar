@@ -12,6 +12,7 @@ import * as SideMenu from './side_menu.js';
 import * as CalendarInformation from './calendar_information.js';
 import * as StaffInformation from './staff_information.js';
 import * as EventInformation from './event_information.js';
+import * as Update from './update.js';
 
 let state = {
   scroll_pos_save: 0,
@@ -43,7 +44,7 @@ Calendar.init();
           const reader = new Io.BufferReader(binary);
           Global.data.read(reader)
           Calendar.renderBars();
-          Global.waitForUpdate();
+          Update.waitForUpdate();
           SideMenu.composeEventList();
           SideMenu.composeUsersList();
           SideMenu.composeVenueList();

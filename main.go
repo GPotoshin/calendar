@@ -592,6 +592,7 @@ func main() {
     jsFile{"io.js",        JS_ALL},
     jsFile{"sw.js",        JS_ALL},
     jsFile{"color.js",     JS_ALL},
+    jsFile{"update.js",               JS_USR},
     jsFile{"user_entry_point.js",     JS_USR},
     jsFile{"user_data.js",            JS_USR},
     jsFile{"numeric_input.js",        JS_USR},
