@@ -155,6 +155,7 @@ export const PARTICIPATION_REQUESTED = 0;
 export const PARTICIPATION_APPROVED  = 1;
 export const PARTICIPATION_DECLINED  = 2;
 
+const abort_controller =  new AbortController();
 export async function waitForUpdate() {
   try {
     const writer = new Io.BufferWriter();
@@ -164,6 +165,7 @@ export async function waitForUpdate() {
       method: 'POST',
       headers: { 'Content-Type': 'application/octet-stream' },
       body: writer.getBuffer(),
+      signal: abort_controller.signal,
     });
 
     const binary = await response.arrayBuffer();
@@ -503,6 +505,7 @@ export async function waitForUpdate() {
         break;
     }
   } catch(e) {
+    if (e.name === 'AbortError') return;
     console.error('failed to update data', e);
   }
 
@@ -692,3 +695,6 @@ function unexistingError(subj) {
   console.error("referencing localy unexisting "+subj);
 }
 
+window.addEventListener('beforeunload', () => {
+  abort_controller.abort();
+});
