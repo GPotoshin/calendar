@@ -172,14 +172,17 @@ export function init() {
 
   gc_calendar_resize_observer.observe(Global.elements.calendar_body);
 
-  const weeks = gc_current.weeks;
-  for (let i = 0; i < weeks.length; i++) {
-    weeks[i]._index = i;
-    const days = weeks[i].children;
-    for (let j = 0; j < days.length; j++) {
-      days[j]._index = j; // docs: @set(day-cell._index)
+  function setIndices(weeks) {
+    for (let i = 0; i < weeks.length; i++) {
+      weeks[i]._index = i;
+      const days = weeks[i].children;
+      for (let j = 0; j < days.length; j++) {
+        days[j]._index = j; // docs: @set(day-cell._index)
+      }
     }
   }
+  setIndices(gc_weeks_1);
+  setIndices(gc_weeks_2);
   update(gc_current.days);
 }
 
