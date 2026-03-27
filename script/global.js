@@ -381,7 +381,7 @@ export async function waitForUpdate() {
           case Api.CREATE: {
             const id = Io.readInt32(reader);
             const event_id = Io.readInt32(reader);
-            const intervals = Io.readArrayOfInt32PairArrays(reader);
+            const intervals = Io.readArrayOfInt32PairArrays(reader); // @error
 
             createOccurrence(id, event_id, intervals);
             pushToDayOccurrences(intervals, id);

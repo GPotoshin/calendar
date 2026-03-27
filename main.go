@@ -1370,7 +1370,8 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       if !checkOrderedArrayOfInt32Pairs(w, intervals) { return }
 
       // storing
-      new_id, index := newEntry(
+      var index int
+      new_id, index = newEntry(
         state.OccurrencesMap,
         &state.OccurrencesFreeList,
         &state.OccurrencesFreeId,
