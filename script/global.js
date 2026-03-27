@@ -381,10 +381,11 @@ export async function waitForUpdate() {
           case Api.CREATE: {
             const id = Io.readInt32(reader);
             const event_id = Io.readInt32(reader);
-            const intervals = Io.readArrayOfInt32PairArrays(reader); // @error
+            const intervals = Io.readInt32PairArray(reader);
 
             createOccurrence(id, event_id, intervals);
             pushToDayOccurrences(intervals, id);
+            Calendar.renderBars();
             break;
           }
           case Api.DELETE: {
@@ -393,6 +394,7 @@ export async function waitForUpdate() {
             if (occurrence_index !== undefined) {
               removeFromDayOccurrences(occurrence_id, occurrence_index);
               deleteValue(data.occurrences_map, data.occurrences_free_list, occurrence_id);
+              Calendar.renderBars();
             }
             break;
           }
@@ -657,7 +659,7 @@ export function createOccurrence(id, event_id, intervals) {
   storeValue(data.occurrences_event_identifier,     index, event_id);
   storeValue(data.occurrences_venue,                index, -1);
   storeValue(data.occurrences_dates,                index, intervals);
-  storeValue(data.occurrences_participants,         index, []);
+  if (data.occurrences_participants != null) storeValue(data.occurrences_participants, index, []);
   storeValue(data.occurrences_participants_role,    index, []);
   storeValue(data.occurrences_participants_status,  index, []);
 }
