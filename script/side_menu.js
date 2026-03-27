@@ -175,11 +175,26 @@ function appendButtonToZone(zone_id, button) {
     Global.zones[zone_id].element_list._button_list.push(button);
 }
 
+export function removeButtonFromZone(zone_id, id) {
+  const button_list = Global.zones[zone_id].element_list._button_list;
+  let button = undefined;
+  let pos = undefined;
+  for (let i = 0; i < button_list.length; i++) {
+    if (button_list[i]._data_identifier === id) {
+      button = button_list[i];
+      pos = i;
+      break;
+    }
+  }
+  if (pos === undefined) return;
+  button_list.splice(pos, 1);
+  button.remove()
+}
 
 export function addButtonToZone(zone_id, name, id) {
   const button = createListButtonAndSetToggleCallback();
   Utilities.setNameAndIdentifier(button, name, id);
-  appendButtonToZone(Global.zones_identifier.VENUE, button);
+  appendButtonToZone(zone_id, button);
 }
 
 export function addUserButton(name, surname, matricule) {

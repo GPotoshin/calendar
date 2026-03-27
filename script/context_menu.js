@@ -599,7 +599,7 @@ gcm_create_button.addEventListener('click', () => {
           Global.createVenue(id, name);
 
           button.textContent = ''; 
-          Utilities.setNameAndIdentifier(button, value, identifier);
+          Utilities.setNameAndIdentifier(button, name, id);
           button.addEventListener('click', SideMenu.buttonClickCallback);
         }
       );

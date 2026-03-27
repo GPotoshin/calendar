@@ -894,8 +894,10 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
   user_identifier := state.ConnectionsUser[connection_index]
   user_index, exists := state.UsersMap[user_identifier]
   if !exists {
-    slog.Error("we have an unexisting u_identifier within ConnectinosUser")
+    slog.Info("[handle] connection references to an unexisting user")
+    deleteToken(state.ConnectionsToken, &state.ConnectionsFreeList, token)
     http.Error(w, "internal error", http.StatusInternalServerError)
+    return
   }
   privilege_level := state.UsersPrivilegeLevel[user_index]
 
@@ -914,6 +916,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
   }
 
   new_id := int32(-1)
+  sending_update_to_users := true
 
   switch field_identifier {
   case USERS_MAP:
@@ -947,6 +950,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       storeValue(&state.UsersPrivilegeLevel, index, PRIVILEGE_LEVEL_USER)
       storeValue(&state.UsersApplications, index, []int32{})
 
+      sending_update_to_users = false
       slog.Info("DATA", "name", name, "surname", surname, "mat", mat, "index", index)
     case UPDATE:
       slog.Info("UPDATE")
@@ -1144,8 +1148,8 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     case CREATE:
       slog.Info("CREATE")
       if len(state.EventsRoles) <= index {
-        state.EventsRoles = slices.Grow(state.EventsRoles, index+1-len(state.EventsRoles));
-        state.EventsRoles = state.EventsRoles[:index+1];
+        state.EventsRoles = slices.Grow(state.EventsRoles, index+1-len(state.EventsRoles))
+        state.EventsRoles = state.EventsRoles[:index+1]
       }
       state.EventsRoles[index] = append(state.EventsRoles[index], role_identifier)
       for i := 0; i < len(num_map); i++ {
@@ -1190,7 +1194,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     if !isAdmin(w, privilege_level) { return }
     event_identifier, err := readInt32(bodyReader)
     if readError(w, "NUM_MAP", "event_identifier", err) { return }
-    event_index, exists := state.EventsMap[event_identifier];
+    event_index, exists := state.EventsMap[event_identifier]
     if doesNotExistError(w, "NUM_MAP:CREATE", "event", exists) { return }
     num_map := state.EventsPersonalNumMap
     switch mode {
@@ -1204,7 +1208,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       slog.Info("DELETE")
       line_index, err := readInt32(bodyReader)
       if readError(w, "NUM_MAP:DELETE", "line_index", err) { return }
-      filterIdx(&state.EventsPersonalNumMap[event_index], int(line_index));
+      filterIdx(&state.EventsPersonalNumMap[event_index], int(line_index))
       slog.Info("DATA", "event_identifier", event_identifier, "line_index", line_index)
     case UPDATE:
       slog.Info("UPDATE")
@@ -1221,7 +1225,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       noSupport(w, "EVENTS_ROLES_REQUIREMENT:default")
     }
   case EVENTS_DURATION:
-    slog.Info("EVENTS_DURATION");
+    slog.Info("EVENTS_DURATION")
     if !isAdmin(w, privilege_level) { return }
     switch mode {
     case UPDATE:
@@ -1236,7 +1240,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     }
     event_identifier, err := readInt32(bodyReader)
     if readError(w, "EVENTS_DURATION", "event_identifier", err) { return }
-    event_index, exists := state.EventsMap[event_identifier];
+    event_index, exists := state.EventsMap[event_identifier]
     if doesNotExistError(w, "EVENTS_DURATION", "event_index", exists) { return }
     duration, err := readInt32(bodyReader)
     if readError(w, "EVENTS_DURATION", "duration", err) { return }
@@ -1245,7 +1249,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       http.Error(w, "incorrect request data", http.StatusBadRequest)
       return
     }
-    state.EventsDuration[event_index] = duration;
+    state.EventsDuration[event_index] = duration
 
   case VENUES_MAP:
     slog.Info("VENUES_MAP")
@@ -1269,7 +1273,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       _, exists := state.VenuesMap[id]
       if doesNotExistError(w, "VENUES:DELETE", "index", exists) { return }
       deleteValue(state.VenuesMap, &state.VenuesFreeId, &state.VenuesFreeList, id)
-      removeAllOf(state.EventsVenues, id);
+      removeAllOf(state.EventsVenues, id)
       slog.Info("DATA", "venue_identifier", id)
 
     case UPDATE:
@@ -1353,7 +1357,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     noSupport(w, "ROLES_NAME")
 
   case OCCURRENCES_MAP:
-    slog.Info("OCCURRENCES_MAP");
+    slog.Info("OCCURRENCES_MAP")
     if !isAdmin(w, privilege_level) { return }
     switch mode {
     case CREATE:
@@ -1411,7 +1415,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
   case OCCURRENCES_VENUE:
     noSupport(w, "OCCURRENCES_VENUE")
   case OCCURRENCES_DATES:
-    slog.Info("OCCURRENCES_DATES");
+    slog.Info("OCCURRENCES_DATES")
     if !isAdmin(w, privilege_level) { return }
     switch mode {
     case UPDATE:
@@ -1515,7 +1519,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       if privilege_level != PRIVILEGE_LEVEL_ADMIN {
         user_index, exists := state.UsersMap[user_id]
         if doesNotExistError(w, "OCCURRENCES_PARTICIPANT_STATUS:CREATE", "user", exists) { return }
-        duty_station := state.UsersDutyStation[user_index];
+        duty_station := state.UsersDutyStation[user_index]
         if duty_station != privilege_level {
           slog.Error("[OCCURRENCES_PARTICIPANTS_STATUS] incorrect privilege")
           http.Error(w, "incorrect request", http.StatusBadRequest)
@@ -1541,7 +1545,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
       statuses := state.OccurrencesParticipantsStatus[occurrence_index]
       for i := 0; i < len(participants); i += 1 {
         if participants[i] == user_id && roles[i] == role_id {
-          statuses[i] = status;
+          statuses[i] = status
         }
       }
       
@@ -1550,11 +1554,11 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     }
 
   case EMPLOYEES_LIMIT:
-    slog.Info("EMPLOYEES_LIMIT");
+    slog.Info("EMPLOYEES_LIMIT")
     if !isAdmin(w, privilege_level) { return }
     switch mode {
     case UPDATE:
-      slog.Info("UPDATE");
+      slog.Info("UPDATE")
       new_limit, err := readInt32(bodyReader)
       if readError(w, "ROLES:UPDATE", "new_limit", err) { return }
       if new_limit > 1000 || new_limit < 0 {
@@ -1562,7 +1566,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
         http.Error(w, "incorrect request", http.StatusBadRequest)
         return
       }
-      state.EmployeesLimit = new_limit;
+      state.EmployeesLimit = new_limit
 
     default:
       noSupport(w, "EMPLOYEES_LIMIT:default")
@@ -1571,10 +1575,10 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
     noSupport(w, "default")
   }
 
-  go sendUpdates(token, new_id, remaining)
+  go sendUpdates(token, new_id, remaining, sending_update_to_users)
 }
 
-func sendUpdates(author_token [32]byte, new_id int32, remaining []byte) {
+func sendUpdates(author_token [32]byte, new_id int32, remaining []byte, sending_update_to_users bool) {
   var data_to_send []byte
   
   if new_id >= 0 {
@@ -1586,11 +1590,24 @@ func sendUpdates(author_token [32]byte, new_id int32, remaining []byte) {
     data_to_send = remaining
   }
 
-  for token, i := range state.ConnectionsToken {
+  for token, connection_index := range state.ConnectionsToken {
     if token == author_token {
       continue
     }
-    ch := state.ConnectionsChannel[i]
+    if !sending_update_to_users {
+      user_id := state.ConnectionsUser[connection_index]
+      user_index, exists := state.UsersMap[user_id]
+      if !exists {
+        slog.Info("[sendUpdates] token referencing an unexisting user")
+        deleteToken(state.ConnectionsToken, &state.ConnectionsFreeList, token)
+        continue
+      }
+      if state.UsersPrivilegeLevel[user_index] == PRIVILEGE_LEVEL_USER {
+        continue
+      }
+    }
+
+    ch := state.ConnectionsChannel[connection_index]
     select {
     case ch <- data_to_send:
     default:
