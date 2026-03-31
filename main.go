@@ -1503,7 +1503,7 @@ func handleApi(w http.ResponseWriter, r *http.Request) {
   case OCCURRENCES_PARTICIPANTS_STATUS:
     slog.Info("OCCURRENCES_PARTICIPANTS_STATUS")
     if privilege_level == PRIVILEGE_LEVEL_USER ||
-       privilege_level <= PRIVILEGE_LEVEL_ADMIN {
+       privilege_level <  PRIVILEGE_LEVEL_ADMIN {
       slog.Error("[OCCURRENCES_PARTICIPANTS_STATUS] incorrect privilege")
       http.Error(w, "incorrect request", http.StatusBadRequest)
       return

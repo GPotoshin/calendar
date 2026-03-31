@@ -13,8 +13,8 @@ const gsi_chef_button  = document.createElement('button');
 
 let gsi_privilege_button = null;
 let gsi_station_button = null;
-let gsi_application_list = null;
 let gsi_candidature_list = null;
+let gsi_participation_list = null;
 
 let gsi_click_for_options_is_disabled = false;
 
@@ -160,6 +160,20 @@ export function openOptions(x, y) {
   });
 }
 
+function makeInformationList(name) {
+  const list = document.createElement('div');
+  list.className = 'height-20 v-container align-items-center';
+  list.innerHTML = `
+    <h4 class="txt-center">${name}</h4>
+    <div class="h-container list-container">
+    <div class="js-set text-box v-container scrollable-box scroll bordered grow half-wide"></div>
+    </div>
+    `;
+  list._container = list.querySelector('.js-set');
+  list._container.classList.remove('js-set');
+  return list
+}
+
 export function loadTemplate() {
   dom.innerHTML = `
     <div class="v-container option-menu">
@@ -182,19 +196,12 @@ export function loadTemplate() {
     );
   }
 
-  gsi_candidature_list = document.createElement('div');
-  gsi_candidature_list.className = 'height-20 v-container align-items-center';
-  gsi_candidature_list.innerHTML = `
-    <h4 class="txt-center">Candidature</h4>
-    <div class="h-container list-container">
-    <div class="js-set text-box v-container scrollable-box scroll bordered grow half-wide"></div>
-    </div>
-    `;
-  gsi_candidature_list._container = gsi_candidature_list.querySelector('.js-set');
-  gsi_candidature_list._container.classList.remove('js-set');
+  gsi_candidature_list = makeInformationList("Candidature");
+  gsi_participation_list = makeInformationList("Participations");
 
   dom.children[0].append(
     gsi_candidature_list,
+    gsi_participation_list,
     createPasswordButton(),
   )
 }
@@ -243,7 +250,8 @@ export function update() {
 
   const applications = Global.data.users_applications[user_index];
   let entry_index = 0;
-  const frag = document.createDocumentFragment();
+  const candidature_frag = document.createDocumentFragment();
+  const participation_frag = document.createDocumentFragment();
   for (const occurrence_id of applications) {
     const occurrence_index = Global.data.occurrences_map.get(occurrence_id);
     const participants = Global.data.occurrences_participants[occurrence_index];
@@ -255,7 +263,7 @@ export function update() {
         continue;
       }
 
-      if (participants_status[participant_index] === Global.PARTICIPATION_REQUESTED) {
+      function createEventRoleButton() {
         const role_id = participants_role[participant_index];
         let role_name = undefined;
         if (role_id === -1) {
@@ -264,12 +272,16 @@ export function update() {
           const role_index = Global.data.roles_map.get(role_id);
           if (role_index === undefined) {
             console.error('[si:update] unknown role');
-            continue;
+            return null;
           }
           role_name = Global.data.roles_name[role_index];
         }
         const event_id = Global.data.occurrences_event_identifier[occurrence_index];
         const event_index = Global.data.events_map.get(event_id);
+        if (event_index == undefined) {
+          console.error('[si:update] unknown event');
+          return null;
+        }
 
         const button = document.createElement('button');
         button.className = 'search-list-button';
@@ -280,18 +292,39 @@ export function update() {
         const event = document.createElement('span');
         event.className = 'width-45';
         event.textContent = Global.data.events_name[event_index]+'#'+occurrence_id;
-
-        const tick = gsi_tick.children[0].cloneNode(true);
-        tick.addEventListener('click', acceptCandidature);
-        const cross = gsi_cross.children[0].cloneNode(true);
-        cross.addEventListener('click', rejectCandidature);
-
-        button.replaceChildren(role, event, tick, cross);
-        frag.appendChild(button);
+          button.replaceChildren(role, event);
+        return button;
       }
+      switch (participants_status[participant_index]) {
+        case Global.PARTICIPATION_REQUESTED: {
+          const button = createEventRoleButton();
+          if (!button) {
+            continue;
+          }
+
+          const tick = gsi_tick.children[0].cloneNode(true);
+          tick.addEventListener('click', acceptCandidature);
+          const cross = gsi_cross.children[0].cloneNode(true);
+          cross.addEventListener('click', rejectCandidature);
+
+          button.append(tick, cross);
+          candidature_frag.appendChild(button);
+          break;
+        }
+        case Global.PARTICIPATION_APPROVED: {
+          const button = createEventRoleButton();
+          if (!button) {
+            continue;
+          }
+
+          participation_frag.appendChild(button);
+          break;
+        }
+      } 
     }
   }
-  gsi_candidature_list._container.replaceChildren(frag);
+  gsi_candidature_list._container.replaceChildren(candidature_frag);
+  gsi_participation_list._container.replaceChildren(participation_frag);
 }
 
 function acceptCandidature(e) {

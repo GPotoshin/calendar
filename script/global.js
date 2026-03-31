@@ -228,7 +228,7 @@ export function deleteVenue(id) {
 
 export function updateUsersDutyStation(user_id, center_id) {
   let user_index = -1;
-  if (data.users_map != null) users_index = data.users_map.get(user_id);
+  if (data.users_map != null) user_index = data.users_map.get(user_id);
     else return
   if (user_index != null) data.users_duty_station[user_index] = center_id;
     else unexistingError("user");

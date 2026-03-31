@@ -597,7 +597,6 @@ gcm_create_button.addEventListener('click', () => {
         Global.bundleVenuesNames(),
         (button, id, name) => {
           Global.createVenue(id, name);
-
           button.textContent = ''; 
           Utilities.setNameAndIdentifier(button, name, id);
           button.addEventListener('click', SideMenu.buttonClickCallback);
@@ -878,7 +877,6 @@ function cmHandleClickForStationOption(e) {
     document.addEventListener('click', cmHandleClickForOptions);
     console.log("failed to update duty station: ", e);;
   });
-
 }
 
 function cmHandleClickForRoleOption(e) {
